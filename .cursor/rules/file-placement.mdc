@@ -1,0 +1,26 @@
+---
+description: 项目内生成文件的存放位置约定
+alwaysApply: true
+---
+
+# 文件存放规则
+
+AI 生成或项目内约定产生的文件，应按以下规则存放，便于统一管理和检索。
+
+## 存放位置对照表
+
+| 类型 | 位置 | 说明 |
+|------|------|------|
+| 开发计划 | `.cursor/plans/` | 阶段性开发计划、迭代计划等 |
+| 验证报告 | `.cursor/reports/` | AI 生成的验证报告、分析文档 |
+| Cursor 规则 | `.cursor/rules/` | 项目级规则、编码规范等 `.mdc` 文件 |
+| 设计文档 | `docs/` | 架构设计、方案说明、技术文档 |
+| 数据库迁移 | `ArticleGeneratorDatabase/migrations/` | 数据库迁移脚本，按序号执行 |
+| 环境变量示例 | 各模块根目录 `.env.example` | 敏感配置不入库，提供示例供参考 |
+
+## 使用说明
+
+- 生成开发计划时，文件应放在 `.cursor/plans/` 下，命名建议：`{功能或阶段}-dev-plan.md`
+- 生成验证报告、代码分析等 AI 产出时，应放在 `.cursor/reports/` 下
+- 新增设计文档、架构说明时，应放在 `docs/` 下
+- 数据库表结构变更时，在 `ArticleGeneratorDatabase/migrations/` 下新增迁移脚本

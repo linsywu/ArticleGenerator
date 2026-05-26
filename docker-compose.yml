@@ -1,0 +1,86 @@
+# ArticleGenerator 部署编排
+# 使用方式：docker-compose up -d
+
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: root123
+      MYSQL_DATABASE: article_generator
+      MYSQL_USER: app
+      MYSQL_PASSWORD: app123
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # 后端 API
+  api:
+    build:
+      context: ./ArticleGeneratorService
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: mysql+pymysql://app:app123@db:3306/article_generator
+      REDIS_URL: redis://redis:6379/0
+      LLM_SERVICE_URL: http://llm:8001
+    depends_on:
+      - db
+      - redis
+      - llm
+
+  # Celery Worker
+  celery:
+    build:
+      context: ./ArticleGeneratorService
+      dockerfile: Dockerfile
+    command: celery -A app.tasks:celery_app worker -l info
+    environment:
+      DATABASE_URL: mysql+pymysql://app:app123@db:3306/article_generator
+      REDIS_URL: redis://redis:6379/0
+      LLM_SERVICE_URL: http://llm:8001
+    depends_on:
+      - db
+      - redis
+      - llm
+
+  # 模型服务（模拟模式）
+  llm:
+    build:
+      context: ./LLMService
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8001"
+    environment:
+      MOCK_MODE: "true"
+
+  # 管理后台（开发时用 npm run dev，生产时构建后由 api 托管静态文件）
+  # 此处仅构建前端，生产部署可将 dist 挂载到 api
+  adm:
+    image: node:20-alpine
+    working_dir: /app
+    volumes:
+      - ./ArticleGeneratorAdm:/app
+    ports:
+      - "5173:5173"
+    command: sh -c "npm install && npm run dev"
+    profiles:
+      - dev
+
+volumes:
+  redis_data:
+  mysql_data:

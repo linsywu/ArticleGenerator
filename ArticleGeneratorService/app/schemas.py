@@ -1,0 +1,238 @@
+"""
+Pydantic 请求/响应模型
+"""
+from datetime import datetime
+from typing import Optional, List
+from pydantic import BaseModel, Field
+
+
+# ----- 账号 -----
+class AccountBase(BaseModel):
+    platform: str
+    account_name: str
+    lora_path: Optional[str] = None
+    sample_articles: Optional[str] = None
+
+
+class AccountCreate(AccountBase):
+    pass
+
+
+class AccountUpdate(BaseModel):
+    platform: Optional[str] = None
+    account_name: Optional[str] = None
+    lora_path: Optional[str] = None
+    sample_articles: Optional[str] = None
+
+
+class AccountResponse(AccountBase):
+    id: int
+    style_profile: Optional[str] = None
+    style_profile_updated_at: Optional[datetime] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# ----- 热点源 -----
+class HotspotSourceBase(BaseModel):
+    name: str
+    type: str  # API / crawler
+    config: Optional[str] = None
+    enabled: bool = True
+
+
+class HotspotSourceCreate(HotspotSourceBase):
+    pass
+
+
+class HotspotSourceUpdate(BaseModel):
+    name: Optional[str] = None
+    type: Optional[str] = None
+    config: Optional[str] = None
+    enabled: Optional[bool] = None
+
+
+class HotspotSourceResponse(HotspotSourceBase):
+    id: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# ----- 热点 -----
+class HotspotBase(BaseModel):
+    title: str
+    source: str
+    heat: int = 0
+    summary: Optional[str] = None
+    url: Optional[str] = None
+    status: str = "unselected"
+
+
+class HotspotResponse(HotspotBase):
+    id: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class HotspotListParams(BaseModel):
+    """热点列表查询参数"""
+    status: Optional[str] = None
+    source: Optional[str] = None
+    keyword: Optional[str] = None
+    page: int = 1
+    page_size: int = 20
+
+
+class HotspotListResponse(BaseModel):
+    """热点列表分页响应"""
+    data: List[HotspotResponse]
+    total: int
+
+
+class ArticleListResponse(BaseModel):
+    """文章列表分页响应"""
+    data: List["ArticleWithRelations"]
+    total: int
+
+
+# ----- 文章 -----
+class ArticleBase(BaseModel):
+    content: str
+    status: str = "pending_review"
+
+
+class ArticleResponse(ArticleBase):
+    id: int
+    hotspot_id: Optional[int] = None
+    account_id: int
+    refine_history: Optional[str] = None
+    quality_score: Optional[int] = None
+    compliance_score: Optional[int] = None
+    review_notes: Optional[str] = None
+    published_at: Optional[datetime] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class ArticleWithRelations(ArticleResponse):
+    """文章详情（含热点、账号信息）"""
+    hotspot: Optional[HotspotResponse] = None
+    account: Optional[AccountResponse] = None
+
+
+# 解决 ArticleListResponse 前向引用
+ArticleListResponse.model_rebuild()
+
+
+# ----- 生成任务 -----
+class GenerateRequest(BaseModel):
+    """触发生成请求：可选热点 ID 列表或自定义主题"""
+    hotspot_ids: List[int] = []
+    account_id: int
+    custom_topic: Optional[str] = None
+
+
+class RefineRequest(BaseModel):
+    """微调请求"""
+    keywords: str = Field(..., description="修改关键词")
+
+
+class ArticleStatusUpdate(BaseModel):
+    """文章状态更新"""
+    status: str  # approved / rejected / published
+
+
+class ArticleUpdateRequest(BaseModel):
+    """文章内容更新"""
+    content: Optional[str] = None
+    review_notes: Optional[str] = None
+
+
+# ----- Provider -----
+class ProviderBase(BaseModel):
+    name: str
+    base_url: str
+    api_key: str
+    models: Optional[str] = None
+    enabled: bool = True
+
+class ProviderCreate(ProviderBase): pass
+class ProviderUpdate(BaseModel):
+    name: Optional[str] = None
+    base_url: Optional[str] = None
+    api_key: Optional[str] = None
+    models: Optional[str] = None
+    enabled: Optional[bool] = None
+
+class ProviderResponse(ProviderBase):
+    id: int
+    created_at: datetime
+    class Config: from_attributes = True
+
+
+# ----- ScenarioConfig -----
+class ScenarioConfigBase(BaseModel):
+    scenario: str
+    provider_id: int
+    model: str = ""
+    system_prompt_template: Optional[str] = None
+    params: Optional[str] = None
+    priority: int = 0
+    enabled: bool = True
+
+class ScenarioConfigCreate(ScenarioConfigBase): pass
+class ScenarioConfigUpdate(BaseModel):
+    provider_id: Optional[int] = None
+    model: Optional[str] = None
+    system_prompt_template: Optional[str] = None
+    params: Optional[str] = None
+    priority: Optional[int] = None
+    enabled: Optional[bool] = None
+
+class ScenarioConfigResponse(ScenarioConfigBase):
+    id: int
+    provider: Optional[ProviderResponse] = None
+    created_at: datetime
+    class Config: from_attributes = True
+
+
+# ----- ReferenceArticle -----
+class ReferenceArticleBase(BaseModel):
+    account_id: int
+    title: str
+    content: str
+    source_url: Optional[str] = None
+    embedding: Optional[str] = None
+    is_benchmark: bool = False
+
+class ReferenceArticleCreate(ReferenceArticleBase): pass
+class ReferenceArticleResponse(ReferenceArticleBase):
+    id: int
+    created_at: datetime
+    class Config: from_attributes = True
+
+
+# ----- GenerationLog -----
+class GenerationLogCreate(BaseModel):
+    scenario: str
+    provider_id: Optional[int] = None
+    model: Optional[str] = None
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    latency_ms: int = 0
+    status: str = "success"
+    error_message: Optional[str] = None
+
+
+# ----- Distill -----
+class DistillRequest(BaseModel):
+    account_id: int

@@ -1,0 +1,220 @@
+<template>
+  <div class="page">
+    <div class="toolbar">
+      <el-select v-model="statusFilter" placeholder="任务状态" clearable style="width: 140px; margin-right: 12px">
+        <el-option label="全部" value="" />
+        <el-option label="生成中" value="generating" />
+        <el-option label="已生成" value="success" />
+        <el-option label="生成失败" value="failed" />
+        <el-option label="已取消" value="cancelled" />
+      </el-select>
+      <el-button type="primary" @click="load">查询</el-button>
+      <el-button @click="load">刷新</el-button>
+    </div>
+
+    <el-empty v-if="!loading && list.length === 0" description="暂无任务">
+      <template #description>
+        <p>在热点列表选择热点并批量生成后，任务将在此展示</p>
+      </template>
+    </el-empty>
+    <el-table v-else :data="list" v-loading="loading" style="width: 100%">
+      <el-table-column prop="id" label="ID" width="70" />
+      <el-table-column label="热点" min-width="200">
+        <template #default="{ row }">{{ row.hotspot?.title || "-" }}</template>
+      </el-table-column>
+      <el-table-column label="账号" width="120">
+        <template #default="{ row }">{{ row.account?.account_name || "-" }}</template>
+      </el-table-column>
+      <el-table-column label="状态" width="100">
+        <template #default="{ row }">
+          <el-tag :type="taskStatusType[row.status]">{{ taskStatusText[row.status] || row.status }}</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="失败原因" min-width="150" show-overflow-tooltip>
+        <template #default="{ row }">{{ row.error_message || "-" }}</template>
+      </el-table-column>
+      <el-table-column prop="created_at" label="创建时间" width="180" />
+      <el-table-column label="操作" width="100" fixed="right">
+        <template #default="{ row }">
+          <el-button
+            v-if="row.status === 'pending' || row.status === 'running'"
+            size="small"
+            type="danger"
+            @click="cancelTask(row)"
+          >
+            取消
+          </el-button>
+          <template v-if="row.status === 'success' && row.article_id">
+            <el-button size="small" @click="viewArticle(row)">查看文章</el-button>
+            <el-button size="small" type="primary" @click="goToReview">去评审</el-button>
+          </template>
+        </template>
+      </el-table-column>
+    </el-table>
+
+    <el-pagination
+      v-if="total > 0"
+      v-model:current-page="page"
+      v-model:page-size="pageSize"
+      :total="total"
+      :page-sizes="[10, 20, 50]"
+      layout="total, sizes, prev, pager, next"
+      @current-change="load"
+      @size-change="load"
+    />
+
+    <!-- 文章查看/编辑对话框 -->
+    <el-dialog v-model="articleVisible" :title="editingArticle ? '编辑文章' : '文章详情'" width="800px">
+      <el-input v-if="editingArticle" v-model="editContent" type="textarea" :rows="16" placeholder="文章内容" />
+      <div v-else class="article-content">{{ currentContent }}</div>
+      <div v-if="currentReviewNotes && !editingArticle" style="margin-top:12px;padding:12px;background:#f5f7fa;border-radius:4px">
+        <strong>AI 评审记录：</strong>
+        <pre style="white-space:pre-wrap;font-size:13px;color:#666;margin-top:4px">{{ currentReviewNotes }}</pre>
+      </div>
+      <template #footer>
+        <el-button v-if="editingArticle" @click="editingArticle = false">取消编辑</el-button>
+        <el-button v-if="editingArticle" type="primary" :loading="savingEdit" @click="saveArticleEdit">保存</el-button>
+        <template v-else>
+          <el-button @click="articleVisible = false">关闭</el-button>
+          <el-button @click="startEdit">编辑</el-button>
+          <el-button type="primary" @click="goToReview">去评审</el-button>
+        </template>
+      </template>
+    </el-dialog>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, onMounted } from "vue";
+import { ElMessage, ElMessageBox } from "element-plus";
+import { useRouter } from "vue-router";
+import { api } from "@/api/client";
+
+interface TaskItem {
+  id: number;
+  task_id: string;
+  hotspot_id: number;
+  account_id: number;
+  article_id?: number;
+  status: string;
+  error_message?: string;
+  created_at: string;
+  hotspot?: { id: number; title: string; source: string };
+  account?: { id: number; account_name: string; platform: string };
+}
+
+const list = ref<TaskItem[]>([]);
+const loading = ref(false);
+const statusFilter = ref("");
+const page = ref(1);
+const pageSize = ref(20);
+const total = ref(0);
+const router = useRouter();
+const articleVisible = ref(false);
+const editingArticle = ref(false);
+const currentArticleId = ref<number | null>(null);
+const currentContent = ref("");
+const currentReviewNotes = ref("");
+const editContent = ref("");
+const savingEdit = ref(false);
+
+async function viewArticle(row: TaskItem) {
+  currentArticleId.value = row.article_id || null;
+  editingArticle.value = false;
+  try {
+    const res = await api.getArticle(row.article_id!);
+    const data = res.data as { content: string; review_notes?: string };
+    currentContent.value = data.content;
+    currentReviewNotes.value = data.review_notes || "";
+    articleVisible.value = true;
+  } catch {
+    ElMessage.error("获取文章失败");
+  }
+}
+
+function startEdit() {
+  editContent.value = currentContent.value;
+  editingArticle.value = true;
+}
+
+async function saveArticleEdit() {
+  if (!currentArticleId.value) return;
+  savingEdit.value = true;
+  try {
+    await api.updateArticle(currentArticleId.value, { content: editContent.value });
+    currentContent.value = editContent.value;
+    ElMessage.success("已保存");
+    editingArticle.value = false;
+  } catch {
+    ElMessage.error("保存失败");
+  } finally { savingEdit.value = false; }
+}
+
+const taskStatusType: Record<string, string> = {
+  pending: "warning",
+  running: "warning",
+  success: "success",
+  failed: "danger",
+  cancelled: "info",
+};
+const taskStatusText: Record<string, string> = {
+  pending: "生成中",
+  running: "生成中",
+  success: "已生成",
+  failed: "生成失败",
+  cancelled: "已取消",
+};
+
+async function load() {
+  loading.value = true;
+  try {
+    const params: Record<string, unknown> = { page: page.value, page_size: pageSize.value };
+    if (statusFilter.value) params.status = statusFilter.value;
+    const res = await api.getTaskList(params);
+    const payload = res.data as { data: TaskItem[]; total: number };
+    list.value = payload.data;
+    total.value = payload.total;
+  } catch (e) {
+    ElMessage.error("加载失败");
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function cancelTask(row: TaskItem) {
+  try {
+    await ElMessageBox.confirm(`确定取消任务「${row.hotspot?.title || row.task_id}」？`, "提示");
+    await api.cancelTask(row.task_id);
+    ElMessage.success("已取消");
+    load();
+  } catch (e) {
+    if (e !== "cancel") ElMessage.error("取消失败");
+  }
+}
+
+function goToReview() {
+  router.push("/review");
+}
+
+onMounted(load);
+</script>
+
+<style scoped>
+.page {
+  background: #fff;
+  padding: 20px;
+  border-radius: 4px;
+}
+.toolbar {
+  margin-bottom: 16px;
+}
+.el-pagination {
+  margin-top: 16px;
+}
+.article-content {
+  white-space: pre-wrap;
+  max-height: 500px;
+  overflow-y: auto;
+  line-height: 1.8;
+}
+</style>
