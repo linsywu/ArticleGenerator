@@ -20,13 +20,27 @@ export interface Hotspot {
   created_at: string;
 }
 
+export interface StyleProfile {
+  thinking_pattern: string
+  structure_pattern: string
+  sentence_pattern: string
+  vocabulary_pattern: string
+  evidence_type: string
+  taboos: string
+  blank_leaving: string
+}
+
 export interface Account {
   id: number;
   platform: string;
   account_name: string;
   lora_path?: string;
+  sample_articles?: string;
   style_profile?: string;
   style_profile_updated_at?: string;
+  style_profile_structured?: StyleProfile | null;
+  style_profile_version?: number;
+  style_profile_status?: string;
   created_at: string;
 }
 
@@ -103,6 +117,9 @@ export interface GenerationLog {
   created_at: string;
 }
 
+export interface DirectionItem { id: string; title: string }
+export interface OutlinePoint { order: number; point: string }
+
 export interface PaginatedResponse<T> {
   data: T[];
   total: number;
@@ -134,6 +151,13 @@ export const api = {
   // 生成
   triggerGenerate: (accountId: number, hotspotIds?: number[], customTopic?: string) =>
     client.post("/generate/trigger", { hotspot_ids: hotspotIds || [], account_id: accountId, custom_topic: customTopic || null }),
+  // 方向 + 大纲
+  generateDirections: (accountId: number, idea: string) =>
+    client.post<{ directions: DirectionItem[] }>("/generate/directions", { account_id: accountId, idea }),
+  generateOutline: (accountId: number, idea: string, direction: string) =>
+    client.post<{ outline: OutlinePoint[] }>("/generate/outline", { account_id: accountId, idea, direction }),
+  triggerGenerateWithOutline: (accountId: number, customTopic: string, outline: string[]) =>
+    client.post("/generate/trigger", { hotspot_ids: [], account_id: accountId, custom_topic: customTopic, outline }),
   triggerRefine: (articleId: number, keywords: string) =>
     client.post(`/generate/refine/${articleId}`, { keywords }),
   getTaskStatus: (taskId: string) => client.get(`/generate/task/${taskId}`),

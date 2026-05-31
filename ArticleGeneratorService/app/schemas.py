@@ -2,8 +2,9 @@
 Pydantic 请求/响应模型
 """
 from datetime import datetime
-from typing import Optional, List
-from pydantic import BaseModel, Field
+from typing import Optional, List, Any
+from pydantic import BaseModel, Field, field_validator
+import json
 
 
 # ----- 账号 -----
@@ -29,10 +30,28 @@ class AccountResponse(AccountBase):
     id: int
     style_profile: Optional[str] = None
     style_profile_updated_at: Optional[datetime] = None
+    style_profile_structured: Optional[Any] = None
+    style_profile_version: Optional[int] = None
+    style_profile_status: Optional[str] = None
     created_at: datetime
 
     class Config:
         from_attributes = True
+
+    @field_validator("style_profile_structured", mode="before")
+    @classmethod
+    def parse_structured(cls, v):
+        """将数据库中的 JSON 字符串转为 dict"""
+        if v is None:
+            return None
+        if isinstance(v, dict):
+            return v
+        if isinstance(v, str):
+            try:
+                return json.loads(v)
+            except (json.JSONDecodeError, TypeError):
+                return None
+        return None
 
 
 # ----- 热点源 -----
@@ -139,6 +158,7 @@ class GenerateRequest(BaseModel):
     hotspot_ids: List[int] = []
     account_id: int
     custom_topic: Optional[str] = None
+    outline: Optional[List[str]] = None  # 新增：大纲要点列表
 
 
 class RefineRequest(BaseModel):
@@ -236,3 +256,29 @@ class GenerationLogCreate(BaseModel):
 # ----- Distill -----
 class DistillRequest(BaseModel):
     account_id: int
+
+
+# ── 方向生成 ──
+class DirectionsRequest(BaseModel):
+    account_id: int
+    idea: str
+
+class DirectionItem(BaseModel):
+    id: str
+    title: str
+
+class DirectionsResponse(BaseModel):
+    directions: List[DirectionItem]
+
+# ── 大纲生成 ──
+class OutlineRequest(BaseModel):
+    account_id: int
+    idea: str
+    direction: str
+
+class OutlinePoint(BaseModel):
+    order: int
+    point: str
+
+class OutlineResponse(BaseModel):
+    outline: List[OutlinePoint]

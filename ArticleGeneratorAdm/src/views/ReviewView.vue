@@ -1,10 +1,12 @@
 <template>
   <div class="page">
-    <el-empty v-if="!loading && list.length === 0" description="暂无待评审文章">
-      <template #description>
-        <p>请在热点列表选择热点并批量生成</p>
-      </template>
-    </el-empty>
+    <header class="page-header">
+      <div>
+        <h1 class="page-title">评审队列</h1>
+        <p class="page-subtitle">查看文章质量评分，通过或拒绝，或触发微调循环</p>
+      </div>
+    </header>
+    <el-empty v-if="!loading && list.length === 0" description="暂无待评审文章" />
     <el-table v-else :data="list" v-loading="loading" style="width: 100%">
       <el-table-column prop="id" label="ID" width="70" />
       <el-table-column label="热点" min-width="200">
@@ -228,23 +230,11 @@ onMounted(load);
 </script>
 
 <style scoped>
-.page {
-  background: #fff;
-  padding: 20px;
-  border-radius: 4px;
-}
-.article-content {
-  white-space: pre-wrap;
-  max-height: 400px;
-  overflow-y: auto;
-  line-height: 1.6;
-}
-.refine-tip {
-  margin-top: 12px;
-  font-size: 12px;
-  color: #909399;
-}
-.el-pagination {
-  margin-top: 16px;
-}
+.page { padding: 0; }
+.page-header { margin-bottom: var(--space-xl); }
+.page-title { font-family: var(--font-serif); font-size: 28px; font-weight: 900; color: var(--text-on-dark); letter-spacing: 1px; margin-bottom: 4px; }
+.page-subtitle { font-size: 14px; color: var(--text-muted); }
+.article-content { white-space: pre-wrap; max-height: 400px; overflow-y: auto; line-height: 1.6; color: var(--text-on-dark); }
+.refine-tip { margin-top: 12px; font-size: 12px; color: var(--text-muted); }
+.el-pagination { margin-top: 16px; }
 </style>

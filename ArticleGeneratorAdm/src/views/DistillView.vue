@@ -47,7 +47,25 @@
 
             <!-- 风格画像 Tab -->
             <el-tab-pane label="风格画像" name="profile">
-              <div v-if="selectedAccount.style_profile">
+              <!-- 结构化画像展示 -->
+              <template v-if="selectedAccount.style_profile_structured">
+                <div class="style-profile-cards">
+                  <el-card v-for="dim in styleDimensions" :key="dim.key" class="dim-card">
+                    <template #header>
+                      <div class="dim-header">
+                        <span>{{ dim.icon }}</span>
+                        <span>{{ dim.label }}</span>
+                      </div>
+                    </template>
+                    <p class="dim-content">{{ selectedAccount.style_profile_structured[dim.key] || '未定义' }}</p>
+                  </el-card>
+                </div>
+                <el-tag v-if="selectedAccount.style_profile_status === 'ready'" type="success" style="margin-top:12px">画像就绪 · v{{ selectedAccount.style_profile_version }}</el-tag>
+                <el-tag v-else-if="selectedAccount.style_profile_status === 'outdated'" type="warning" style="margin-top:12px">画像待更新</el-tag>
+              </template>
+
+              <!-- 旧版文本画像（降级展示） -->
+              <template v-else-if="selectedAccount.style_profile">
                 <div class="profile-meta">
                   <el-tag type="success">已生成</el-tag>
                   <span v-if="selectedAccount.style_profile_updated_at" class="profile-date">
@@ -55,16 +73,17 @@
                   </span>
                 </div>
                 <el-input
-                  v-model="selectedAccount.style_profile"
+                  :model-value="selectedAccount.style_profile"
                   type="textarea"
                   :rows="14"
                   readonly
                   class="profile-textarea"
                 />
-              </div>
-              <div v-else class="empty-hint">
-                {{ distilling ? '正在蒸馏中，请稍候...' : '尚未生成风格画像' }}
-              </div>
+              </template>
+
+              <!-- 未生成 -->
+              <el-empty v-else :description="distilling ? '正在蒸馏中，请稍候...' : '尚未生成风格画像，请先添加参考文章并触发蒸馏'" />
+
               <div style="margin-top:16px">
                 <el-button
                   type="warning"
@@ -104,7 +123,17 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
-import { api, Account, ReferenceArticle } from "@/api/client";
+import { api, Account, ReferenceArticle, StyleProfile } from "@/api/client";
+
+const styleDimensions: { key: keyof StyleProfile; label: string; icon: string }[] = [
+  { key: 'thinking_pattern', label: '思维特征', icon: '🧠' },
+  { key: 'structure_pattern', label: '结构模式', icon: '🏗️' },
+  { key: 'sentence_pattern', label: '句式特征', icon: '✍️' },
+  { key: 'vocabulary_pattern', label: '词汇偏好', icon: '📝' },
+  { key: 'evidence_type', label: '论据类型', icon: '📊' },
+  { key: 'taboos', label: '禁忌清单', icon: '🚫' },
+  { key: 'blank_leaving', label: '留白程度', icon: '💭' },
+]
 
 const accounts = ref<Account[]>([]);
 const selectedId = ref<number | null>(null);
@@ -229,4 +258,23 @@ function startPolling() {
 .profile-textarea { margin-top: 8px; }
 .hint-text { color: #999; margin-left: 8px; font-size: 12px; }
 .article-count { margin-left: 12px; color: #999; font-size: 13px; }
+.style-profile-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+.dim-card {
+  border-left: 3px solid #409EFF;
+}
+.dim-header {
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.dim-content {
+  white-space: pre-wrap;
+  font-size: 14px;
+  line-height: 1.6;
+}
 </style>

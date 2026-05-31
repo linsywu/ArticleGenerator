@@ -1,10 +1,12 @@
 <template>
   <div class="page">
-    <el-empty v-if="!loading && list.length === 0" description="暂无待发布文章">
-      <template #description>
-        <p>请在文章评审中通过文章后，在此处复制发布</p>
-      </template>
-    </el-empty>
+    <header class="page-header">
+      <div>
+        <h1 class="page-title">文章发布</h1>
+        <p class="page-subtitle">评审通过的终稿，复制全文发布到各平台，标记发布状态</p>
+      </div>
+    </header>
+    <el-empty v-if="!loading && list.length === 0" description="暂无待发布文章" />
     <el-table v-else :data="list" v-loading="loading" style="width: 100%">
       <el-table-column prop="id" label="ID" width="70" />
       <el-table-column label="热点" min-width="200">
@@ -141,18 +143,10 @@ onMounted(load);
 </script>
 
 <style scoped>
-.page {
-  background: #fff;
-  padding: 20px;
-  border-radius: 4px;
-}
-.el-pagination {
-  margin-top: 16px;
-}
-.preview-content {
-  white-space: pre-wrap;
-  max-height: 400px;
-  overflow-y: auto;
-  line-height: 1.6;
-}
+.page { padding: 0; }
+.page-header { margin-bottom: var(--space-xl); }
+.page-title { font-family: var(--font-serif); font-size: 28px; font-weight: 900; color: var(--text-on-dark); letter-spacing: 1px; margin-bottom: 4px; }
+.page-subtitle { font-size: 14px; color: var(--text-muted); }
+.el-pagination { margin-top: 16px; }
+.preview-content { white-space: pre-wrap; max-height: 400px; overflow-y: auto; line-height: 1.6; color: var(--text-on-dark); }
 </style>

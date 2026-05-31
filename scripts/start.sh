@@ -66,9 +66,9 @@ echo "  API PID: $API_PID"
 
 # 5. 启动 Celery Worker（后台）
 echo ""
-echo "[5/7] 启动 Celery Worker..."
+echo "[5/7] 启动 Celery Worker (auto-reload)..."
 cd "$ROOT/ArticleGeneratorService"
-nohup celery -A app.tasks:celery_app worker -l info > "$LOG_DIR/celery.log" 2>&1 &
+nohup watchfiles --filter python "celery -A app.tasks:celery_app worker -l info" app/tasks.py > "$LOG_DIR/celery.log" 2>&1 &
 CELERY_PID=$!
 echo "  Celery PID: $CELERY_PID"
 

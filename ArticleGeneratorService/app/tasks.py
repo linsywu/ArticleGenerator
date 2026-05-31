@@ -2,6 +2,7 @@
 Celery 异步任务：文章生成与微调
 """
 import json
+import re
 from datetime import datetime
 
 import httpx
@@ -45,7 +46,7 @@ def get_db_session():
 
 
 @celery_app.task(bind=True)
-def trigger_generate(self, hotspot_title: str, account_id: int, hotspot_id: int = None):
+def trigger_generate(self, hotspot_title: str, account_id: int, hotspot_id: int = None, outline: list = None):
     """
     异步生成文章：调用 LLM 服务，写入数据库
     """
@@ -60,30 +61,49 @@ def trigger_generate(self, hotspot_title: str, account_id: int, hotspot_id: int 
             gt.status = "running"
             db.commit()
 
-        # 查询账号的 LoRA 路径
+        # 查询账号
         account = db.query(Account).filter(Account.id == account_id).first()
         lora_path = account.lora_path if account else None
+
+        # 获取结构化画像字段
+        structured = None
+        if account and account.style_profile_structured:
+            try:
+                structured = json.loads(account.style_profile_structured)
+            except (json.JSONDecodeError, TypeError):
+                pass
+
+        # 构建增强的 user_prompt
+        outline_text = ""
+        if outline:
+            outline_items = [f"{i+1}. {p}" for i, p in enumerate(outline)]
+            outline_text = "【写作大纲】\n" + "\n".join(outline_items) + "\n\n请严格按照以上大纲逐段写作。"
+
+        # 注入风格要求
+        style_instructions = ""
+        if structured:
+            sp = structured
+            style_instructions = (
+                f"【风格要求 - 必须严格遵守】\n"
+                f"句式：{sp.get('sentence_pattern', '长短句参差，避免单调')}\n"
+                f"用词：{sp.get('vocabulary_pattern', '')}\n"
+                f"禁忌——绝对不要出现以下内容：{sp.get('taboos', '')}\n"
+                f"留白：{sp.get('blank_leaving', '道理只讲七分，不总结不升华')}\n"
+            )
+
+        user_prompt = (
+            f'以"{hotspot_title}"为题，写一篇文章。\n\n'
+            f'{style_instructions}\n'
+            f'{outline_text}\n'
+            '字数1500左右。'
+        )
 
         # 调用 LLM 服务
         llm_url = settings.llm_service_url.rstrip("/")
         payload = {
             "hotspot_title": hotspot_title,
             "account_id": account_id,
-            "user_prompt": (
-                f'以"{hotspot_title}"为题，写一篇公众号文章。\\n\\n'
-                '【结构要求 - 每次都要不同】\\n'
-                '开头方式随机选择：直接亮出争议观点 / 对话开头 / 个人经历自述 / 数据或现象描述。不要每次都第三人称讲故事。\\n'
-                '中间避免"观点→论证→案例"的标准三段论，可以突然插入一段看似无关的个人回忆、一句反问打断节奏、或一个让读者意外的类比。\\n'
-                '结尾不要总结全文。可以戛然而止、可以抛出问题、可以展示矛盾的未解决状态。\\n\\n'
-                '【留白要求 - 关键】\\n'
-                '不要把道理讲完。最有力的话只说七分。剩下三分让读者自己琢磨。\\n'
-                '每讲完一个观点后，删掉最后那句"总结升华"——直接跳到下一段。\\n\\n'
-                '【内容要求】\\n'
-                '至少2个有具体细节的案例。\\n'
-                '至少1处让读者意外的角度或结论。\\n'
-                '允许适度的语气不一致——愤怒时突然疲惫，坚定中插入一句自我怀疑。\\n'
-                '字数1500左右。'
-            ),
+            "user_prompt": user_prompt,
         }
         if lora_path:
             payload["lora_path"] = lora_path
@@ -239,9 +259,18 @@ def trigger_refine(self, article_id: int, keywords: str):
 
 @celery_app.task(bind=True)
 def trigger_distill(self, account_id: int, articles_content: list, num_articles: int):
-    """异步蒸馏：参考文章 → 风格画像"""
+    """异步蒸馏：参考文章 → 结构化风格画像"""
     db = SessionLocal()
     try:
+        # 截断过长的单篇文章（每篇最多 800 字符，防止超出 LLM 上下文窗口）
+        max_per_article = 800
+        truncated = []
+        for a in articles_content:
+            if len(a) > max_per_article:
+                truncated.append(a[:max_per_article] + "\n\n[... 后续内容已截断 ...]")
+            else:
+                truncated.append(a)
+
         llm_url = settings.llm_service_url.rstrip("/")
         with httpx.Client(timeout=300.0) as client:
             resp = client.post(f"{llm_url}/chat", json={
@@ -249,7 +278,7 @@ def trigger_distill(self, account_id: int, articles_content: list, num_articles:
                 "account_id": account_id,
                 "variables": {
                     "num_articles": str(num_articles),
-                    "articles_content": "\n\n---\n\n".join(articles_content),
+                    "articles_content": "\n\n---\n\n".join(truncated),
                 },
             })
             resp.raise_for_status()
@@ -259,15 +288,200 @@ def trigger_distill(self, account_id: int, articles_content: list, num_articles:
         if not content:
             raise ValueError("蒸馏返回内容为空")
 
+        # 解析 LLM 返回的结构化 JSON（多层容错）
+        structured = None
+
+        def try_parse_json(text: str):
+            """尝试多种策略从 LLM 输出中提取 JSON"""
+            if not text or not text.strip():
+                return None
+
+            # 策略 0: 清洗控制字符
+            cleaned = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]', '', text)
+
+            # 策略 1: 直接解析清洗后的内容
+            try:
+                return json.loads(cleaned)
+            except json.JSONDecodeError:
+                pass
+
+            # 策略 2: 提取第一个 JSON 对象 {...}
+            obj_match = re.search(r'\{.*\}', cleaned, re.DOTALL)
+            if obj_match:
+                try:
+                    return json.loads(obj_match.group(0))
+                except json.JSONDecodeError:
+                    pass
+
+            # 策略 3: 提取 markdown 代码块中的 JSON
+            code_match = re.search(r'```(?:json)?\s*\n?(.*?)\n?```', cleaned, re.DOTALL)
+            if code_match:
+                try:
+                    return json.loads(code_match.group(1))
+                except json.JSONDecodeError:
+                    pass
+
+            # 策略 4: 尝试 ast.literal_eval（处理 Python dict 格式）
+            try:
+                import ast
+                return ast.literal_eval(cleaned.strip())
+            except (ValueError, SyntaxError):
+                pass
+
+            return None
+
+        structured = try_parse_json(content)
+
+        # 生成兼容旧版的摘要文本
+        summary_text = content  # 回退：使用原始返回内容
+        if structured:
+            parts = []
+            dim_labels = {
+                "thinking_pattern": "思维特征",
+                "structure_pattern": "结构模式",
+                "sentence_pattern": "句式特征",
+                "vocabulary_pattern": "词汇偏好",
+                "evidence_type": "论据类型",
+                "taboos": "禁忌清单",
+                "blank_leaving": "留白程度",
+            }
+            for key, label in dim_labels.items():
+                if structured.get(key):
+                    parts.append(f"【{label}】\n{structured[key]}")
+            summary_text = "\n\n".join(parts)
+
         account = db.query(Account).filter(Account.id == account_id).first()
         if account:
-            account.style_profile = content
+            account.style_profile = summary_text  # 兼容旧版文本画像
+            account.style_profile_structured = json.dumps(structured, ensure_ascii=False) if structured else None
+            account.style_profile_status = "ready" if structured else "failed"
+            account.style_profile_version = (account.style_profile_version or 0) + 1
             account.style_profile_updated_at = datetime.utcnow()
             db.commit()
 
-        return {"account_id": account_id}
+        return {"account_id": account_id, "status": account.style_profile_status if account else "error"}
     except Exception as e:
+        # 标记失败
+        account = db.query(Account).filter(Account.id == account_id).first()
+        if account:
+            account.style_profile_status = "failed"
+            db.commit()
         raise
+    finally:
+        db.close()
+
+
+@celery_app.task(bind=True)
+def trigger_direction_generation(self, account_id: int, idea: str):
+    """生成写作方向：想法 → 3-5 个不同切入角度"""
+    db = SessionLocal()
+    try:
+        # 获取账号的结构化画像
+        account = db.query(Account).filter(Account.id == account_id).first()
+        structured = None
+        if account and account.style_profile_structured:
+            try:
+                structured = json.loads(account.style_profile_structured)
+            except (json.JSONDecodeError, TypeError):
+                pass
+
+        # 构建变量
+        variables = {"idea": idea}
+        if structured:
+            variables["thinking_pattern"] = structured.get("thinking_pattern", "")
+            variables["structure_pattern"] = structured.get("structure_pattern", "")
+
+        llm_url = settings.llm_service_url.rstrip("/")
+        with httpx.Client(timeout=120.0) as client:
+            resp = client.post(f"{llm_url}/chat", json={
+                "scenario": "direction",
+                "account_id": account_id,
+                "variables": variables,
+            })
+            resp.raise_for_status()
+            data = resp.json()
+
+        content = data.get("content", "")
+        if not content:
+            raise ValueError("方向生成返回内容为空")
+
+        # 解析 JSON 输出
+        directions = []
+        try:
+            parsed = json.loads(content)
+            if isinstance(parsed, list):
+                directions = parsed
+            elif isinstance(parsed, dict) and "directions" in parsed:
+                directions = parsed["directions"]
+        except json.JSONDecodeError:
+            match = re.search(r'```(?:json)?\s*\n?(.*?)\n?```', content, re.DOTALL)
+            if match:
+                try:
+                    parsed = json.loads(match.group(1))
+                    if isinstance(parsed, list):
+                        directions = parsed
+                    elif isinstance(parsed, dict) and "directions" in parsed:
+                        directions = parsed["directions"]
+                except json.JSONDecodeError:
+                    pass
+
+        return {"account_id": account_id, "directions": directions}
+    finally:
+        db.close()
+
+
+@celery_app.task(bind=True)
+def trigger_outline_generation(self, account_id: int, idea: str, direction: str):
+    """生成大纲：想法+方向 → 5-8 个要点"""
+    db = SessionLocal()
+    try:
+        account = db.query(Account).filter(Account.id == account_id).first()
+        structured = None
+        if account and account.style_profile_structured:
+            try:
+                structured = json.loads(account.style_profile_structured)
+            except (json.JSONDecodeError, TypeError):
+                pass
+
+        variables = {"idea": idea, "direction": direction}
+        if structured:
+            variables["structure_pattern"] = structured.get("structure_pattern", "")
+
+        llm_url = settings.llm_service_url.rstrip("/")
+        with httpx.Client(timeout=120.0) as client:
+            resp = client.post(f"{llm_url}/chat", json={
+                "scenario": "outline",
+                "account_id": account_id,
+                "variables": variables,
+            })
+            resp.raise_for_status()
+            data = resp.json()
+
+        content = data.get("content", "")
+        if not content:
+            raise ValueError("大纲生成返回内容为空")
+
+        # 解析 JSON 输出
+        outline = []
+        try:
+            parsed = json.loads(content)
+            if isinstance(parsed, list):
+                outline = parsed
+            elif isinstance(parsed, dict) and "outline" in parsed:
+                outline = parsed["outline"]
+        except json.JSONDecodeError:
+            match = re.search(r'```(?:json)?\s*\n?(.*?)\n?```', content, re.DOTALL)
+            if match:
+                try:
+                    parsed = json.loads(match.group(1))
+                    if isinstance(parsed, list):
+                        outline = parsed
+                    elif isinstance(parsed, dict) and "outline" in parsed:
+                        outline = parsed["outline"]
+                except json.JSONDecodeError:
+                    pass
+
+        return {"account_id": account_id, "outline": outline}
     finally:
         db.close()
 
