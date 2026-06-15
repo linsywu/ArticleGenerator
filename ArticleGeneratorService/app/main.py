@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .config import settings
 from .database import init_db
-from .api import accounts, hotspot_sources, hotspots, articles, generate, providers, scenario_configs, reference_articles, distill, generation_logs
+from .api import accounts, hotspot_sources, hotspots, articles, generate, providers, scenario_configs, reference_articles, distill, generation_logs, tasks
 
 app = FastAPI(
     title="ArticleGenerator API",
@@ -33,6 +33,7 @@ app.include_router(scenario_configs.router, prefix="/api")
 app.include_router(reference_articles.router, prefix="/api")
 app.include_router(distill.router, prefix="/api")
 app.include_router(generation_logs.router, prefix="/api")
+app.include_router(tasks.router, prefix="/api")
 
 
 @app.on_event("startup")
