@@ -561,12 +561,28 @@ def trigger_compliance_review(self, article_id: int, article_content: str):
 
 
 def _parse_score(text: str) -> int:
-    """从评审文本中提取分值"""
+    """从评审文本中提取总分（优先匹配"总分"行，否则取最后一个合法分数）"""
     import re
 
+    # 优先匹配 "总分：85" 或 "总分: 85" 或 "总分 85"
+    total_match = re.search(r"总分[：:\s]*(\d{1,3})", text)
+    if total_match:
+        score = int(total_match.group(1))
+        if 0 <= score <= 100:
+            return score
+
+    # 其次匹配 "综合评分：85" 等
+    overall_match = re.search(r"(?:综合|最终)(?:评分|得分)[：:\s]*(\d{1,3})", text)
+    if overall_match:
+        score = int(overall_match.group(1))
+        if 0 <= score <= 100:
+            return score
+
+    # 兜底：取最后一个 0-100 的数字（通常是总分）
     nums = re.findall(r"\b([0-9]{1,3})\b", text)
     if nums:
         scores = [int(n) for n in nums if 0 <= int(n) <= 100]
         if scores:
-            return sum(scores) // len(scores)
+            return scores[-1]  # 最后一个，不是平均值
+
     return 0
