@@ -66,6 +66,17 @@
               <span class="hint-tag" @click="idea = '大厂裁员潮下，技术人员该如何构建自己的护城河？'">技术人的护城河</span>
             </div>
           </div>
+          <div v-if="wordCountOpts.length" class="word-count-area">
+            <span class="word-count-label">📏 文章字数：</span>
+            <el-select v-model="selectedWordCount" placeholder="选择字数" size="default">
+              <el-option
+                v-for="opt in wordCountOpts"
+                :key="opt.value"
+                :label="opt.label"
+                :value="opt.value"
+              />
+            </el-select>
+          </div>
           <div class="card-actions">
             <el-button size="large" @click="currentStep = 0">返回上一步</el-button>
             <el-button size="large" type="primary" :disabled="!idea.trim()" :loading="loadingDirections" @click="generateDirections">
@@ -152,7 +163,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { api, type Account, type DirectionItem, type OutlinePoint } from '@/api/client'
 
@@ -161,6 +172,10 @@ const currentStep = ref(0)
 const accounts = ref<Account[]>([])
 const selectedAccountId = ref<number | null>(null)
 const idea = ref('')
+
+// 字数选择
+const selectedWordCount = ref('')
+const wordCountOpts = ref<{ value: string; label: string }[]>([])
 
 // 步骤 3
 const directions = ref<DirectionItem[]>([])
@@ -179,11 +194,27 @@ const generatedArticleId = ref<number | null>(null)
 
 const selectedAccount = computed(() => accounts.value.find(a => a.id === selectedAccountId.value) || null)
 
+// 当选中账号变化时，加载字数配置
+watch(selectedAccount, (acc) => {
+  if (acc) {
+    try {
+      wordCountOpts.value = acc.word_count_options ? JSON.parse(acc.word_count_options) : []
+    } catch {
+      wordCountOpts.value = []
+    }
+    selectedWordCount.value = acc.default_word_count || ''
+  } else {
+    wordCountOpts.value = []
+    selectedWordCount.value = ''
+  }
+})
+
 async function generateDirections() {
   if (!selectedAccountId.value || !idea.value.trim()) return
   loadingDirections.value = true
   try {
-    const { data } = await api.generateDirections(selectedAccountId.value, idea.value.trim())
+    const wc = selectedWordCount.value || undefined
+    const { data } = await api.generateDirections(selectedAccountId.value, idea.value.trim(), wc)
     directions.value = data.directions || []
     if (directions.value.length) {
       selectedDirection.value = directions.value[0]
