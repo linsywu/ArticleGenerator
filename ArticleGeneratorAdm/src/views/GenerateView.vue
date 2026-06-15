@@ -376,7 +376,7 @@ onMounted(() => {
 .search-input:focus {
   border-color: #6366f1;
   box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
-  background: #fff;
+  background: var(--ink-surface);
 }
 .search-input::placeholder { color: #94a3b8; }
 .source-select { width: 140px; }
@@ -387,7 +387,7 @@ onMounted(() => {
   padding: 0 20px;
   border: 1.5px solid #e2e8f0;
   border-radius: 10px;
-  background: #fff;
+  background: var(--ink-surface);
   font-size: 14px;
   font-family: inherit;
   font-weight: 500;
@@ -452,7 +452,7 @@ onMounted(() => {
 .custom-topic-input {
   width: 100%; height: 48px; padding: 0 16px 0 50px;
   border: 1.5px solid #e2e8f0; border-radius: 12px;
-  font-size: 15px; font-family: inherit; background: #fff; color: #1e293b;
+  font-size: 15px; font-family: inherit; background: var(--ink-surface); color: var(--text-on-dark);
   outline: none; transition: border-color 0.2s, box-shadow 0.2s;
 }
 .custom-topic-input:focus {
@@ -489,7 +489,7 @@ onMounted(() => {
   padding: 16px 18px;
   border: 1.5px solid #e8ecf1;
   border-radius: 14px;
-  background: #fff;
+  background: var(--ink-surface);
   cursor: pointer;
   transition: all 0.2s ease;
   position: relative;
@@ -553,7 +553,7 @@ onMounted(() => {
 /* ── Bottom Generate Bar ── */
 .generate-bar {
   position: fixed; bottom: 0; left: 200px; right: 0;
-  background: #fff; border-top: 1px solid #e8ecf1;
+  background: var(--ink-surface); border-top: 1px solid #e8ecf1;
   padding: 16px 24px; z-index: 100;
   transition: all 0.3s ease;
 }

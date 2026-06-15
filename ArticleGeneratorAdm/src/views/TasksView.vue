@@ -201,7 +201,7 @@ onMounted(load);
 
 <style scoped>
 .page {
-  background: #fff;
+  background: transparent;
   padding: 20px;
   border-radius: 4px;
 }

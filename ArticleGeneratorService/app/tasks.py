@@ -91,34 +91,12 @@ def trigger_generate(self, hotspot_title: str, account_id: int, hotspot_id: int 
                 f"留白：{sp.get('blank_leaving', '道理只讲七分，不总结不升华')}\n"
             )
 
-        # 从账号读取字数配置（显式传入优先）
+        # 字数指令（用户选择优先 → 账号配置 → 默认值）
         word_count_instruction = "字数1500左右。"
         if word_count:
-            # 用户显式选择的字数优先
-            if account:
-                try:
-                    opts = json.loads(account.word_count_options or "[]")
-                    for opt in opts:
-                        if opt.get("value") == word_count:
-                            word_count_instruction = f"字数{opt.get('label', word_count + '字')}。"
-                            break
-                    else:
-                        word_count_instruction = f"字数{word_count}字。"
-                except (json.JSONDecodeError, TypeError):
-                    word_count_instruction = f"字数{word_count}字。"
-        elif account:
-            wc = account.default_word_count
-            if wc:
-                try:
-                    opts = json.loads(account.word_count_options or "[]")
-                    for opt in opts:
-                        if opt.get("value") == wc:
-                            word_count_instruction = f"字数{opt.get('label', wc + '字')}。"
-                            break
-                    else:
-                        word_count_instruction = f"字数{wc}字。"
-                except (json.JSONDecodeError, TypeError):
-                    word_count_instruction = f"字数{wc}字。"
+            word_count_instruction = f"字数{word_count}。"
+        elif account and account.word_count:
+            word_count_instruction = f"字数{account.word_count}。"
 
         user_prompt = (
             f'以"{hotspot_title}"为题，写一篇文章。\n\n'

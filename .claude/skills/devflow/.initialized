@@ -1,0 +1,14 @@
+{
+  "initialized_at": "2026-06-15T12:40:00Z",
+  "dependencies": {
+    "superpowers": "ok",
+    "openspec-propose": "ok",
+    "openspec-archive-change": "ok",
+    "openspec-explore": "ok",
+    "grill-with-docs": "ok",
+    "claude-memory": "ok",
+    "verify": "ok",
+    "visual-design": "skipped"
+  },
+  "available_tracks": ["full-flow", "plan-grill-dev", "plan-dev", "quick-fix", "explore-only"]
+}

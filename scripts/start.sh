@@ -32,6 +32,9 @@ echo ""
 echo "[1/7] 检查 Redis..."
 if redis-cli ping 2>/dev/null | grep -q PONG; then
     echo "  Redis 已运行"
+elif command -v brew &>/dev/null && brew services start redis 2>/dev/null; then
+    echo "  通过 Homebrew 启动 Redis..."
+    sleep 2
 elif command -v docker &>/dev/null; then
     echo "  使用 Docker 启动 Redis..."
     docker start redis-article 2>/dev/null || docker run -d --name redis-article -p 6379:6379 redis:7-alpine

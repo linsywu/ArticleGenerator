@@ -41,8 +41,7 @@ export interface Account {
   style_profile_structured?: StyleProfile | null;
   style_profile_version?: number;
   style_profile_status?: string;
-  word_count_options?: string;   // JSON: [{"value":"1500","label":"1500字左右"}]
-  default_word_count?: string;   // e.g. "1500"
+  word_count?: string;   // 字数描述，如：1500字左右、2000到3000字
   created_at: string;
 }
 

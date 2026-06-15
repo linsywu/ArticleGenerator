@@ -13,8 +13,7 @@ class AccountBase(BaseModel):
     account_name: str
     lora_path: Optional[str] = None
     sample_articles: Optional[str] = None
-    word_count_options: Optional[str] = None
-    default_word_count: Optional[str] = None
+    word_count: Optional[str] = None  # 字数描述，如：1500字左右
 
 
 class AccountCreate(AccountBase):
@@ -26,14 +25,12 @@ class AccountUpdate(BaseModel):
     account_name: Optional[str] = None
     lora_path: Optional[str] = None
     sample_articles: Optional[str] = None
-    word_count_options: Optional[str] = None
-    default_word_count: Optional[str] = None
+    word_count: Optional[str] = None
 
 
 class AccountResponse(AccountBase):
     id: int
-    word_count_options: Optional[str] = None
-    default_word_count: Optional[str] = None
+    word_count: Optional[str] = None
     style_profile: Optional[str] = None
     style_profile_updated_at: Optional[datetime] = None
     style_profile_structured: Optional[Any] = None

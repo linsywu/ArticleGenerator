@@ -66,16 +66,10 @@
               <span class="hint-tag" @click="idea = '大厂裁员潮下，技术人员该如何构建自己的护城河？'">技术人的护城河</span>
             </div>
           </div>
-          <div v-if="wordCountOpts.length" class="word-count-area">
+          <div v-if="selectedAccount?.word_count" class="word-count-area">
             <span class="word-count-label">📏 文章字数：</span>
-            <el-select v-model="selectedWordCount" placeholder="选择字数" size="default">
-              <el-option
-                v-for="opt in wordCountOpts"
-                :key="opt.value"
-                :label="opt.label"
-                :value="opt.value"
-              />
-            </el-select>
+            <el-input v-model="selectedWordCount" :placeholder="selectedAccount.word_count" size="default" style="width:240px" />
+            <span class="word-count-hint">留空则使用账号默认字数</span>
           </div>
           <div class="card-actions">
             <el-button size="large" @click="currentStep = 0">返回上一步</el-button>
@@ -173,9 +167,8 @@ const accounts = ref<Account[]>([])
 const selectedAccountId = ref<number | null>(null)
 const idea = ref('')
 
-// 字数选择
+// 字数（从账号读取默认值，用户可覆盖）
 const selectedWordCount = ref('')
-const wordCountOpts = ref<{ value: string; label: string }[]>([])
 
 // 步骤 3
 const directions = ref<DirectionItem[]>([])
@@ -196,17 +189,7 @@ const selectedAccount = computed(() => accounts.value.find(a => a.id === selecte
 
 // 当选中账号变化时，加载字数配置
 watch(selectedAccount, (acc) => {
-  if (acc) {
-    try {
-      wordCountOpts.value = acc.word_count_options ? JSON.parse(acc.word_count_options) : []
-    } catch {
-      wordCountOpts.value = []
-    }
-    selectedWordCount.value = acc.default_word_count || ''
-  } else {
-    wordCountOpts.value = []
-    selectedWordCount.value = ''
-  }
+  selectedWordCount.value = acc?.word_count || ''
 })
 
 async function generateDirections() {
@@ -346,6 +329,9 @@ onMounted(async () => {
 .idea-input-area { margin-bottom: var(--space-xl); }
 .idea-textarea { margin-bottom: 12px; }
 .idea-hints { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.word-count-area { display: flex; align-items: center; gap: 12px; margin-bottom: var(--space-xl); padding: 12px 16px; background: var(--ink-card); border-radius: 8px; border: 1px solid var(--ink-border); }
+.word-count-label { font-size: 14px; color: var(--text-muted); white-space: nowrap; }
+.word-count-hint { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
 .hint-label { font-size: 12px; color: var(--text-dim); flex-shrink: 0; }
 .hint-tag { font-size: 12px; padding: 4px 12px; border-radius: 20px; background: rgba(200,132,60,0.06); color: var(--text-muted); cursor: pointer; transition: all var(--duration-fast) var(--ease-out); border: 1px solid transparent; }
 .hint-tag:hover { border-color: var(--amber); color: var(--amber-light); background: var(--amber-glow); }
