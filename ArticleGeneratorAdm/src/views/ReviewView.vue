@@ -186,15 +186,9 @@ async function doRefine() {
   if (!currentArticle.value || !refineKeywords.value.trim()) return;
   refining.value = true;
   try {
-    const res = await api.triggerRefine(currentArticle.value.id, refineKeywords.value.trim());
-    const taskId = (res.data as { task_id?: string }).task_id;
+    await api.triggerRefine(currentArticle.value.id, refineKeywords.value.trim());
     refineVisible.value = false;
-    ElMessage.success("微调任务已提交，完成后将自动刷新");
-    if (taskId) {
-      pollRefineTask(taskId);
-    } else {
-      load();
-    }
+    ElMessage.success("微调任务已加入任务中心");
   } catch (e) {
     ElMessage.error("提交失败");
   } finally {
@@ -202,29 +196,6 @@ async function doRefine() {
   }
 }
 
-function pollRefineTask(taskId: string) {
-  const timer = setInterval(async () => {
-    try {
-      const res = await api.getRefineTaskStatus(taskId);
-      const status = (res.data as { status?: string }).status;
-      if (status === "success") {
-        clearInterval(timer);
-        ElMessage.success("微调完成");
-        load();
-      } else if (status === "failed") {
-        clearInterval(timer);
-        ElMessage.error("微调失败，请重试");
-        load();
-      }
-    } catch {
-      // 忽略
-    }
-  }, 2000);
-  setTimeout(() => {
-    clearInterval(timer);
-    load();
-  }, 60000);
-}
 
 onMounted(load);
 </script>

@@ -236,39 +236,22 @@ function moveOutlineDown(i: number) { if (i < outline.value.length - 1) { const 
 async function startGenerate() {
   if (!selectedAccountId.value || !idea.value.trim()) return
   generating.value = true
-  currentStep.value = 4
-  generatingStatusText.value = '正在生成文章...'
 
   try {
     const points = outline.value.map(o => o.point)
     const wc = selectedWordCount.value || undefined
     const { data } = await api.triggerGenerateWithOutline(selectedAccountId.value, idea.value.trim(), points, wc)
-    const taskId = data.tasks?.[0]?.task_id
-    if (!taskId) throw new Error('未获取到任务 ID')
-
-    // 轮询任务状态
-    let attempts = 0
-    const maxAttempts = 60
-    while (attempts < maxAttempts) {
-      await new Promise(r => setTimeout(r, 3000))
-      const { data: taskData } = await api.getTaskStatus(taskId)
-      if (taskData.status === 'success') {
-        const articleId = taskData.article_id
-        generatedArticleId.value = articleId
-        const { data: articleData } = await api.getArticle(articleId)
-        generatedArticle.value = articleData.content || ''
-        generating.value = false
-        return
-      }
-      if (taskData.status === 'failed') throw new Error(taskData.error_message || '生成失败')
-      attempts++
-      generatingStatusText.value = `生成中...（${attempts * 3}秒）`
-    }
-    throw new Error('生成超时，请重试')
+    generating.value = false
+    // Reset flow
+    currentStep.value = 0
+    idea.value = ''
+    directions.value = []
+    selectedDirection.value = null
+    outline.value = []
+    ElMessage.success('已加入任务中心')
   } catch (e: any) {
     ElMessage.error(e?.message || '生成失败')
     generating.value = false
-    currentStep.value = 3
   }
 }
 

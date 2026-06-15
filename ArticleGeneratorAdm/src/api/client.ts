@@ -120,6 +120,26 @@ export interface GenerationLog {
   created_at: string;
 }
 
+export interface UnifiedTaskItem {
+  task_id: string;
+  task_type: string;
+  status: string;
+  target: string;
+  article_id?: number;
+  account_name?: string;
+  extra_info?: string;
+  error_message?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UnifiedTasksResponse {
+  tasks: UnifiedTaskItem[];
+  running_count: number;
+  pending_count: number;
+  completed_count: number;
+}
+
 export interface DirectionItem { id: string; title: string }
 export interface OutlinePoint { order: number; point: string }
 
@@ -170,6 +190,10 @@ export const api = {
     client.get<PaginatedResponse<unknown>>("/generate/tasks/list", { params }),
   cancelTask: (taskId: string) => client.post(`/generate/tasks/${taskId}/cancel`),
   getRefineTaskStatus: (taskId: string) => client.get(`/generate/refine-task/${taskId}`),
+
+  // 统一任务中心
+  getUnifiedTasks: (params?: { status?: string; limit?: number }) =>
+    client.get<UnifiedTasksResponse>("/tasks/unified", { params }),
 
   // 热点抓取
   crawlHotspots: () => client.post<{ created: number; total: number; error?: string }>("/hotspots/crawl"),

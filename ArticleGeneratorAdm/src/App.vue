@@ -57,6 +57,36 @@
         </div>
       </nav>
 
+      <!-- 任务中心入口 -->
+      <div
+        class="task-center-entry"
+        @mouseenter="handleMouseEnter"
+        @mouseleave="handleMouseLeave"
+        @click="goToTaskCenter"
+      >
+        <span class="task-center-bell">🔔</span>
+        <span v-if="totalActive > 0" class="task-center-badge">{{ totalActive }}</span>
+        <span class="task-center-label">任务中心</span>
+
+        <!-- 悬停下拉 -->
+        <transition name="dropdown-fade">
+          <div v-if="showDropdown" class="task-center-dropdown" @click.stop>
+            <div class="dropdown-header">
+              <span class="dropdown-title">进行中的任务</span>
+              <span class="dropdown-view-all" @click="goToTaskCenter">查看全部</span>
+            </div>
+            <div v-if="dropdownTasks.length === 0" class="dropdown-empty">暂无进行中的任务</div>
+            <div v-for="t in dropdownTasks" :key="t.task_id" class="dropdown-item" @click="goToTaskCenter">
+              <span class="dropdown-icon">{{ t.task_type === 'generate' ? '✏️' : '🔧' }}</span>
+              <div class="dropdown-info">
+                <span class="dropdown-target">{{ t.target }}</span>
+                <span class="dropdown-status" :class="t.status">{{ t.status === 'running' ? '运行中' : '排队中' }}</span>
+              </div>
+            </div>
+          </div>
+        </transition>
+      </div>
+
       <div class="sidebar-footer">
         <span class="footer-version">v2 · 墨斋</span>
       </div>
@@ -74,6 +104,57 @@
 </template>
 
 <script setup lang="ts">
+import { ref, computed, onMounted, onUnmounted } from "vue";
+import { useRouter } from "vue-router";
+import { api, type UnifiedTaskItem } from "@/api/client";
+
+const router = useRouter();
+const activeTasks = ref<UnifiedTaskItem[]>([]);
+const runningCount = ref(0);
+const pendingCount = ref(0);
+const showDropdown = ref(false);
+let pollTimer: ReturnType<typeof setInterval> | null = null;
+let hoverTimer: ReturnType<typeof setTimeout> | null = null;
+
+const totalActive = computed(() => runningCount.value + pendingCount.value);
+const dropdownTasks = computed(() => activeTasks.value.slice(0, 3));
+
+function fetchActiveTasks() {
+  api.getUnifiedTasks({ status: "running,pending", limit: 5 })
+    .then(({ data }) => {
+      activeTasks.value = data.tasks;
+      runningCount.value = data.running_count;
+      pendingCount.value = data.pending_count;
+    })
+    .catch(() => { /* ignore */ });
+}
+
+function handleMouseEnter() {
+  if (hoverTimer) clearTimeout(hoverTimer);
+  showDropdown.value = true;
+  fetchActiveTasks();
+}
+
+function handleMouseLeave() {
+  hoverTimer = setTimeout(() => {
+    showDropdown.value = false;
+  }, 300);
+}
+
+function goToTaskCenter() {
+  showDropdown.value = false;
+  router.push("/tasks-center");
+}
+
+onMounted(() => {
+  fetchActiveTasks();
+  pollTimer = setInterval(fetchActiveTasks, 5000);
+});
+
+onUnmounted(() => {
+  if (pollTimer) clearInterval(pollTimer);
+  if (hoverTimer) clearTimeout(hoverTimer);
+});
 </script>
 
 <style>
@@ -203,6 +284,155 @@
 
 .nav-label {
   white-space: nowrap;
+}
+
+/* ── 任务中心入口 ── */
+.task-center-entry {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 20px;
+  margin: 2px 8px 4px;
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 450;
+  transition: all var(--duration-fast) var(--ease-out);
+  user-select: none;
+}
+.task-center-entry:hover {
+  background: rgba(255,255,255,0.03);
+  color: var(--text-on-dark);
+}
+.task-center-bell {
+  font-size: 14px;
+  width: 18px;
+  text-align: center;
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+.task-center-entry:hover .task-center-bell {
+  opacity: 1;
+}
+.task-center-badge {
+  position: absolute;
+  top: 4px;
+  left: 30px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 5px;
+  background: var(--amber);
+  color: #0c0e13;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  border-radius: 8px;
+}
+.task-center-label {
+  white-space: nowrap;
+}
+
+/* 悬停下拉卡片 */
+.task-center-dropdown {
+  position: absolute;
+  left: 220px;
+  top: -10px;
+  width: 320px;
+  background: var(--ink-mid);
+  border: 1px solid var(--ink-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-elevated);
+  z-index: 1000;
+  overflow: hidden;
+}
+.dropdown-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--ink-border);
+}
+.dropdown-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.dropdown-view-all {
+  font-size: 11px;
+  color: var(--amber-light);
+  cursor: pointer;
+}
+.dropdown-view-all:hover {
+  text-decoration: underline;
+}
+.dropdown-empty {
+  padding: 20px 16px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.dropdown-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-out);
+}
+.dropdown-item:hover {
+  background: rgba(255,255,255,0.03);
+}
+.dropdown-item + .dropdown-item {
+  border-top: 1px solid rgba(46, 49, 58, 0.5);
+}
+.dropdown-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.dropdown-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.dropdown-target {
+  font-size: 13px;
+  color: var(--text-on-dark);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dropdown-status {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 10px;
+  align-self: flex-start;
+}
+.dropdown-status.running {
+  background: rgba(200,132,60,0.1);
+  color: var(--amber-light);
+}
+.dropdown-status.pending {
+  background: rgba(90,125,154,0.1);
+  color: var(--blue-muted);
+}
+
+/* 下拉动画 */
+.dropdown-fade-enter-active,
+.dropdown-fade-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.dropdown-fade-enter-from,
+.dropdown-fade-leave-to {
+  opacity: 0;
+  transform: translateX(-6px);
 }
 
 /* ── 侧边栏底部 ── */
