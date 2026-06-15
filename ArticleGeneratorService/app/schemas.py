@@ -13,6 +13,8 @@ class AccountBase(BaseModel):
     account_name: str
     lora_path: Optional[str] = None
     sample_articles: Optional[str] = None
+    word_count_options: Optional[str] = None
+    default_word_count: Optional[str] = None
 
 
 class AccountCreate(AccountBase):
@@ -24,10 +26,14 @@ class AccountUpdate(BaseModel):
     account_name: Optional[str] = None
     lora_path: Optional[str] = None
     sample_articles: Optional[str] = None
+    word_count_options: Optional[str] = None
+    default_word_count: Optional[str] = None
 
 
 class AccountResponse(AccountBase):
     id: int
+    word_count_options: Optional[str] = None
+    default_word_count: Optional[str] = None
     style_profile: Optional[str] = None
     style_profile_updated_at: Optional[datetime] = None
     style_profile_structured: Optional[Any] = None
@@ -262,6 +268,7 @@ class DistillRequest(BaseModel):
 class DirectionsRequest(BaseModel):
     account_id: int
     idea: str
+    word_count: Optional[str] = None
 
 class DirectionItem(BaseModel):
     id: str

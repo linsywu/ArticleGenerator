@@ -179,7 +179,7 @@ def generate_directions(data: DirectionsRequest, db: Session = Depends(get_db)):
     if not data.idea.strip():
         raise HTTPException(status_code=400, detail="想法不能为空")
 
-    task = trigger_direction_generation.delay(data.account_id, data.idea.strip())
+    task = trigger_direction_generation.delay(data.account_id, data.idea.strip(), data.word_count)
     result = task.get(timeout=120)
 
     directions = result.get("directions", [])

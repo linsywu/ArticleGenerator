@@ -91,11 +91,27 @@ def trigger_generate(self, hotspot_title: str, account_id: int, hotspot_id: int 
                 f"留白：{sp.get('blank_leaving', '道理只讲七分，不总结不升华')}\n"
             )
 
+        # 从账号读取字数配置
+        word_count_instruction = "字数1500左右。"
+        if account:
+            wc = account.default_word_count
+            if wc:
+                try:
+                    opts = json.loads(account.word_count_options or "[]")
+                    for opt in opts:
+                        if opt.get("value") == wc:
+                            word_count_instruction = f"字数{opt.get('label', wc + '字')}。"
+                            break
+                    else:
+                        word_count_instruction = f"字数{wc}字。"
+                except (json.JSONDecodeError, TypeError):
+                    word_count_instruction = f"字数{wc}字。"
+
         user_prompt = (
             f'以"{hotspot_title}"为题，写一篇文章。\n\n'
             f'{style_instructions}\n'
             f'{outline_text}\n'
-            '字数1500左右。'
+            f'{word_count_instruction}'
         )
 
         # 调用 LLM 服务
@@ -372,7 +388,7 @@ def trigger_distill(self, account_id: int, articles_content: list, num_articles:
 
 
 @celery_app.task(bind=True)
-def trigger_direction_generation(self, account_id: int, idea: str):
+def trigger_direction_generation(self, account_id: int, idea: str, word_count: str = None):
     """生成写作方向：想法 → 3-5 个不同切入角度"""
     db = SessionLocal()
     try:
@@ -387,6 +403,11 @@ def trigger_direction_generation(self, account_id: int, idea: str):
 
         # 构建变量
         variables = {"idea": idea}
+        if word_count:
+            variables["word_count"] = f"字数{word_count}。"
+        else:
+            variables["word_count"] = "字数1500左右。"
+
         if structured:
             variables["thinking_pattern"] = structured.get("thinking_pattern", "")
             variables["structure_pattern"] = structured.get("structure_pattern", "")
