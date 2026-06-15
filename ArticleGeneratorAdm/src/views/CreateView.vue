@@ -246,7 +246,8 @@ async function startGenerate() {
 
   try {
     const points = outline.value.map(o => o.point)
-    const { data } = await api.triggerGenerateWithOutline(selectedAccountId.value, idea.value.trim(), points)
+    const wc = selectedWordCount.value || undefined
+    const { data } = await api.triggerGenerateWithOutline(selectedAccountId.value, idea.value.trim(), points, wc)
     const taskId = data.tasks?.[0]?.task_id
     if (!taskId) throw new Error('未获取到任务 ID')
 

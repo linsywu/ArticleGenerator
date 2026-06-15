@@ -165,6 +165,7 @@ class GenerateRequest(BaseModel):
     account_id: int
     custom_topic: Optional[str] = None
     outline: Optional[List[str]] = None  # 新增：大纲要点列表
+    word_count: Optional[str] = None  # 新增：用户选择的字数
 
 
 class RefineRequest(BaseModel):

@@ -46,7 +46,7 @@ def get_db_session():
 
 
 @celery_app.task(bind=True)
-def trigger_generate(self, hotspot_title: str, account_id: int, hotspot_id: int = None, outline: list = None):
+def trigger_generate(self, hotspot_title: str, account_id: int, hotspot_id: int = None, outline: list = None, word_count: str = None):
     """
     异步生成文章：调用 LLM 服务，写入数据库
     """
@@ -91,9 +91,22 @@ def trigger_generate(self, hotspot_title: str, account_id: int, hotspot_id: int 
                 f"留白：{sp.get('blank_leaving', '道理只讲七分，不总结不升华')}\n"
             )
 
-        # 从账号读取字数配置
+        # 从账号读取字数配置（显式传入优先）
         word_count_instruction = "字数1500左右。"
-        if account:
+        if word_count:
+            # 用户显式选择的字数优先
+            if account:
+                try:
+                    opts = json.loads(account.word_count_options or "[]")
+                    for opt in opts:
+                        if opt.get("value") == word_count:
+                            word_count_instruction = f"字数{opt.get('label', word_count + '字')}。"
+                            break
+                    else:
+                        word_count_instruction = f"字数{word_count}字。"
+                except (json.JSONDecodeError, TypeError):
+                    word_count_instruction = f"字数{word_count}字。"
+        elif account:
             wc = account.default_word_count
             if wc:
                 try:

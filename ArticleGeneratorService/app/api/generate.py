@@ -28,7 +28,7 @@ def trigger_article_generation(data: GenerateRequest, db: Session = Depends(get_
 
     # 自定义主题：创建独立任务（不关联热点）
     if data.custom_topic:
-        task = trigger_generate.delay(data.custom_topic, data.account_id, hotspot_id=None, outline=data.outline)
+        task = trigger_generate.delay(data.custom_topic, data.account_id, hotspot_id=None, outline=data.outline, word_count=data.word_count)
         task_ids.append({"topic": data.custom_topic, "task_id": task.id})
         gt = GenerationTask(
             task_id=task.id,
@@ -41,7 +41,7 @@ def trigger_article_generation(data: GenerateRequest, db: Session = Depends(get_
             hotspot = db.query(Hotspot).filter(Hotspot.id == hid).first()
             if not hotspot:
                 continue
-            task = trigger_generate.delay(hotspot.title, data.account_id, hid, outline=data.outline)
+            task = trigger_generate.delay(hotspot.title, data.account_id, hid, outline=data.outline, word_count=data.word_count)
             task_ids.append({"hotspot_id": hid, "task_id": task.id})
             gt = GenerationTask(
                 task_id=task.id,
