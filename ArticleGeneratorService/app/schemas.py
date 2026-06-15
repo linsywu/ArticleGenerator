@@ -128,12 +128,14 @@ class ArticleListResponse(BaseModel):
 
 # ----- 文章 -----
 class ArticleBase(BaseModel):
+    title: Optional[str] = None  # 文章标题
     content: str
     status: str = "pending_review"
 
 
 class ArticleResponse(ArticleBase):
     id: int
+    title: Optional[str] = None
     hotspot_id: Optional[int] = None
     account_id: int
     refine_history: Optional[str] = None

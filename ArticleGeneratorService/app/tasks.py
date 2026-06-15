@@ -123,8 +123,29 @@ def trigger_generate(self, hotspot_title: str, account_id: int, hotspot_id: int 
         if not content:
             raise ValueError("LLM 返回内容为空")
 
+        # 提取标题：优先取第一行 # 标题，否则取第一行非空文本（截断50字）
+        title = None
+        lines = content.strip().split("\n")
+        for line in lines:
+            stripped = line.strip()
+            if not stripped:
+                continue
+            if stripped.startswith("# "):
+                title = stripped[2:].strip()
+                break
+            elif stripped.startswith("## "):
+                title = stripped[3:].strip()
+                break
+            else:
+                # 第一行非空文本，当做标题（截断50字）
+                title = stripped[:50]
+                break
+        if not title:
+            title = hotspot_title[:50] if hotspot_title else None
+
         # 写入文章表
         article = Article(
+            title=title,
             hotspot_id=hotspot_id,
             account_id=account_id,
             content=content,

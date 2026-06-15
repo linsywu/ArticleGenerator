@@ -57,6 +57,7 @@ export interface HotspotSource {
 
 export interface Article {
   id: number;
+  title?: string;
   hotspot_id: number;
   account_id: number;
   content: string;

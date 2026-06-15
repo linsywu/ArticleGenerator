@@ -9,8 +9,8 @@
     <el-empty v-if="!loading && list.length === 0" description="暂无待评审文章" />
     <el-table v-else :data="list" v-loading="loading" style="width: 100%">
       <el-table-column prop="id" label="ID" width="70" />
-      <el-table-column label="热点" min-width="200">
-        <template #default="{ row }">{{ row.hotspot?.title || "-" }}</template>
+      <el-table-column label="文章标题" min-width="200">
+        <template #default="{ row }">{{ row.title || row.hotspot?.title || "-" }}</template>
       </el-table-column>
       <el-table-column label="账号" width="120">
         <template #default="{ row }">{{ row.account?.account_name || "-" }}</template>
