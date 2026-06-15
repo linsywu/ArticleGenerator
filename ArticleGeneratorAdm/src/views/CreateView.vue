@@ -66,10 +66,11 @@
               <span class="hint-tag" @click="idea = '大厂裁员潮下，技术人员该如何构建自己的护城河？'">技术人的护城河</span>
             </div>
           </div>
-          <div v-if="selectedAccount?.word_count" class="word-count-area">
+          <div v-if="wordCountOpts.length" class="word-count-area">
             <span class="word-count-label">📏 文章字数：</span>
-            <el-input v-model="selectedWordCount" :placeholder="selectedAccount.word_count" size="default" style="width:240px" />
-            <span class="word-count-hint">留空则使用账号默认字数</span>
+            <el-select v-model="selectedWordCount" placeholder="选择字数" size="default" style="width:240px">
+              <el-option v-for="opt in wordCountOpts" :key="opt" :label="opt" :value="opt" />
+            </el-select>
           </div>
           <div class="card-actions">
             <el-button size="large" @click="currentStep = 0">返回上一步</el-button>
@@ -167,8 +168,9 @@ const accounts = ref<Account[]>([])
 const selectedAccountId = ref<number | null>(null)
 const idea = ref('')
 
-// 字数（从账号读取默认值，用户可覆盖）
+// 字数选择（从账号选项读取）
 const selectedWordCount = ref('')
+const wordCountOpts = ref<string[]>([])
 
 // 步骤 3
 const directions = ref<DirectionItem[]>([])
@@ -187,9 +189,19 @@ const generatedArticleId = ref<number | null>(null)
 
 const selectedAccount = computed(() => accounts.value.find(a => a.id === selectedAccountId.value) || null)
 
-// 当选中账号变化时，加载字数配置
+// 当选中账号变化时，加载字数选项
 watch(selectedAccount, (acc) => {
-  selectedWordCount.value = acc?.word_count || ''
+  if (acc) {
+    try {
+      wordCountOpts.value = acc.word_count_options ? JSON.parse(acc.word_count_options) : []
+    } catch {
+      wordCountOpts.value = []
+    }
+    selectedWordCount.value = acc.word_count || ''
+  } else {
+    wordCountOpts.value = []
+    selectedWordCount.value = ''
+  }
 })
 
 async function generateDirections() {

@@ -134,9 +134,19 @@
         <!-- Tab 4: 字数配置 -->
         <el-tab-pane label="字数配置" name="wordcount">
           <el-form label-width="100px" class="detail-form">
-            <el-form-item label="字数描述">
-              <el-input v-model="wordCountText" placeholder="例如：1500字左右、2000到3000字、3000字以上" />
-              <p class="form-hint">创作文章时，该描述会注入到 AI 提示词中控制文章长度</p>
+            <el-form-item label="字数选项">
+              <div style="width:100%">
+                <div v-for="(opt, i) in wordCountOptions" :key="i" style="display:flex;gap:8px;margin-bottom:6px;align-items:center">
+                  <el-input v-model="wordCountOptions[i]" placeholder="例如：1500字左右" size="small" @blur="emitWordCountChange" />
+                  <el-button size="small" text type="danger" @click="removeWordCountOption(i)">×</el-button>
+                </div>
+                <el-button size="small" @click="addWordCountOption">＋ 添加选项</el-button>
+              </div>
+            </el-form-item>
+            <el-form-item label="默认字数">
+              <el-select v-model="wordCountDefault" placeholder="选择默认字数" size="small" style="width:260px" :disabled="!wordCountOptions.filter(o => o).length">
+                <el-option v-for="opt in wordCountOptions.filter(o => o)" :key="opt" :label="opt" :value="opt" />
+              </el-select>
             </el-form-item>
           </el-form>
           <div style="text-align:right">
@@ -203,8 +213,13 @@ const distilling = ref(false);
 const form = reactive({ platform: "", account_name: "" });
 
 // 字数配置
-const wordCountText = ref('')
+const wordCountOptions = ref<string[]>([])
+const wordCountDefault = ref('')
 const savingWordCount = ref(false)
+
+function addWordCountOption() { wordCountOptions.value.push('') }
+function removeWordCountOption(i: number) { wordCountOptions.value.splice(i, 1) }
+function emitWordCountChange() {} // 触发响应式更新
 
 const articleDialogVisible = ref(false);
 const editingArticleId = ref<number | null>(null);
@@ -227,7 +242,8 @@ function openCreate() {
   form.platform = ""; form.account_name = "";
   refArticles.value = []; activeTab.value = "basic";
   detailVisible.value = true;
-  wordCountText.value = ''
+  wordCountOptions.value = []
+  wordCountDefault.value = ''
 }
 
 function openDetail(row: Account) {
@@ -235,7 +251,13 @@ function openDetail(row: Account) {
   form.platform = row.platform; form.account_name = row.account_name;
   loadRefArticles(row.id); activeTab.value = "basic";
   detailVisible.value = true;
-  wordCountText.value = row.word_count || ''
+  // 解析字数选项
+  try {
+    wordCountOptions.value = row.word_count_options ? JSON.parse(row.word_count_options) : []
+  } catch {
+    wordCountOptions.value = []
+  }
+  wordCountDefault.value = row.word_count || ''
 }
 
 async function saveAccount() {
@@ -261,12 +283,16 @@ async function saveWordCount() {
   }
   savingWordCount.value = true
   try {
-    await api.updateAccount(editingAccount.value.id, {
-      word_count: wordCountText.value || null,
-    } as any)
+    const valid = wordCountOptions.value.filter(o => o)
+    const payload = {
+      word_count_options: valid.length ? JSON.stringify(valid) : null,
+      word_count: wordCountDefault.value || null,
+    }
+    await api.updateAccount(editingAccount.value.id, payload as any)
     // 同步更新本地对象 + 刷新列表
     if (editingAccount.value) {
-      editingAccount.value.word_count = wordCountText.value || undefined
+      editingAccount.value.word_count_options = payload.word_count_options || undefined
+      editingAccount.value.word_count = payload.word_count || undefined
     }
     await loadAccounts()
     ElMessage.success('字数配置已保存')

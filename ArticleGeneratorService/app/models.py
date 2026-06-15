@@ -36,7 +36,8 @@ class Account(Base):
     style_profile_structured = Column(Text)  # JSON: 7维度结构化画像
     style_profile_version = Column(Integer, default=1)
     style_profile_status = Column(String(20), default="none")  # none/pending/ready/outdated
-    word_count = Column(Text)  # 字数描述，如：1500字左右、2000到3000字
+    word_count_options = Column(Text)  # JSON: ["1500字左右","2000到3000字","3000字以上"]
+    word_count = Column(Text)  # 默认选中的字数描述
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
