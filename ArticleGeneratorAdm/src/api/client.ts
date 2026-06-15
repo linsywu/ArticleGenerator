@@ -41,6 +41,8 @@ export interface Account {
   style_profile_structured?: StyleProfile | null;
   style_profile_version?: number;
   style_profile_status?: string;
+  word_count_options?: string;   // JSON: [{"value":"1500","label":"1500字左右"}]
+  default_word_count?: string;   // e.g. "1500"
   created_at: string;
 }
 
@@ -152,8 +154,8 @@ export const api = {
   triggerGenerate: (accountId: number, hotspotIds?: number[], customTopic?: string) =>
     client.post("/generate/trigger", { hotspot_ids: hotspotIds || [], account_id: accountId, custom_topic: customTopic || null }),
   // 方向 + 大纲
-  generateDirections: (accountId: number, idea: string) =>
-    client.post<{ directions: DirectionItem[] }>("/generate/directions", { account_id: accountId, idea }),
+  generateDirections: (accountId: number, idea: string, wordCount?: string) =>
+    client.post<{ directions: DirectionItem[] }>("/generate/directions", { account_id: accountId, idea, word_count: wordCount || null }),
   generateOutline: (accountId: number, idea: string, direction: string) =>
     client.post<{ outline: OutlinePoint[] }>("/generate/outline", { account_id: accountId, idea, direction }),
   triggerGenerateWithOutline: (accountId: number, customTopic: string, outline: string[]) =>
