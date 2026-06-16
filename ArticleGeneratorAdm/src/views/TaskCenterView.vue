@@ -142,6 +142,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from "vue";
 import { api, type UnifiedTaskItem } from "@/api/client";
+import { formatDateTime, relativeTime } from "@/utils/format";
 
 const tasks = ref<UnifiedTaskItem[]>([]);
 const loading = ref(true);
@@ -203,14 +204,7 @@ function statusText(status: string): string {
 }
 
 function formatTime(iso: string): string {
-  if (!iso) return "-";
-  const d = new Date(iso);
-  const nowDate = new Date();
-  const diff = nowDate.getTime() - d.getTime();
-  if (diff < 60000) return "刚刚";
-  if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前`;
-  if (diff < 86400000) return `${Math.floor(diff / 3600000)}小时前`;
-  return d.toLocaleDateString("zh-CN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  return relativeTime(iso);
 }
 
 function elapsedTime(task: UnifiedTaskItem): string {

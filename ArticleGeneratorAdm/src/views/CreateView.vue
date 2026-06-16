@@ -17,7 +17,7 @@
         >
           <span class="step-number">{{ i < currentStep ? '✓' : i + 1 }}</span>
           <span class="step-label">{{ step }}</span>
-          <span v-if="i < 4" class="step-line" :class="{ filled: i < currentStep }"></span>
+          <span v-if="i < 5" class="step-line" :class="{ filled: i < currentStep }"></span>
         </div>
       </div>
     </div>
@@ -348,7 +348,7 @@ onMounted(async () => {
 .step-label { margin-left: 8px; font-size: 12px; color: var(--text-dim); white-space: nowrap; transition: color var(--duration-normal) var(--ease-out); }
 .step-dot.active .step-label { color: var(--amber-light); font-weight: 600; }
 .step-dot.done .step-label { color: var(--text-muted); }
-.step-line { width: 56px; height: 1px; background: var(--ink-border); margin: 0 16px; transition: background var(--duration-normal) var(--ease-out); }
+.step-line { width: 50px; height: 1px; background: var(--ink-border); margin: 0 16px; transition: background var(--duration-normal) var(--ease-out); }
 .step-line.filled { background: #3d3f48; }
 
 .step-content { min-height: 400px; }

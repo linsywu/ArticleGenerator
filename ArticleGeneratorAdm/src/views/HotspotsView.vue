@@ -56,7 +56,9 @@
           <el-tag :type="statusMap[row.status]">{{ statusText[row.status] || row.status }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="created_at" label="时间" width="180" />
+      <el-table-column label="时间" width="180">
+        <template #default="{ row }">{{ formatDateTime(row.created_at) }}</template>
+      </el-table-column>
     </el-table>
 
     <el-pagination
@@ -77,6 +79,7 @@
 import { ref, onMounted } from "vue";
 import { ElMessage } from "element-plus";
 import { api, type Hotspot } from "@/api/client";
+import { formatDateTime } from "@/utils/format";
 
 const list = ref<Hotspot[]>([]);
 const loading = ref(false);

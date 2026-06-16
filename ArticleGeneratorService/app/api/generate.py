@@ -138,6 +138,13 @@ def list_generation_tasks(
     for t in tasks:
         hotspot = db.query(Hotspot).filter(Hotspot.id == t.hotspot_id).first()
         account = db.query(Account).filter(Account.id == t.account_id).first()
+        # 查找文章标题（优先文章自身标题 → 热点标题）
+        article_title = None
+        if t.article_id:
+            article = db.query(Article).filter(Article.id == t.article_id).first()
+            if article:
+                article_title = article.title
+
         result.append({
             "id": t.id,
             "task_id": t.task_id,
@@ -146,6 +153,7 @@ def list_generation_tasks(
             "article_id": t.article_id,
             "status": t.status,
             "error_message": t.error_message,
+            "title": article_title,
             "created_at": t.created_at,
             "hotspot": {"id": hotspot.id, "title": hotspot.title, "source": hotspot.source} if hotspot else None,
             "account": {"id": account.id, "account_name": account.account_name, "platform": account.platform} if account else None,

@@ -12,8 +12,8 @@
           <el-tag :type="scenarioTag(row.scenario)" size="small">{{ scenarioLabel(row.scenario) }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="description" label="说明" min-width="180" show-overflow-tooltip />
-      <el-table-column label="提示词预览" min-width="150" show-overflow-tooltip>
+      <el-table-column prop="description" label="说明" width="180" show-overflow-tooltip />
+      <el-table-column label="提示词预览" show-overflow-tooltip>
         <template #default="{ row }">{{ (row.system_prompt_template || '').slice(0, 80) }}{{ (row.system_prompt_template || '').length > 80 ? '...' : '' }}</template>
       </el-table-column>
       <el-table-column prop="model" label="模型" width="140" />
@@ -31,7 +31,7 @@
       </el-table-column>
     </el-table>
 
-    <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑配置' : '新增配置'" width="640px">
+    <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑配置' : '新增配置'" width="1024px">
       <el-form :model="form" label-width="110px">
         <el-form-item label="场景" required>
           <el-select v-model="form.scenario" :disabled="isEdit">
@@ -47,7 +47,7 @@
           <el-input v-model="form.model" placeholder="claude-opus-4-7" />
         </el-form-item>
         <el-form-item label="System Prompt">
-          <el-input v-model="form.system_prompt_template" type="textarea" :rows="5" placeholder="支持 {{变量}} 占位" />
+          <el-input v-model="form.system_prompt_template" type="textarea" :rows="9" placeholder="支持 {{变量}} 占位" />
         </el-form-item>
         <el-form-item label="参数">
           <el-input v-model="form.params" type="textarea" :rows="2" placeholder='{"temperature": 0.7, "max_tokens": 4096}' />

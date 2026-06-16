@@ -28,7 +28,7 @@
         </div>
         <div class="card-bottom">
           <span v-if="acc.style_profile_updated_at" class="card-date">
-            更新于 {{ acc.style_profile_updated_at.slice(0, 10) }}
+            更新于 {{ formatDateTime(acc.style_profile_updated_at, 'date') }}
           </span>
           <span v-else class="card-date">尚未蒸馏</span>
           <span class="card-actions-inline">
@@ -105,7 +105,7 @@
           <div v-else-if="editingAccount?.style_profile" class="legacy-profile">
             <div class="legacy-profile-meta">
               <el-tag type="success" size="small">已生成</el-tag>
-              <span class="legacy-date">更新于 {{ editingAccount.style_profile_updated_at?.slice(0, 10) }}</span>
+              <span class="legacy-date">更新于 {{ formatDateTime(editingAccount.style_profile_updated_at, 'date') }}</span>
             </div>
             <el-input :model-value="editingAccount.style_profile" type="textarea" :rows="18" readonly />
           </div>
@@ -191,6 +191,7 @@
 import { ref, reactive, onMounted } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { api, Account, ReferenceArticle, StyleProfile } from "@/api/client";
+import { formatDateTime } from "@/utils/format";
 
 const styleDimensions: { key: keyof StyleProfile; label: string; icon: string }[] = [
   { key: 'thinking_pattern', label: '思维特征', icon: '🧠' },

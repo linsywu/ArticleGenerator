@@ -15,7 +15,9 @@
       <el-table-column label="账号" width="120">
         <template #default="{ row }">{{ row.account?.account_name || "-" }}</template>
       </el-table-column>
-      <el-table-column prop="created_at" label="生成时间" width="180" />
+      <el-table-column label="生成时间" width="180">
+        <template #default="{ row }">{{ formatDateTime(row.created_at) }}</template>
+      </el-table-column>
       <el-table-column label="质量" width="80">
         <template #default="{ row }">
           <el-tag v-if="row.quality_score != null" :type="scoreType(row.quality_score)" size="small">
@@ -53,14 +55,17 @@
       @size-change="load"
     />
 
-    <el-dialog v-model="detailVisible" :title="editingArticle ? '编辑文章' : '文章详情'" width="800px">
-      <div v-if="editingArticle">
+    <el-dialog v-model="detailVisible" :title="editingArticle ? '编辑文章' : '文章详情'" width="1000px">
+      <div class="article-content-bg">
+        <div v-if="editingArticle">
         <el-input v-model="editContent" type="textarea" :rows="16" placeholder="文章内容" />
       </div>
       <div v-else class="article-content">{{ currentArticle?.content }}</div>
-      <div v-if="currentArticle?.review_notes && !editingArticle" style="margin-top:12px;padding:12px;background:#f5f7fa;border-radius:4px">
-        <strong>AI 评审记录：</strong>
-        <pre style="white-space:pre-wrap;font-size:13px;color:#666;margin-top:4px">{{ currentArticle.review_notes }}</pre>
+      </div>
+      <div class="article-content-count">字数：{{ currentArticle?.content?.length || 0 }}</div>
+      <div class="article-content-review" v-if="currentArticle?.review_notes && !editingArticle">
+        <div class="article-content-review-title">AI 评审记录：</div>
+        <pre class="review-notes-text">{{ currentArticle.review_notes }}</pre>
       </div>
       <template #footer>
         <el-button v-if="editingArticle" @click="editingArticle = false; editContent = ''">取消编辑</el-button>
@@ -95,6 +100,7 @@
 import { ref, onMounted } from "vue";
 import { ElMessage } from "element-plus";
 import { api, type Article } from "@/api/client";
+import { formatDateTime } from "@/utils/format";
 
 const list = ref<Article[]>([]);
 const loading = ref(false);
@@ -205,7 +211,12 @@ onMounted(load);
 .page-header { margin-bottom: var(--space-xl); }
 .page-title { font-family: var(--font-serif); font-size: 28px; font-weight: 900; color: var(--text-on-dark); letter-spacing: 1px; margin-bottom: 4px; }
 .page-subtitle { font-size: 14px; color: var(--text-muted); }
+.article-content-bg { background: var(--ink-surface); padding: var(--space-xl); border-radius: var(--radius-lg); }
+.article-content-review { background: var(--ink-surface); padding: var(--space-md); border-radius: var(--radius-lg); margin-top: var(--space-md); }
+.article-content-review-title { font-size: 14px; color: var(--text-on-dark); font-weight: 500; margin-bottom: var(--space-md); }
+.review-notes-text { white-space: pre-wrap; font-size: 13px; color: var(--text-muted); margin-top: 4px; }
 .article-content { white-space: pre-wrap; max-height: 400px; overflow-y: auto; line-height: 1.6; color: var(--text-on-dark); }
+.article-content-count { font-size: 12px; color: var(--text-muted); margin-top: var(--space-md); text-align: right;}
 .refine-tip { margin-top: 12px; font-size: 12px; color: var(--text-muted); }
 .el-pagination { margin-top: 16px; }
 </style>

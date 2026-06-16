@@ -15,7 +15,9 @@
       <el-table-column label="账号" width="120">
         <template #default="{ row }">{{ row.account?.account_name || "-" }}</template>
       </el-table-column>
-      <el-table-column prop="created_at" label="时间" width="180" />
+      <el-table-column label="时间" width="180">
+        <template #default="{ row }">{{ formatDateTime(row.created_at) }}</template>
+      </el-table-column>
       <el-table-column label="操作" width="280" fixed="right">
         <template #default="{ row }">
           <el-button size="small" @click="previewArticle(row)">预览</el-button>
@@ -60,6 +62,7 @@
 import { ref, onMounted } from "vue";
 import { ElMessage } from "element-plus";
 import { api, type Article } from "@/api/client";
+import { formatDateTime } from "@/utils/format";
 
 const list = ref<Article[]>([]);
 const loading = ref(false);

@@ -1,7 +1,7 @@
 """
 文章 API：评审、发布、微调
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
@@ -76,7 +76,7 @@ def update_article_status(article_id: int, data: ArticleStatusUpdate, db: Sessio
         raise HTTPException(status_code=400, detail="无效状态")
     article.status = data.status
     if data.status == "published":
-        article.published_at = datetime.utcnow()
+        article.published_at = datetime.now(timezone.utc)
     db.commit()
     return {"message": "更新成功"}
 

@@ -69,7 +69,7 @@
                 <div class="profile-meta">
                   <el-tag type="success">已生成</el-tag>
                   <span v-if="selectedAccount.style_profile_updated_at" class="profile-date">
-                    更新于 {{ selectedAccount.style_profile_updated_at.slice(0, 10) }}
+                    更新于 {{ formatDateTime(selectedAccount.style_profile_updated_at, 'date') }}
                   </span>
                 </div>
                 <el-input
@@ -124,6 +124,7 @@
 import { ref, reactive, onMounted } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { api, Account, ReferenceArticle, StyleProfile } from "@/api/client";
+import { formatDateTime } from "@/utils/format";
 
 const styleDimensions: { key: keyof StyleProfile; label: string; icon: string }[] = [
   { key: 'thinking_pattern', label: '思维特征', icon: '🧠' },

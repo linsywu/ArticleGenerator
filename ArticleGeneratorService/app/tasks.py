@@ -3,7 +3,7 @@ Celery 异步任务：文章生成与微调
 """
 import json
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 
 import httpx
 from celery import Celery
@@ -400,7 +400,7 @@ def trigger_distill(self, account_id: int, articles_content: list, num_articles:
             account.style_profile_structured = json.dumps(structured, ensure_ascii=False) if structured else None
             account.style_profile_status = "ready" if structured else "failed"
             account.style_profile_version = (account.style_profile_version or 0) + 1
-            account.style_profile_updated_at = datetime.utcnow()
+            account.style_profile_updated_at = datetime.now(timezone.utc)
             db.commit()
 
         return {"account_id": account_id, "status": account.style_profile_status if account else "error"}

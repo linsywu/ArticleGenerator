@@ -33,7 +33,9 @@
       <el-table-column label="失败原因" min-width="150" show-overflow-tooltip>
         <template #default="{ row }">{{ row.error_message || "-" }}</template>
       </el-table-column>
-      <el-table-column prop="created_at" label="创建时间" width="180" />
+      <el-table-column label="创建时间" width="180">
+        <template #default="{ row }">{{ formatDateTime(row.created_at) }}</template>
+      </el-table-column>
       <el-table-column label="操作" width="100" fixed="right">
         <template #default="{ row }">
           <el-button
@@ -89,6 +91,7 @@ import { ref, onMounted } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { useRouter } from "vue-router";
 import { api } from "@/api/client";
+import { formatDateTime } from "@/utils/format";
 
 interface TaskItem {
   id: number;
@@ -96,6 +99,7 @@ interface TaskItem {
   hotspot_id: number;
   account_id: number;
   article_id?: number;
+  title?: string;
   status: string;
   error_message?: string;
   created_at: string;
