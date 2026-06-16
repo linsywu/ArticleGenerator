@@ -45,6 +45,39 @@ def get_db_session():
         db.close()
 
 
+def resolve_article_title(content: str, hotspot_title: str | None) -> str | None:
+    """
+    解析文章最终标题。
+
+    优先使用传入的标题（用户选择或热点标题），
+    仅当传入标题为空时才从 LLM 输出内容中自动提取。
+
+    这修复了一个 bug：用户选择标题后，文章列表展示的却是 LLM
+    输出内容自动提取的标题。
+    """
+    # 优先使用传入的标题（非空即用）
+    if hotspot_title and hotspot_title.strip():
+        return hotspot_title.strip()[:200]
+
+    # 回退：从 LLM 输出内容中提取标题
+    if not content:
+        return None
+
+    lines = content.strip().split("\n")
+    for line in lines:
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if stripped.startswith("# "):
+            return stripped[2:].strip()[:200]
+        elif stripped.startswith("## "):
+            return stripped[3:].strip()[:200]
+        else:
+            return stripped[:50]
+
+    return None
+
+
 @celery_app.task(bind=True)
 def trigger_generate(self, hotspot_title: str, account_id: int, hotspot_id: int = None, outline: list = None, word_count: str = None):
     """
@@ -123,25 +156,8 @@ def trigger_generate(self, hotspot_title: str, account_id: int, hotspot_id: int 
         if not content:
             raise ValueError("LLM 返回内容为空")
 
-        # 提取标题：优先取第一行 # 标题，否则取第一行非空文本（截断50字）
-        title = None
-        lines = content.strip().split("\n")
-        for line in lines:
-            stripped = line.strip()
-            if not stripped:
-                continue
-            if stripped.startswith("# "):
-                title = stripped[2:].strip()
-                break
-            elif stripped.startswith("## "):
-                title = stripped[3:].strip()
-                break
-            else:
-                # 第一行非空文本，当做标题（截断50字）
-                title = stripped[:50]
-                break
-        if not title:
-            title = hotspot_title[:50] if hotspot_title else None
+        # 使用统一的标题解析逻辑（优先用户选择 → 回退自动提取）
+        title = resolve_article_title(content, hotspot_title)
 
         # 写入文章表
         article = Article(
