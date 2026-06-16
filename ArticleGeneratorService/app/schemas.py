@@ -190,11 +190,49 @@ class GenerateRequest(BaseModel):
     account_id: int
     custom_topic: Optional[str] = None
     outline: Optional[List[str]] = None  # 新增：大纲要点列表
+    word_count: Optional[str] = None  # 用户选择的字数
 
 
 class RefineRequest(BaseModel):
     """微调请求"""
     keywords: str = Field(..., description="修改关键词")
+
+
+class DirectionsRequest(BaseModel):
+    """方向生成请求"""
+    account_id: int
+    idea: str
+    word_count: Optional[str] = None
+
+
+class DirectionsResponse(BaseModel):
+    """方向生成响应"""
+    directions: list
+
+
+class OutlineRequest(BaseModel):
+    """大纲生成请求"""
+    account_id: int
+    idea: str
+    direction: str
+
+
+class OutlineResponse(BaseModel):
+    """大纲生成响应"""
+    outline: list
+
+
+class TitleRequest(BaseModel):
+    """标题生成请求"""
+    account_id: int
+    idea: str
+    direction: str
+    outline: List[str]
+
+
+class TitleResponse(BaseModel):
+    """标题生成响应"""
+    titles: List[str]
 
 
 class ArticleStatusUpdate(BaseModel):
