@@ -140,6 +140,8 @@ class ScenarioConfig(Base):
     system_prompt_template = Column(Text)
     params = Column(Text)  # JSON
     priority = Column(Integer, default=0)
+    description = Column(Text)  # 场景说明
+    sort_order = Column(Integer, default=0)  # 显示排序
     enabled = Column(Integer, default=1)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

@@ -13,7 +13,7 @@ router = APIRouter(prefix="/scenario-configs", tags=["场景配置"])
 
 @router.get("", response_model=List[ScenarioConfigResponse])
 def list_configs(db: Session = Depends(get_db)):
-    return db.query(ScenarioConfig).order_by(ScenarioConfig.id).all()
+    return db.query(ScenarioConfig).order_by(ScenarioConfig.sort_order, ScenarioConfig.id).all()
 
 
 @router.post("", response_model=ScenarioConfigResponse)
@@ -68,6 +68,24 @@ def update_config(config_id: int, data: ScenarioConfigUpdate, db: Session = Depe
     db.commit()
     db.refresh(c)
     return c
+
+
+@router.post("/{config_id}/activate")
+def activate_config(config_id: int, db: Session = Depends(get_db)):
+    """激活指定配置，同时禁用同场景的其他配置"""
+    c = db.query(ScenarioConfig).filter(ScenarioConfig.id == config_id).first()
+    if not c:
+        raise HTTPException(status_code=404, detail="配置不存在")
+    # 禁用同场景其他配置
+    db.query(ScenarioConfig).filter(
+        ScenarioConfig.scenario == c.scenario,
+        ScenarioConfig.id != config_id
+    ).update({"enabled": 0})
+    # 启用当前配置
+    c.enabled = 1
+    db.commit()
+    db.refresh(c)
+    return {"message": f"已激活 {c.scenario} 配置 #{c.id}", "config": c}
 
 
 @router.delete("/{config_id}")

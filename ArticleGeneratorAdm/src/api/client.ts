@@ -91,6 +91,8 @@ export interface ScenarioConfig {
   system_prompt_template?: string;
   params?: string;
   priority: number;
+  description?: string;
+  sort_order?: number;
   enabled: boolean;
   provider?: Provider;
   created_at: string;
@@ -223,6 +225,7 @@ export const api = {
   updateScenarioConfig: (id: number, data: { provider_id?: number; model?: string; system_prompt_template?: string; params?: string; priority?: number; enabled?: boolean }) =>
     client.put<ScenarioConfig>(`/scenario-configs/${id}`, data),
   deleteScenarioConfig: (id: number) => client.delete(`/scenario-configs/${id}`),
+  activateScenarioConfig: (id: number) => client.post(`/scenario-configs/${id}/activate`),
 
   // 参考文章
   getReferenceArticles: (accountId: number) =>

@@ -216,6 +216,8 @@ class ScenarioConfigBase(BaseModel):
     system_prompt_template: Optional[str] = None
     params: Optional[str] = None
     priority: int = 0
+    description: Optional[str] = None  # 场景说明
+    sort_order: int = 0  # 显示排序
     enabled: bool = True
 
 class ScenarioConfigCreate(ScenarioConfigBase): pass
@@ -225,6 +227,8 @@ class ScenarioConfigUpdate(BaseModel):
     system_prompt_template: Optional[str] = None
     params: Optional[str] = None
     priority: Optional[int] = None
+    description: Optional[str] = None
+    sort_order: Optional[int] = None
     enabled: Optional[bool] = None
 
 class ScenarioConfigResponse(ScenarioConfigBase):
