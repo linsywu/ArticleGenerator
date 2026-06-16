@@ -7,10 +7,9 @@ from datetime import datetime
 
 import httpx
 from celery import Celery
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 
 from .config import settings
+from .database import SessionLocal
 from .models import (
     Base,
     Hotspot,
@@ -31,10 +30,6 @@ celery_app = Celery(
 celery_app.conf.task_serializer = "json"
 celery_app.conf.result_serializer = "json"
 celery_app.conf.accept_content = ["json"]
-
-# 同步数据库会话（Celery worker 内使用）
-engine = create_engine(settings.database_url, connect_args={"check_same_thread": False} if "sqlite" in settings.database_url else {})
-SessionLocal = sessionmaker(bind=engine)
 
 
 def get_db_session():
