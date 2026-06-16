@@ -34,11 +34,15 @@ def list_articles(
     for a in articles:
         item = ArticleWithRelations(
             id=a.id,
+            title=a.title,
             hotspot_id=a.hotspot_id,
             account_id=a.account_id,
             content=a.content,
             status=a.status,
             refine_history=a.refine_history,
+            quality_score=a.quality_score,
+            compliance_score=a.compliance_score,
+            review_notes=a.review_notes,
             published_at=a.published_at,
             created_at=a.created_at,
             updated_at=a.updated_at,
