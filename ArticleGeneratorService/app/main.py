@@ -1,11 +1,14 @@
 """
 ArticleGenerator 后端主入口
 """
+import logging
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import settings
 from .database import init_db, SessionLocal
+
+logger = logging.getLogger(__name__)
 from .models import User
 from .auth import get_password_hash
 from .api import accounts, hotspot_sources, hotspots, articles, generate, providers, scenario_configs, reference_articles, distill, generation_logs
@@ -63,9 +66,9 @@ def seed_admin_user():
             )
             db.add(user)
             db.commit()
-            print(f"✅ 已创建初始管理员账号: {settings.seed_username}")
+            logger.info("已创建初始管理员账号: %s", settings.seed_username)
     except Exception as e:
-        print(f"⚠️  创建管理员账号失败: {e}")
+        logger.warning("创建管理员账号失败: %s", e)
         db.rollback()
     finally:
         db.close()
