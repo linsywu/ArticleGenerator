@@ -15,6 +15,12 @@ def account_and_hotspot(auth_client):
     return acc["id"], hot["id"]
 
 
+def test_unauthenticated_returns_403(client):
+    """无 token 访问受保护端点应拒绝"""
+    resp = client.get("/api/articles")
+    assert resp.status_code in (401, 403)
+
+
 def test_list_articles_empty(auth_client):
     """空列表时返回 { data: [], total: 0 }"""
     r = auth_client.get("/api/articles")

@@ -40,10 +40,10 @@ app.dependency_overrides[get_db] = override_get_db
 @pytest.fixture(autouse=True)
 def _clean_db():
     """每个测试前清空表数据，保证隔离"""
-    from app.models import Account, Hotspot, Article, HotspotSource, GenerationTask, RefineTask, User
+    from app.models import Account, Hotspot, Article, HotspotSource, GenerationTask, RefineTask, Provider, ScenarioConfig, ReferenceArticle, GenerationLog, User
     db = TestingSessionLocal()
     try:
-        for t in [RefineTask, GenerationTask, Article, Hotspot, Account, HotspotSource, User]:
+        for t in [RefineTask, GenerationTask, Article, Hotspot, Account, HotspotSource, Provider, ScenarioConfig, ReferenceArticle, GenerationLog, User]:
             db.query(t).delete()
         db.commit()
     finally:

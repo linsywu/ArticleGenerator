@@ -4,6 +4,12 @@
 import pytest
 
 
+def test_unauthenticated_returns_403(client):
+    """无 token 访问受保护端点应拒绝"""
+    resp = client.get("/api/accounts")
+    assert resp.status_code in (401, 403)
+
+
 def test_list_accounts_empty(auth_client):
     """空列表时返回 []"""
     r = auth_client.get("/api/accounts")
