@@ -179,6 +179,8 @@ export const api = {
     client.post<{ directions: DirectionItem[] }>("/generate/directions", { account_id: accountId, idea, word_count: wordCount || null }),
   generateOutline: (accountId: number, idea: string, direction: string) =>
     client.post<{ outline: OutlinePoint[] }>("/generate/outline", { account_id: accountId, idea, direction }),
+  generateTitles: (accountId: number, idea: string, direction: string, outline: string[]) =>
+    client.post<{ titles: string[] }>("/generate/titles", { account_id: accountId, idea, direction, outline }),
   triggerGenerateWithOutline: (accountId: number, customTopic: string, outline: string[], wordCount?: string) =>
     client.post("/generate/trigger", { hotspot_ids: [], account_id: accountId, custom_topic: customTopic, outline, word_count: wordCount || null }),
   triggerRefine: (articleId: number, keywords: string) =>

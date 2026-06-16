@@ -292,3 +292,13 @@ class OutlinePoint(BaseModel):
 
 class OutlineResponse(BaseModel):
     outline: List[OutlinePoint]
+
+# ── 标题生成 ──
+class TitleRequest(BaseModel):
+    account_id: int
+    idea: str
+    direction: str
+    outline: List[str]
+
+class TitleResponse(BaseModel):
+    titles: List[str]

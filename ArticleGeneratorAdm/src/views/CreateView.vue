@@ -125,16 +125,44 @@
           <el-button size="small" @click="outline.push({ order: outline.length + 1, point: '' })" style="margin-top:12px">＋ 添加要点</el-button>
           <div class="card-actions">
             <el-button size="large" @click="currentStep = 2">返回上一步</el-button>
-            <el-button size="large" type="primary" :disabled="!outline.length || !outline.every(o => o.point.trim())" @click="startGenerate">
+            <el-button size="large" type="primary" :disabled="!outline.length || !outline.every(o => o.point.trim())" :loading="loadingTitles" @click="generateTitles">
+              生成候选标题
+            </el-button>
+          </div>
+        </div>
+
+        <!-- 步骤 5: 选择标题 -->
+        <div v-else-if="currentStep === 4" key="step5" class="step-card">
+          <div class="card-header">
+            <span class="card-number">05</span>
+            <h2 class="card-title">选择文章标题</h2>
+          </div>
+          <p class="card-desc">方向：{{ selectedDirection?.title }}。选择一个标题，或编辑后使用。</p>
+          <div v-if="titles.length" class="titles-grid">
+            <div v-for="(t, i) in titles" :key="i" class="title-card" :class="{ selected: selectedTitle === t }" @click="selectedTitle = t">
+              <span class="title-id">{{ i + 1 }}</span>
+              <span class="title-text">{{ t }}</span>
+              <span v-if="selectedTitle === t" class="title-check">✓</span>
+            </div>
+          </div>
+          <div v-else class="loading-state">
+            <span>⏳ 正在生成标题...</span>
+          </div>
+          <div v-if="titles.length" class="title-edit-area">
+            <el-input v-model="selectedTitle" placeholder="编辑选中的标题..." size="default" />
+          </div>
+          <div class="card-actions">
+            <el-button size="large" @click="currentStep = 3">返回修改大纲</el-button>
+            <el-button size="large" type="primary" :disabled="!selectedTitle.trim()" @click="startGenerate">
               生成全文
             </el-button>
           </div>
         </div>
 
-        <!-- 步骤 5: 生成全文 -->
-        <div v-else key="step5" class="step-card">
+        <!-- 步骤 6: 生成全文 -->
+        <div v-else key="step6" class="step-card">
           <div class="card-header">
-            <span class="card-number">05</span>
+            <span class="card-number">06</span>
             <h2 class="card-title">生成全文</h2>
           </div>
           <div v-if="generating" class="generating-state">
@@ -144,12 +172,12 @@
           <div v-else-if="generatedArticle" class="article-result">
             <div class="article-content">{{ generatedArticle }}</div>
             <div class="card-actions">
-              <el-button size="large" @click="currentStep = 3">返回修改大纲</el-button>
+              <el-button size="large" @click="currentStep = 4">返回修改标题</el-button>
               <el-button size="large" type="primary" @click="submitForReview">提交评审</el-button>
             </div>
           </div>
           <div v-else class="card-actions">
-            <el-button size="large" @click="currentStep = 3">返回上一步</el-button>
+            <el-button size="large" @click="currentStep = 4">返回上一步</el-button>
           </div>
         </div>
       </transition>
@@ -162,7 +190,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { api, type Account, type DirectionItem, type OutlinePoint } from '@/api/client'
 
-const steps = ['选择账号', '输入想法', '写作方向', '确认大纲', '生成全文']
+const steps = ['选择账号', '输入想法', '写作方向', '确认大纲', '选择标题', '生成全文']
 const currentStep = ref(0)
 const accounts = ref<Account[]>([])
 const selectedAccountId = ref<number | null>(null)
@@ -181,7 +209,12 @@ const loadingDirections = ref(false)
 const outline = ref<OutlinePoint[]>([])
 const loadingOutline = ref(false)
 
-// 步骤 5
+// 步骤 5 — 标题
+const titles = ref<string[]>([])
+const selectedTitle = ref('')
+const loadingTitles = ref(false)
+
+// 步骤 6
 const generating = ref(false)
 const generatingStatusText = ref('')
 const generatedArticle = ref('')
@@ -233,14 +266,31 @@ async function generateOutline() {
 function moveOutlineUp(i: number) { if (i > 0) { const t = outline.value[i]; outline.value[i] = outline.value[i-1]; outline.value[i-1] = t } }
 function moveOutlineDown(i: number) { if (i < outline.value.length - 1) { const t = outline.value[i]; outline.value[i] = outline.value[i+1]; outline.value[i+1] = t } }
 
+async function generateTitles() {
+  if (!selectedAccountId.value || !selectedDirection.value) return
+  loadingTitles.value = true
+  try {
+    const points = outline.value.map(o => o.point)
+    const { data } = await api.generateTitles(selectedAccountId.value, idea.value.trim(), selectedDirection.value.title, points)
+    titles.value = data.titles || []
+    if (titles.value.length) {
+      selectedTitle.value = titles.value[0]
+      currentStep.value = 4
+    }
+  } catch (e: any) { ElMessage.error(e?.response?.data?.detail || '标题生成失败') }
+  finally { loadingTitles.value = false }
+}
+
 async function startGenerate() {
-  if (!selectedAccountId.value || !idea.value.trim()) return
+  if (!selectedAccountId.value || !idea.value.trim() || !selectedTitle.value.trim()) return
   generating.value = true
+  currentStep.value = 5
 
   try {
     const points = outline.value.map(o => o.point)
     const wc = selectedWordCount.value || undefined
-    const { data } = await api.triggerGenerateWithOutline(selectedAccountId.value, idea.value.trim(), points, wc)
+    const topic = selectedTitle.value.trim()
+    const { data } = await api.triggerGenerateWithOutline(selectedAccountId.value, topic, points, wc)
     generating.value = false
     // Reset flow
     currentStep.value = 0
@@ -248,6 +298,8 @@ async function startGenerate() {
     directions.value = []
     selectedDirection.value = null
     outline.value = []
+    titles.value = []
+    selectedTitle.value = ''
     ElMessage.success('已加入任务中心')
   } catch (e: any) {
     ElMessage.error(e?.message || '生成失败')
@@ -339,6 +391,16 @@ onMounted(async () => {
 .direction-id { font-family: var(--font-serif); font-size: 20px; font-weight: 700; color: var(--amber); width: 32px; flex-shrink: 0; }
 .direction-title { flex: 1; font-size: 15px; color: var(--text-on-dark); }
 .direction-check { color: var(--amber); font-weight: 700; }
+
+/* 标题选择 */
+.titles-grid { display: flex; flex-direction: column; gap: 8px; margin-bottom: var(--space-md); }
+.title-card { display: flex; align-items: center; gap: 14px; padding: 14px 18px; background: var(--ink-surface); border: 1px solid var(--ink-border); border-radius: var(--radius-lg); cursor: pointer; transition: all var(--duration-fast) var(--ease-out); }
+.title-card:hover { border-color: var(--text-dim); }
+.title-card.selected { border-color: var(--amber); background: rgba(200,132,60,0.06); }
+.title-id { font-family: var(--font-serif); font-size: 18px; font-weight: 700; color: var(--amber); width: 28px; flex-shrink: 0; }
+.title-text { flex: 1; font-size: 15px; color: var(--text-on-dark); line-height: 1.5; }
+.title-check { color: var(--amber); font-weight: 700; }
+.title-edit-area { margin-bottom: var(--space-lg); }
 
 /* 大纲列表 */
 .outline-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: var(--space-md); }

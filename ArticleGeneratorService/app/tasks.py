@@ -520,6 +520,69 @@ def trigger_outline_generation(self, account_id: int, idea: str, direction: str)
 
 
 @celery_app.task(bind=True)
+def trigger_title_generation(self, account_id: int, idea: str, direction: str, outline: list):
+    """生成标题：想法+方向+大纲 → 3-5 个候选标题"""
+    db = SessionLocal()
+    try:
+        account = db.query(Account).filter(Account.id == account_id).first()
+        structured = None
+        if account and account.style_profile_structured:
+            try:
+                structured = json.loads(account.style_profile_structured)
+            except (json.JSONDecodeError, TypeError):
+                pass
+
+        # 构建大纲文本
+        outline_text = "\n".join([f"- {p}" for p in outline]) if outline else ""
+
+        variables = {
+            "idea": idea,
+            "direction": direction,
+            "outline": outline_text,
+        }
+        if account and account.style_profile:
+            variables["style_profile"] = account.style_profile
+
+        llm_url = settings.llm_service_url.rstrip("/")
+        with httpx.Client(timeout=120.0) as client:
+            resp = client.post(f"{llm_url}/chat", json={
+                "scenario": "title",
+                "account_id": account_id,
+                "variables": variables,
+            })
+            resp.raise_for_status()
+            data = resp.json()
+
+        content = data.get("content", "")
+        if not content:
+            raise ValueError("标题生成返回内容为空")
+
+        # 解析 JSON 输出
+        titles = []
+        try:
+            parsed = json.loads(content)
+            if isinstance(parsed, list):
+                titles = [t for t in parsed if isinstance(t, str)]
+        except json.JSONDecodeError:
+            match = re.search(r'```(?:json)?\s*\n?(.*?)\n?```', content, re.DOTALL)
+            if match:
+                try:
+                    parsed = json.loads(match.group(1))
+                    if isinstance(parsed, list):
+                        titles = [t for t in parsed if isinstance(t, str)]
+                except json.JSONDecodeError:
+                    pass
+
+        if not titles:
+            # Fallback: 将 idea 本身作为标题
+            titles = [idea[:50]]
+
+        return {"account_id": account_id, "titles": titles}
+    finally:
+        db.close()
+
+
+@celery_app.task(bind=True)
 def trigger_quality_review(self, article_id: int, article_content: str):
     """异步质量评审：文章 → 质量评分"""
     db = SessionLocal()

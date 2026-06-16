@@ -8,8 +8,8 @@ from typing import List, Optional
 
 from ..database import get_db
 from ..models import Hotspot, Account, Article, GenerationTask, RefineTask
-from ..schemas import GenerateRequest, RefineRequest, DirectionsRequest, DirectionsResponse, OutlineRequest, OutlineResponse
-from ..tasks import trigger_generate, trigger_refine, celery_app, trigger_direction_generation, trigger_outline_generation
+from ..schemas import GenerateRequest, RefineRequest, DirectionsRequest, DirectionsResponse, OutlineRequest, OutlineResponse, TitleRequest, TitleResponse
+from ..tasks import trigger_generate, trigger_refine, celery_app, trigger_direction_generation, trigger_outline_generation, trigger_title_generation
 
 router = APIRouter(prefix="/generate", tags=["文章生成"])
 
@@ -208,3 +208,23 @@ def generate_outline(data: OutlineRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail="大纲生成失败，请重试")
 
     return OutlineResponse(outline=[{"order": o.get("order", i+1), "point": o.get("point", o)} for i, o in enumerate(outline)])
+
+
+@router.post("/titles", response_model=TitleResponse)
+def generate_titles(data: TitleRequest, db: Session = Depends(get_db)):
+    """生成候选标题：想法+方向+大纲 → 3-5 个标题"""
+    account = db.query(Account).filter(Account.id == data.account_id).first()
+    if not account:
+        raise HTTPException(status_code=404, detail="账号不存在")
+    if not data.idea.strip():
+        raise HTTPException(status_code=400, detail="想法不能为空")
+
+    outline_points = [p for p in data.outline if p.strip()]
+    task = trigger_title_generation.delay(data.account_id, data.idea.strip(), data.direction.strip(), outline_points)
+    result = task.get(timeout=120)
+
+    titles = result.get("titles", [])
+    if not titles:
+        raise HTTPException(status_code=500, detail="标题生成失败，请重试")
+
+    return TitleResponse(titles=titles)
