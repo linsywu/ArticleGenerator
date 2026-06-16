@@ -56,7 +56,6 @@ async def verify_crawler_key(x_api_key: str = Header(..., description="爬虫共
 async def verify_any_auth(
     x_api_key: Optional[str] = Header(None, description="爬虫共享密钥（可选）"),
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(optional_security),
-    db: Session = Depends(get_db),
 ) -> None:
     """接受 JWT Bearer token 或 X-API-Key，任一有效即可"""
     # 优先尝试 X-API-Key
