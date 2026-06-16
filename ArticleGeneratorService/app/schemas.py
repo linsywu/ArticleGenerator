@@ -1,10 +1,21 @@
 """
 Pydantic 请求/响应模型
 """
-from datetime import datetime
-from typing import Optional, List, Any
-from pydantic import BaseModel, Field, field_validator
+from datetime import datetime, timezone
+from typing import Optional, List, Any, Annotated
+from pydantic import BaseModel, Field, field_validator, BeforeValidator
 import json
+
+
+def _ensure_utc_tz(dt: datetime) -> datetime:
+    """确保 datetime 带 UTC 时区（naive datetime 视为 UTC）"""
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
+# 带时区的 datetime 类型：Pydantic 序列化时输出 +00:00 后缀
+UtcDateTime = Annotated[datetime, BeforeValidator(_ensure_utc_tz)]
 
 
 # ----- 账号 -----
@@ -35,11 +46,11 @@ class AccountResponse(AccountBase):
     word_count_options: Optional[str] = None
     word_count: Optional[str] = None
     style_profile: Optional[str] = None
-    style_profile_updated_at: Optional[datetime] = None
+    style_profile_updated_at: Optional[UtcDateTime] = None
     style_profile_structured: Optional[Any] = None
     style_profile_version: Optional[int] = None
     style_profile_status: Optional[str] = None
-    created_at: datetime
+    created_at: UtcDateTime
 
     class Config:
         from_attributes = True
@@ -81,7 +92,7 @@ class HotspotSourceUpdate(BaseModel):
 
 class HotspotSourceResponse(HotspotSourceBase):
     id: int
-    created_at: datetime
+    created_at: UtcDateTime
 
     class Config:
         from_attributes = True
@@ -99,7 +110,7 @@ class HotspotBase(BaseModel):
 
 class HotspotResponse(HotspotBase):
     id: int
-    created_at: datetime
+    created_at: UtcDateTime
 
     class Config:
         from_attributes = True
@@ -142,9 +153,9 @@ class ArticleResponse(ArticleBase):
     quality_score: Optional[int] = None
     compliance_score: Optional[int] = None
     review_notes: Optional[str] = None
-    published_at: Optional[datetime] = None
-    created_at: datetime
-    updated_at: datetime
+    published_at: Optional[UtcDateTime] = None
+    created_at: UtcDateTime
+    updated_at: UtcDateTime
 
     class Config:
         from_attributes = True
@@ -204,7 +215,7 @@ class ProviderUpdate(BaseModel):
 
 class ProviderResponse(ProviderBase):
     id: int
-    created_at: datetime
+    created_at: UtcDateTime
     class Config: from_attributes = True
 
 
@@ -234,7 +245,7 @@ class ScenarioConfigUpdate(BaseModel):
 class ScenarioConfigResponse(ScenarioConfigBase):
     id: int
     provider: Optional[ProviderResponse] = None
-    created_at: datetime
+    created_at: UtcDateTime
     class Config: from_attributes = True
 
 
@@ -250,7 +261,7 @@ class ReferenceArticleBase(BaseModel):
 class ReferenceArticleCreate(ReferenceArticleBase): pass
 class ReferenceArticleResponse(ReferenceArticleBase):
     id: int
-    created_at: datetime
+    created_at: UtcDateTime
     class Config: from_attributes = True
 
 

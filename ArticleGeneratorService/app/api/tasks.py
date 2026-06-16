@@ -1,6 +1,7 @@
 """
 统一任务查询 API：合并 generation_tasks 和 refine_tasks
 """
+from datetime import timezone as dt_timezone
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, union, literal_column, text
@@ -9,6 +10,15 @@ import json
 
 from ..database import get_db
 from ..models import GenerationTask, RefineTask, Article, Hotspot, Account
+
+
+def _as_utc(dt):
+    """确保 datetime 带 UTC 时区（兼容旧数据中 naive datetime）"""
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=dt_timezone.utc)
+    return dt
 
 router = APIRouter(prefix="/tasks", tags=["任务中心"])
 
@@ -106,8 +116,8 @@ def query_unified_tasks(
             "account_name": account_name,
             "extra_info": extra_info,
             "error_message": row.error_message,
-            "created_at": row.created_at.isoformat() if row.created_at else None,
-            "updated_at": row.updated_at.isoformat() if row.updated_at else None,
+            "created_at": _as_utc(row.created_at).isoformat() if row.created_at else None,
+            "updated_at": _as_utc(row.updated_at).isoformat() if row.updated_at else None,
         }
         tasks.append(task_item)
 

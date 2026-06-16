@@ -1,6 +1,7 @@
 """
 文章生成与微调 API（触发 Celery 任务）
 """
+from datetime import timezone as dt_timezone
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
@@ -10,6 +11,15 @@ from ..database import get_db
 from ..models import Hotspot, Account, Article, GenerationTask, RefineTask
 from ..schemas import GenerateRequest, RefineRequest, DirectionsRequest, DirectionsResponse, OutlineRequest, OutlineResponse, TitleRequest, TitleResponse
 from ..tasks import trigger_generate, trigger_refine, celery_app, trigger_direction_generation, trigger_outline_generation, trigger_title_generation
+
+
+def _as_utc(dt):
+    """确保 datetime 带 UTC 时区（兼容旧数据中 naive datetime）"""
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=dt_timezone.utc)
+    return dt
 
 router = APIRouter(prefix="/generate", tags=["文章生成"])
 
@@ -154,7 +164,7 @@ def list_generation_tasks(
             "status": t.status,
             "error_message": t.error_message,
             "title": article_title,
-            "created_at": t.created_at,
+            "created_at": _as_utc(t.created_at),
             "hotspot": {"id": hotspot.id, "title": hotspot.title, "source": hotspot.source} if hotspot else None,
             "account": {"id": account.id, "account_name": account.account_name, "platform": account.platform} if account else None,
         })
