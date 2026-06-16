@@ -71,8 +71,18 @@ echo "  API PID: $API_PID"
 echo ""
 echo "[5/7] 启动 Celery Worker (auto-reload)..."
 cd "$ROOT/ArticleGeneratorService"
+
+# 先杀掉已有的 celery 进程（PID 文件优先，fallback pkill）
+if [ -f "$LOG_DIR/celery.pid" ]; then
+    kill "$(cat "$LOG_DIR/celery.pid")" 2>/dev/null && echo "  已停止旧 Celery Worker"
+    sleep 1
+fi
+# 清理残留（不同 nodename 的僵尸进程）
+pkill -f "celery.*article_generator" 2>/dev/null || true
+sleep 1
+
 find . -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null
-nohup watchfiles --filter python "celery -A app.tasks:celery_app worker -l info" app/tasks.py > "$LOG_DIR/celery.log" 2>&1 &
+nohup watchfiles --filter python "celery -A app.tasks:celery_app worker -l info -n celery@%h" app/tasks.py > "$LOG_DIR/celery.log" 2>&1 &
 CELERY_PID=$!
 echo "  Celery PID: $CELERY_PID"
 
