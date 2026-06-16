@@ -1,7 +1,23 @@
 /**
- * API 请求封装
+ * Axios 实例 + 拦截器 + 请求辅助函数
+ *
+ * 所有 API 模块统一导入 { get, post, put, del } 发起请求。
+ * JWT token 由请求拦截器自动从 localStorage 读取并附加。
+ * 401 响应由响应拦截器统一处理：清 token + 跳转登录页。
  */
 import axios from "axios";
+// 动态导入 ElMessage 避免 jsdom 测试环境报错
+let ElMessage: any = null;
+async function ensureElMessage() {
+  if (!ElMessage) {
+    try {
+      const mod = await import("element-plus");
+      ElMessage = mod.ElMessage;
+    } catch {
+      // 非浏览器环境静默降级
+    }
+  }
+}
 
 const client = axios.create({
   baseURL: "/api",
@@ -9,207 +25,181 @@ const client = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
-export interface Hotspot {
-  id: number;
-  title: string;
-  source: string;
-  heat: number;
-  summary?: string;
-  url?: string;
-  status: string;
-  created_at: string;
+// ── 请求拦截器：自动附加 JWT ──
+client.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("access_token");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error),
+);
+
+// ── 响应拦截器：401 时跳转登录 ──
+client.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem("access_token");
+      if (window.location.pathname !== "/login") {
+        await ensureElMessage();
+        if (ElMessage) {
+          ElMessage.error("登录已过期，请重新登录");
+        }
+        window.location.href = "/login";
+      }
+    }
+    return Promise.reject(error);
+  },
+);
+
+// ── 请求辅助函数 ──
+export function get<T = unknown>(url: string, params?: Record<string, unknown>) {
+  return client.get<T>(url, { params });
 }
 
-export interface StyleProfile {
-  thinking_pattern: string
-  structure_pattern: string
-  sentence_pattern: string
-  vocabulary_pattern: string
-  evidence_type: string
-  taboos: string
-  blank_leaving: string
+export function post<T = unknown>(url: string, data?: unknown) {
+  return client.post<T>(url, data);
 }
 
-export interface Account {
-  id: number;
-  platform: string;
-  account_name: string;
-  lora_path?: string;
-  sample_articles?: string;
-  style_profile?: string;
-  style_profile_updated_at?: string;
-  style_profile_structured?: StyleProfile | null;
-  style_profile_version?: number;
-  style_profile_status?: string;
-  created_at: string;
+export function put<T = unknown>(url: string, data?: unknown) {
+  return client.put<T>(url, data);
 }
 
-export interface HotspotSource {
-  id: number;
-  name: string;
-  type: string;
-  config?: string;
-  enabled: boolean;
-  created_at: string;
+export function del<T = unknown>(url: string) {
+  return client.delete<T>(url);
 }
 
-export interface Article {
-  id: number;
-  hotspot_id: number;
-  account_id: number;
-  content: string;
-  status: string;
-  refine_history?: string;
-  quality_score?: number;
-  compliance_score?: number;
-  review_notes?: string;
-  published_at?: string;
-  created_at: string;
-  updated_at: string;
-  hotspot?: Hotspot;
-  account?: Account;
+export function patch<T = unknown>(url: string, data?: unknown) {
+  return client.patch<T>(url, data);
 }
 
-export interface Provider {
-  id: number;
-  name: string;
-  base_url: string;
-  api_key: string;
-  models?: string;
-  enabled: boolean;
-  created_at: string;
-}
+export default client;
 
-export interface ScenarioConfig {
-  id: number;
-  scenario: string;
-  provider_id: number;
-  model: string;
-  system_prompt_template?: string;
-  params?: string;
-  priority: number;
-  enabled: boolean;
-  provider?: Provider;
-  created_at: string;
-}
+// ── 向下兼容：旧版 api 对象（新代码请使用 @/api/index 的模块化 API）──
 
-export interface ReferenceArticle {
-  id: number;
-  account_id: number;
-  title: string;
-  content: string;
-  source_url?: string;
-  embedding?: string;
-  is_benchmark: boolean;
-  created_at: string;
-}
+// 重新导出类型，供旧版视图代码使用
+// 视图文件逐步迁移到统一导入，过渡期间保留此导出
+export type {
+  Hotspot,
+  StyleProfile,
+  Account,
+  HotspotSource,
+  Article,
+  Provider,
+  ScenarioConfig,
+  ReferenceArticle,
+  GenerationLog,
+  DirectionItem,
+  OutlinePoint,
+  PaginatedResponse,
+} from "@/api/types";
 
-export interface GenerationLog {
-  id: number;
-  scenario: string;
-  provider_id?: number;
-  model?: string;
-  prompt_tokens: number;
-  completion_tokens: number;
-  latency_ms: number;
-  status: string;
-  error_message?: string;
-  created_at: string;
-}
+import type {
+  Hotspot,
+  Account,
+  Article,
+  HotspotSource,
+  Provider,
+  ScenarioConfig,
+  ReferenceArticle,
+  GenerationLog,
+  DirectionItem,
+  OutlinePoint,
+  PaginatedResponse,
+} from "@/api/types";
 
-export interface DirectionItem { id: string; title: string }
-export interface OutlinePoint { order: number; point: string }
-
-export interface PaginatedResponse<T> {
-  data: T[];
-  total: number;
-}
-
+/**
+ * @deprecated 请逐步迁移到 @/api/index 的模块化 API 导入
+ *   旧: import { api } from "@/api/client"
+ *   新: import api from "@/api"
+ */
 export const api = {
   // 热点
   getHotspots: (params?: { status?: string; source?: string; keyword?: string; page?: number; page_size?: number }) =>
-    client.get<PaginatedResponse<Hotspot>>("/hotspots", { params }),
-  getHotspotSourceOptions: () => client.get<{ sources: string[] }>("/hotspots/sources"),
+    get<PaginatedResponse<Hotspot>>("/hotspots", params as Record<string, unknown>),
+  getHotspotSourceOptions: () => get<{ sources: string[] }>("/hotspots/sources"),
 
   // 账号
-  getAccounts: () => client.get<Account[]>("/accounts"),
+  getAccounts: () => get<Account[]>("/accounts"),
   createAccount: (data: { platform: string; account_name: string; lora_path?: string }) =>
-    client.post<Account>("/accounts", data),
+    post<Account>("/accounts", data),
   updateAccount: (id: number, data: { platform?: string; account_name?: string; lora_path?: string }) =>
-    client.put<Account>(`/accounts/${id}`, data),
-  deleteAccount: (id: number) => client.delete(`/accounts/${id}`),
+    put<Account>(`/accounts/${id}`, data),
+  deleteAccount: (id: number) => del(`/accounts/${id}`),
 
   // 文章
   getArticles: (params?: { status?: string; page?: number; page_size?: number }) =>
-    client.get<PaginatedResponse<Article>>("/articles", { params }),
-  getArticle: (id: number) => client.get<Article>(`/articles/${id}`),
+    get<PaginatedResponse<Article>>("/articles", params as Record<string, unknown>),
+  getArticle: (id: number) => get<Article>(`/articles/${id}`),
   updateArticleStatus: (id: number, status: string) =>
-    client.patch(`/articles/${id}/status`, { status }),
+    patch(`/articles/${id}/status`, { status }),
   updateArticle: (id: number, data: { content?: string; review_notes?: string }) =>
-    client.put(`/articles/${id}`, data),
+    put(`/articles/${id}`, data),
 
   // 生成
   triggerGenerate: (accountId: number, hotspotIds?: number[], customTopic?: string) =>
-    client.post("/generate/trigger", { hotspot_ids: hotspotIds || [], account_id: accountId, custom_topic: customTopic || null }),
-  // 方向 + 大纲
+    post("/generate/trigger", { hotspot_ids: hotspotIds || [], account_id: accountId, custom_topic: customTopic || null }),
   generateDirections: (accountId: number, idea: string) =>
-    client.post<{ directions: DirectionItem[] }>("/generate/directions", { account_id: accountId, idea }),
+    post<{ directions: DirectionItem[] }>("/generate/directions", { account_id: accountId, idea }),
   generateOutline: (accountId: number, idea: string, direction: string) =>
-    client.post<{ outline: OutlinePoint[] }>("/generate/outline", { account_id: accountId, idea, direction }),
+    post<{ outline: OutlinePoint[] }>("/generate/outline", { account_id: accountId, idea, direction }),
   triggerGenerateWithOutline: (accountId: number, customTopic: string, outline: string[]) =>
-    client.post("/generate/trigger", { hotspot_ids: [], account_id: accountId, custom_topic: customTopic, outline }),
+    post("/generate/trigger", { hotspot_ids: [], account_id: accountId, custom_topic: customTopic, outline }),
   triggerRefine: (articleId: number, keywords: string) =>
-    client.post(`/generate/refine/${articleId}`, { keywords }),
-  getTaskStatus: (taskId: string) => client.get(`/generate/task/${taskId}`),
+    post(`/generate/refine/${articleId}`, { keywords }),
+  getTaskStatus: (taskId: string) => get(`/generate/task/${taskId}`),
   getTasksBatch: (taskIds: string[]) =>
-    client.get("/generate/tasks", { params: { task_ids: taskIds.join(",") } }),
+    get("/generate/tasks", { task_ids: taskIds.join(",") } as Record<string, unknown>),
   getTaskList: (params?: { status?: string; page?: number; page_size?: number }) =>
-    client.get<PaginatedResponse<unknown>>("/generate/tasks/list", { params }),
-  cancelTask: (taskId: string) => client.post(`/generate/tasks/${taskId}/cancel`),
-  getRefineTaskStatus: (taskId: string) => client.get(`/generate/refine-task/${taskId}`),
+    get<PaginatedResponse<unknown>>("/generate/tasks/list", params as Record<string, unknown>),
+  cancelTask: (taskId: string) => post(`/generate/tasks/${taskId}/cancel`),
+  getRefineTaskStatus: (taskId: string) => get(`/generate/refine-task/${taskId}`),
 
   // 热点抓取
-  crawlHotspots: () => client.post<{ created: number; total: number; error?: string }>("/hotspots/crawl"),
+  crawlHotspots: () => post<{ created: number; total: number; error?: string }>("/hotspots/crawl"),
 
-  // 热点源配置（hotspot_sources 表）
-  getHotspotSourceList: () => client.get<HotspotSource[]>("/hotspot-sources"),
+  // 热点源配置
+  getHotspotSourceList: () => get<HotspotSource[]>("/hotspot-sources"),
   createHotspotSource: (data: { name: string; type: string; config?: string; enabled?: boolean }) =>
-    client.post<HotspotSource>("/hotspot-sources", data),
+    post<HotspotSource>("/hotspot-sources", data),
   updateHotspotSource: (id: number, data: { name?: string; type?: string; config?: string; enabled?: boolean }) =>
-    client.put<HotspotSource>(`/hotspot-sources/${id}`, data),
-  deleteHotspotSource: (id: number) => client.delete(`/hotspot-sources/${id}`),
+    put<HotspotSource>(`/hotspot-sources/${id}`, data),
+  deleteHotspotSource: (id: number) => del(`/hotspot-sources/${id}`),
 
   // 供应商管理
-  getProviders: () => client.get<Provider[]>("/providers"),
+  getProviders: () => get<Provider[]>("/providers"),
   createProvider: (data: { name: string; base_url: string; api_key: string; models?: string; enabled?: boolean }) =>
-    client.post<Provider>("/providers", data),
+    post<Provider>("/providers", data),
   updateProvider: (id: number, data: { name?: string; base_url?: string; api_key?: string; models?: string; enabled?: boolean }) =>
-    client.put<Provider>(`/providers/${id}`, data),
-  deleteProvider: (id: number) => client.delete(`/providers/${id}`),
+    put<Provider>(`/providers/${id}`, data),
+  deleteProvider: (id: number) => del(`/providers/${id}`),
 
   // 场景配置
-  getScenarioConfigs: () => client.get<ScenarioConfig[]>("/scenario-configs"),
+  getScenarioConfigs: () => get<ScenarioConfig[]>("/scenario-configs"),
   createScenarioConfig: (data: { scenario: string; provider_id: number; model: string; system_prompt_template?: string; params?: string; priority?: number; enabled?: boolean }) =>
-    client.post<ScenarioConfig>("/scenario-configs", data),
+    post<ScenarioConfig>("/scenario-configs", data),
   updateScenarioConfig: (id: number, data: { provider_id?: number; model?: string; system_prompt_template?: string; params?: string; priority?: number; enabled?: boolean }) =>
-    client.put<ScenarioConfig>(`/scenario-configs/${id}`, data),
-  deleteScenarioConfig: (id: number) => client.delete(`/scenario-configs/${id}`),
+    put<ScenarioConfig>(`/scenario-configs/${id}`, data),
+  deleteScenarioConfig: (id: number) => del(`/scenario-configs/${id}`),
 
   // 参考文章
   getReferenceArticles: (accountId: number) =>
-    client.get<ReferenceArticle[]>(`/accounts/${accountId}/reference-articles`),
+    get<ReferenceArticle[]>(`/accounts/${accountId}/reference-articles`),
   createReferenceArticle: (accountId: number, data: { title: string; content: string; source_url?: string; is_benchmark?: boolean }) =>
-    client.post<ReferenceArticle>(`/accounts/${accountId}/reference-articles`, { ...data, account_id: accountId }),
-  updateReferenceArticle: (accountId: number, articleId: number, data: { title: string; content: string; source_url?: string; is_benchmark?: boolean; account_id: number }) =>
-    client.put<ReferenceArticle>(`/accounts/${accountId}/reference-articles/${articleId}`, data),
+    post<ReferenceArticle>(`/accounts/${accountId}/reference-articles`, { ...data, account_id: accountId }),
+  updateReferenceArticle: (accountId: number, articleId: number, data: { title: string; content: string; source_url?: string; is_benchmark?: boolean }) =>
+    put<ReferenceArticle>(`/accounts/${accountId}/reference-articles/${articleId}`, { ...data, account_id: accountId }),
   deleteReferenceArticle: (accountId: number, articleId: number) =>
-    client.delete(`/accounts/${accountId}/reference-articles/${articleId}`),
+    del(`/accounts/${accountId}/reference-articles/${articleId}`),
 
   // 蒸馏
   triggerDistill: (accountId: number) =>
-    client.post(`/accounts/${accountId}/distill`),
+    post(`/accounts/${accountId}/distill`),
 
   // 生成日志
   getGenerationLogs: (params?: { scenario?: string; page?: number; page_size?: number }) =>
-    client.get<PaginatedResponse<GenerationLog>>("/generation-logs", { params }),
+    get<PaginatedResponse<GenerationLog>>("/generation-logs", params as Record<string, unknown>),
 };

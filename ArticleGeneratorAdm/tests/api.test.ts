@@ -2,22 +2,26 @@
  * API 模块测试用例
  */
 import { describe, it, expect } from "vitest";
-import { api } from "@/api/client";
+import { get, post, put, del, patch } from "@/api/client";
 
-describe("api", () => {
-  it("api 对象包含 getHotspots 方法", () => {
-    expect(typeof api.getHotspots).toBe("function");
+describe("api client exports", () => {
+  it("导出 get 方法", () => {
+    expect(typeof get).toBe("function");
   });
 
-  it("api 对象包含 getAccounts 方法", () => {
-    expect(typeof api.getAccounts).toBe("function");
+  it("导出 post 方法", () => {
+    expect(typeof post).toBe("function");
   });
 
-  it("api 对象包含 getArticles 方法", () => {
-    expect(typeof api.getArticles).toBe("function");
+  it("导出 put 方法", () => {
+    expect(typeof put).toBe("function");
   });
 
-  it("api 对象包含 triggerGenerate 方法", () => {
-    expect(typeof api.triggerGenerate).toBe("function");
+  it("导出 del 方法", () => {
+    expect(typeof del).toBe("function");
+  });
+
+  it("导出 patch 方法", () => {
+    expect(typeof patch).toBe("function");
   });
 });

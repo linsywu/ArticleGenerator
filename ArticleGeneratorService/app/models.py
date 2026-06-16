@@ -1,10 +1,26 @@
 """
 数据模型定义
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
 from .database import Base
+
+
+def _utcnow():
+    return datetime.now(timezone.utc)
+
+
+class User(Base):
+    """管理后台用户"""
+
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    username = Column(String(100), nullable=False, unique=True)
+    password_hash = Column(String(200), nullable=False)
+    is_active = Column(Integer, default=1)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
 
 
 class HotspotSource(Base):
