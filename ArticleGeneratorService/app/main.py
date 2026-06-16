@@ -21,10 +21,18 @@ app = FastAPI(
     version="0.1.0",
 )
 
+# Parse CORS origins — ban wildcard + credentials combo for security
+origins = [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
+if not origins or "*" in origins:
+    origins = ["http://localhost:5173"]  # Safe dev default
+    allow_creds = False
+else:
+    allow_creds = True
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins.split(",") if "," in settings.cors_origins else ["*"],
-    allow_credentials=True,
+    allow_origins=origins,
+    allow_credentials=allow_creds,
     allow_methods=["*"],
     allow_headers=["*"],
 )
