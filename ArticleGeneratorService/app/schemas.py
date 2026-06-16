@@ -1,10 +1,28 @@
 """
 Pydantic 请求/响应模型
 """
-from datetime import datetime
-from typing import Optional, List, Any
-from pydantic import BaseModel, Field, field_validator
+from datetime import datetime, timezone
+from typing import Optional, List, Any, Annotated
+from pydantic import BaseModel, Field, field_validator, BeforeValidator
 import json
+
+
+def _ensure_utc_tz(dt: datetime) -> datetime:
+    """确保 datetime 带 UTC 时区（naive datetime 视为 UTC）"""
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
+def mask_api_key(key: str) -> str:
+    """掩码 api_key: sk-abc123...xyz → sk-a***xyz"""
+    if not key or len(key) <= 7:
+        return key
+    return key[:3] + "***" + key[-4:]
+
+
+# 带时区的 datetime 类型：Pydantic 序列化时输出 +00:00 后缀
+UtcDateTime = Annotated[datetime, BeforeValidator(_ensure_utc_tz)]
 
 
 # ----- 认证 -----
@@ -210,6 +228,11 @@ class ProviderResponse(ProviderBase):
     id: int
     created_at: datetime
     class Config: from_attributes = True
+
+    @field_validator("api_key", mode="after")
+    @classmethod
+    def mask_api_key_response(cls, v: str) -> str:
+        return mask_api_key(v)
 
 
 # ----- ScenarioConfig -----

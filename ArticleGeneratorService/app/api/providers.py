@@ -38,7 +38,11 @@ def update_provider(provider_id: int, data: ProviderUpdate, db: Session = Depend
     p = db.query(Provider).filter(Provider.id == provider_id).first()
     if not p:
         raise HTTPException(status_code=404, detail="供应商不存在")
-    for k, v in data.model_dump(exclude_unset=True).items():
+    updates = data.model_dump(exclude_unset=True)
+    # api_key 为空则保留原值（防止误覆盖）
+    if "api_key" in updates and not updates["api_key"]:
+        del updates["api_key"]
+    for k, v in updates.items():
         setattr(p, k, v)
     db.commit()
     db.refresh(p)
