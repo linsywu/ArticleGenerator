@@ -8,14 +8,14 @@ from typing import List
 from ..database import get_db
 from ..models import HotspotSource
 from ..schemas import HotspotSourceCreate, HotspotSourceUpdate, HotspotSourceResponse
-from ..deps import get_current_user, verify_crawler_key
+from ..deps import get_current_user, verify_any_auth
 
 router = APIRouter(prefix="/hotspot-sources", tags=["热点源配置"])
 
 
 @router.get("", response_model=List[HotspotSourceResponse])
-def list_sources(_crawler=Depends(verify_crawler_key), db: Session = Depends(get_db)):
-    """获取热点源列表（爬虫用 X-API-Key 认证）"""
+def list_sources(_auth=Depends(verify_any_auth), db: Session = Depends(get_db)):
+    """获取热点源列表（支持 JWT 或 X-API-Key 认证）"""
     sources = db.query(HotspotSource).order_by(HotspotSource.id).all()
     return [
         HotspotSourceResponse(
@@ -46,8 +46,8 @@ def create_source(data: HotspotSourceCreate, _user=Depends(get_current_user), db
 
 
 @router.get("/{source_id}", response_model=HotspotSourceResponse)
-def get_source(source_id: int, _crawler=Depends(verify_crawler_key), db: Session = Depends(get_db)):
-    """获取热点源详情（爬虫用 X-API-Key 认证）"""
+def get_source(source_id: int, _auth=Depends(verify_any_auth), db: Session = Depends(get_db)):
+    """获取热点源详情（支持 JWT 或 X-API-Key 认证）"""
     s = db.query(HotspotSource).filter(HotspotSource.id == source_id).first()
     if not s:
         raise HTTPException(status_code=404, detail="热点源不存在")
