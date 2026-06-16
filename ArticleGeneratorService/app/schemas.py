@@ -14,8 +14,28 @@ def _ensure_utc_tz(dt: datetime) -> datetime:
     return dt
 
 
+def mask_api_key(key: str) -> str:
+    """掩码 api_key: sk-abc123...xyz → sk-a***xyz"""
+    if not key or len(key) <= 7:
+        return key
+    return key[:3] + "***" + key[-4:]
+
+
 # 带时区的 datetime 类型：Pydantic 序列化时输出 +00:00 后缀
 UtcDateTime = Annotated[datetime, BeforeValidator(_ensure_utc_tz)]
+
+
+# ----- 认证 -----
+class LoginRequest(BaseModel):
+    """登录请求"""
+    username: str
+    password: str
+
+
+class LoginResponse(BaseModel):
+    """登录响应"""
+    access_token: str
+    token_type: str = "bearer"
 
 
 # ----- 账号 -----
@@ -24,8 +44,6 @@ class AccountBase(BaseModel):
     account_name: str
     lora_path: Optional[str] = None
     sample_articles: Optional[str] = None
-    word_count_options: Optional[str] = None  # JSON: ["1500字左右","2000到3000字"]
-    word_count: Optional[str] = None  # 默认字数描述
 
 
 class AccountCreate(AccountBase):
@@ -37,20 +55,16 @@ class AccountUpdate(BaseModel):
     account_name: Optional[str] = None
     lora_path: Optional[str] = None
     sample_articles: Optional[str] = None
-    word_count_options: Optional[str] = None
-    word_count: Optional[str] = None
 
 
 class AccountResponse(AccountBase):
     id: int
-    word_count_options: Optional[str] = None
-    word_count: Optional[str] = None
     style_profile: Optional[str] = None
-    style_profile_updated_at: Optional[UtcDateTime] = None
+    style_profile_updated_at: Optional[datetime] = None
     style_profile_structured: Optional[Any] = None
     style_profile_version: Optional[int] = None
     style_profile_status: Optional[str] = None
-    created_at: UtcDateTime
+    created_at: datetime
 
     class Config:
         from_attributes = True
@@ -92,7 +106,7 @@ class HotspotSourceUpdate(BaseModel):
 
 class HotspotSourceResponse(HotspotSourceBase):
     id: int
-    created_at: UtcDateTime
+    created_at: datetime
 
     class Config:
         from_attributes = True
@@ -110,7 +124,7 @@ class HotspotBase(BaseModel):
 
 class HotspotResponse(HotspotBase):
     id: int
-    created_at: UtcDateTime
+    created_at: datetime
 
     class Config:
         from_attributes = True
@@ -139,23 +153,21 @@ class ArticleListResponse(BaseModel):
 
 # ----- 文章 -----
 class ArticleBase(BaseModel):
-    title: Optional[str] = None  # 文章标题
     content: str
     status: str = "pending_review"
 
 
 class ArticleResponse(ArticleBase):
     id: int
-    title: Optional[str] = None
     hotspot_id: Optional[int] = None
     account_id: int
     refine_history: Optional[str] = None
     quality_score: Optional[int] = None
     compliance_score: Optional[int] = None
     review_notes: Optional[str] = None
-    published_at: Optional[UtcDateTime] = None
-    created_at: UtcDateTime
-    updated_at: UtcDateTime
+    published_at: Optional[datetime] = None
+    created_at: datetime
+    updated_at: datetime
 
     class Config:
         from_attributes = True
@@ -178,7 +190,6 @@ class GenerateRequest(BaseModel):
     account_id: int
     custom_topic: Optional[str] = None
     outline: Optional[List[str]] = None  # 新增：大纲要点列表
-    word_count: Optional[str] = None  # 新增：用户选择的字数
 
 
 class RefineRequest(BaseModel):
@@ -213,10 +224,23 @@ class ProviderUpdate(BaseModel):
     models: Optional[str] = None
     enabled: Optional[bool] = None
 
+    @field_validator("api_key", mode="before")
+    @classmethod
+    def skip_masked_key(cls, v: Optional[str]) -> Optional[str]:
+        """如果传入掩码后的 key（如 sk-a***xyz），视为留空"""
+        if v and "***" in v:
+            return None
+        return v
+
 class ProviderResponse(ProviderBase):
     id: int
-    created_at: UtcDateTime
+    created_at: datetime
     class Config: from_attributes = True
+
+    @field_validator("api_key", mode="after")
+    @classmethod
+    def mask_api_key_response(cls, v: str) -> str:
+        return mask_api_key(v)
 
 
 # ----- ScenarioConfig -----
@@ -227,8 +251,6 @@ class ScenarioConfigBase(BaseModel):
     system_prompt_template: Optional[str] = None
     params: Optional[str] = None
     priority: int = 0
-    description: Optional[str] = None  # 场景说明
-    sort_order: int = 0  # 显示排序
     enabled: bool = True
 
 class ScenarioConfigCreate(ScenarioConfigBase): pass
@@ -238,14 +260,12 @@ class ScenarioConfigUpdate(BaseModel):
     system_prompt_template: Optional[str] = None
     params: Optional[str] = None
     priority: Optional[int] = None
-    description: Optional[str] = None
-    sort_order: Optional[int] = None
     enabled: Optional[bool] = None
 
 class ScenarioConfigResponse(ScenarioConfigBase):
     id: int
     provider: Optional[ProviderResponse] = None
-    created_at: UtcDateTime
+    created_at: datetime
     class Config: from_attributes = True
 
 
@@ -261,7 +281,7 @@ class ReferenceArticleBase(BaseModel):
 class ReferenceArticleCreate(ReferenceArticleBase): pass
 class ReferenceArticleResponse(ReferenceArticleBase):
     id: int
-    created_at: UtcDateTime
+    created_at: datetime
     class Config: from_attributes = True
 
 
@@ -286,7 +306,6 @@ class DistillRequest(BaseModel):
 class DirectionsRequest(BaseModel):
     account_id: int
     idea: str
-    word_count: Optional[str] = None
 
 class DirectionItem(BaseModel):
     id: str
@@ -307,13 +326,3 @@ class OutlinePoint(BaseModel):
 
 class OutlineResponse(BaseModel):
     outline: List[OutlinePoint]
-
-# ── 标题生成 ──
-class TitleRequest(BaseModel):
-    account_id: int
-    idea: str
-    direction: str
-    outline: List[str]
-
-class TitleResponse(BaseModel):
-    titles: List[str]

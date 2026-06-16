@@ -8,8 +8,19 @@ from .database import Base
 
 
 def _utcnow():
-    """返回带时区的 UTC 当前时间（替代已弃用的 _utcnow）"""
     return datetime.now(timezone.utc)
+
+
+class User(Base):
+    """管理后台用户"""
+
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    username = Column(String(100), nullable=False, unique=True)
+    password_hash = Column(String(200), nullable=False)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
 
 
 class HotspotSource(Base):
@@ -22,8 +33,8 @@ class HotspotSource(Base):
     type = Column(String(50), nullable=False)  # API / crawler
     config = Column(Text)  # JSON 字符串
     enabled = Column(Integer, default=1)  # 0 否 1 是
-    created_at = Column(DateTime(timezone=True), default=_utcnow)
-    updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
 class Account(Base):
@@ -37,14 +48,12 @@ class Account(Base):
     lora_path = Column(String(500))
     sample_articles = Column(Text)  # JSON 字符串
     style_profile = Column(Text)
-    style_profile_updated_at = Column(DateTime(timezone=True))
+    style_profile_updated_at = Column(DateTime)
     style_profile_structured = Column(Text)  # JSON: 7维度结构化画像
     style_profile_version = Column(Integer, default=1)
     style_profile_status = Column(String(20), default="none")  # none/pending/ready/outdated
-    word_count_options = Column(Text)  # JSON: ["1500字左右","2000到3000字","3000字以上"]
-    word_count = Column(Text)  # 默认选中的字数描述
-    created_at = Column(DateTime(timezone=True), default=_utcnow)
-    updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     articles = relationship("Article", back_populates="account")
 
@@ -61,8 +70,8 @@ class Hotspot(Base):
     summary = Column(Text)
     url = Column(String(1000))
     status = Column(String(20), default="unselected")  # unselected/selected/generated
-    created_at = Column(DateTime(timezone=True), default=_utcnow)
-    updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     articles = relationship("Article", back_populates="hotspot")
 
@@ -73,7 +82,6 @@ class Article(Base):
     __tablename__ = "articles"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    title = Column(String(200))  # 文章标题
     hotspot_id = Column(Integer, ForeignKey("hotspots.id", ondelete="SET NULL"), nullable=True)
     account_id = Column(Integer, ForeignKey("accounts.id", ondelete="CASCADE"), nullable=False)
     content = Column(Text, nullable=False)
@@ -82,9 +90,9 @@ class Article(Base):
     quality_score = Column(Integer)
     compliance_score = Column(Integer)
     review_notes = Column(Text)
-    published_at = Column(DateTime(timezone=True))
-    created_at = Column(DateTime(timezone=True), default=_utcnow)
-    updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
+    published_at = Column(DateTime)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     hotspot = relationship("Hotspot", back_populates="articles")
     account = relationship("Account", back_populates="articles")
@@ -102,8 +110,8 @@ class GenerationTask(Base):
     article_id = Column(Integer)
     status = Column(String(20), default="pending")  # pending/running/success/failed
     error_message = Column(Text)
-    created_at = Column(DateTime(timezone=True), default=_utcnow)
-    updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
 class RefineTask(Base):
@@ -116,8 +124,8 @@ class RefineTask(Base):
     article_id = Column(Integer, ForeignKey("articles.id", ondelete="CASCADE"), nullable=False)
     status = Column(String(20), default="pending")  # pending/running/success/failed
     error_message = Column(Text)
-    created_at = Column(DateTime(timezone=True), default=_utcnow)
-    updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
 class Provider(Base):
@@ -130,8 +138,8 @@ class Provider(Base):
     api_key = Column(String(500), nullable=False)
     models = Column(Text)  # JSON
     enabled = Column(Integer, default=1)
-    created_at = Column(DateTime(timezone=True), default=_utcnow)
-    updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
 class ScenarioConfig(Base):
@@ -145,11 +153,9 @@ class ScenarioConfig(Base):
     system_prompt_template = Column(Text)
     params = Column(Text)  # JSON
     priority = Column(Integer, default=0)
-    description = Column(Text)  # 场景说明
-    sort_order = Column(Integer, default=0)  # 显示排序
     enabled = Column(Integer, default=1)
-    created_at = Column(DateTime(timezone=True), default=_utcnow)
-    updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     provider = relationship("Provider", lazy="joined")
 
 
@@ -164,7 +170,7 @@ class ReferenceArticle(Base):
     source_url = Column(String(1000))
     embedding = Column(Text)  # JSON
     is_benchmark = Column(Integer, default=0)
-    created_at = Column(DateTime(timezone=True), default=_utcnow)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
 
 class GenerationLog(Base):
@@ -180,4 +186,4 @@ class GenerationLog(Base):
     latency_ms = Column(Integer, default=0)
     status = Column(String(20), default="success")
     error_message = Column(Text)
-    created_at = Column(DateTime(timezone=True), default=_utcnow)
+    created_at = Column(DateTime, default=datetime.utcnow)

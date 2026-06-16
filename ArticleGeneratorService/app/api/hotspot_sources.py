@@ -8,13 +8,14 @@ from typing import List
 from ..database import get_db
 from ..models import HotspotSource
 from ..schemas import HotspotSourceCreate, HotspotSourceUpdate, HotspotSourceResponse
+from ..deps import get_current_user, verify_any_auth
 
 router = APIRouter(prefix="/hotspot-sources", tags=["热点源配置"])
 
 
 @router.get("", response_model=List[HotspotSourceResponse])
-def list_sources(db: Session = Depends(get_db)):
-    """获取热点源列表"""
+def list_sources(_auth=Depends(verify_any_auth), db: Session = Depends(get_db)):
+    """获取热点源列表（支持 JWT 或 X-API-Key 认证）"""
     sources = db.query(HotspotSource).order_by(HotspotSource.id).all()
     return [
         HotspotSourceResponse(
@@ -30,8 +31,8 @@ def list_sources(db: Session = Depends(get_db)):
 
 
 @router.post("", response_model=HotspotSourceResponse)
-def create_source(data: HotspotSourceCreate, db: Session = Depends(get_db)):
-    """创建热点源"""
+def create_source(data: HotspotSourceCreate, _user=Depends(get_current_user), db: Session = Depends(get_db)):
+    """创建热点源（需 JWT 认证）"""
     s = HotspotSource(
         name=data.name,
         type=data.type,
@@ -45,8 +46,8 @@ def create_source(data: HotspotSourceCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/{source_id}", response_model=HotspotSourceResponse)
-def get_source(source_id: int, db: Session = Depends(get_db)):
-    """获取热点源详情"""
+def get_source(source_id: int, _auth=Depends(verify_any_auth), db: Session = Depends(get_db)):
+    """获取热点源详情（支持 JWT 或 X-API-Key 认证）"""
     s = db.query(HotspotSource).filter(HotspotSource.id == source_id).first()
     if not s:
         raise HTTPException(status_code=404, detail="热点源不存在")
@@ -54,8 +55,8 @@ def get_source(source_id: int, db: Session = Depends(get_db)):
 
 
 @router.put("/{source_id}", response_model=HotspotSourceResponse)
-def update_source(source_id: int, data: HotspotSourceUpdate, db: Session = Depends(get_db)):
-    """更新热点源"""
+def update_source(source_id: int, data: HotspotSourceUpdate, _user=Depends(get_current_user), db: Session = Depends(get_db)):
+    """更新热点源（需 JWT 认证）"""
     s = db.query(HotspotSource).filter(HotspotSource.id == source_id).first()
     if not s:
         raise HTTPException(status_code=404, detail="热点源不存在")
@@ -70,8 +71,8 @@ def update_source(source_id: int, data: HotspotSourceUpdate, db: Session = Depen
 
 
 @router.delete("/{source_id}")
-def delete_source(source_id: int, db: Session = Depends(get_db)):
-    """删除热点源"""
+def delete_source(source_id: int, _user=Depends(get_current_user), db: Session = Depends(get_db)):
+    """删除热点源（需 JWT 认证）"""
     source = db.query(HotspotSource).filter(HotspotSource.id == source_id).first()
     if not source:
         raise HTTPException(status_code=404, detail="热点源不存在")

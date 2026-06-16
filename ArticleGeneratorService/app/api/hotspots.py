@@ -13,6 +13,7 @@ from ..database import get_db
 from ..models import Hotspot
 from ..schemas import HotspotResponse, HotspotBase, HotspotListResponse
 from ..config import settings
+from ..deps import get_current_user, verify_crawler_key
 
 router = APIRouter(prefix="/hotspots", tags=["热点"])
 
@@ -37,6 +38,7 @@ def _run_crawl():
 @router.get("", response_model=HotspotListResponse)
 def list_hotspots(
     db: Session = Depends(get_db),
+    _user=Depends(get_current_user),
     status: Optional[str] = None,
     source: Optional[str] = None,
     keyword: Optional[str] = None,
@@ -59,21 +61,21 @@ def list_hotspots(
 
 
 @router.post("/crawl")
-def crawl_hotspots():
+def crawl_hotspots(_user=Depends(get_current_user)):
     """手动拉取最新热点（调用 HotspotCrawler）"""
     return _run_crawl()
 
 
 @router.get("/sources")
-def list_hotspot_sources(db: Session = Depends(get_db)):
+def list_hotspot_sources(_user=Depends(get_current_user), db: Session = Depends(get_db)):
     """获取热点来源列表（用于筛选下拉，从已有热点聚合）"""
     rows = db.query(Hotspot.source).distinct().order_by(Hotspot.source).all()
     return {"sources": [r[0] for r in rows if r[0]]}
 
 
 @router.post("", response_model=HotspotResponse)
-def create_hotspot(data: HotspotBase, db: Session = Depends(get_db)):
-    """创建热点（供抓取模块调用）"""
+def create_hotspot(data: HotspotBase, _user=Depends(get_current_user), db: Session = Depends(get_db)):
+    """创建热点（供管理后台使用）"""
     hotspot = Hotspot(**data.model_dump())
     db.add(hotspot)
     db.commit()
@@ -82,8 +84,8 @@ def create_hotspot(data: HotspotBase, db: Session = Depends(get_db)):
 
 
 @router.post("/batch")
-def batch_create_hotspots(items: List[HotspotBase], db: Session = Depends(get_db)):
-    """批量创建热点（供抓取模块调用）"""
+def batch_create_hotspots(items: List[HotspotBase], _crawler=Depends(verify_crawler_key), db: Session = Depends(get_db)):
+    """批量创建热点（供抓取模块调用，需要 X-API-Key 头）"""
     created = 0
     for data in items:
         # 简单去重：同标题同来源跳过
@@ -101,7 +103,7 @@ def batch_create_hotspots(items: List[HotspotBase], db: Session = Depends(get_db
 
 
 @router.get("/{hotspot_id}", response_model=HotspotResponse)
-def get_hotspot(hotspot_id: int, db: Session = Depends(get_db)):
+def get_hotspot(hotspot_id: int, _user=Depends(get_current_user), db: Session = Depends(get_db)):
     """获取热点详情"""
     hotspot = db.query(Hotspot).filter(Hotspot.id == hotspot_id).first()
     if not hotspot:

@@ -1,17 +1,33 @@
 """
 数据库连接与会话管理
 """
+from pathlib import Path
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
+
 from .config import settings
+
+
+def _resolve_db_url(url: str) -> str:
+    """将 SQLite 相对路径转换为绝对路径，避免 CWD 问题"""
+    if url.startswith("sqlite:///./"):
+        relative = url[len("sqlite:///./"):]
+        app_dir = Path(__file__).resolve().parent.parent  # ArticleGeneratorService/
+        resolved = app_dir / relative
+        return f"sqlite:///{resolved}"
+    return url
+
+
+_resolved_url = _resolve_db_url(settings.database_url)
 
 # SQLite 需要特殊配置以支持外键
 connect_args = {}
-if settings.database_url.startswith("sqlite"):
+if _resolved_url.startswith("sqlite"):
     connect_args = {"check_same_thread": False}
 
 engine = create_engine(
-    settings.database_url,
+    _resolved_url,
     connect_args=connect_args,
     echo=False,
 )

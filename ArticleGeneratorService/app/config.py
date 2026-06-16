@@ -19,6 +19,17 @@ class Settings(BaseSettings):
     # CORS
     cors_origins: str = "*"
 
+    # JWT 鉴权
+    jwt_secret: str = "dev-secret-change-in-production"
+    access_token_expire_minutes: int = 1440  # 24 小时
+
+    # 初始管理员账号
+    seed_username: str = "admin"
+    seed_password: str = "admin123"
+
+    # 爬虫共享密钥
+    crawler_api_key: str = "crawler-dev-key"
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
