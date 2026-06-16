@@ -137,9 +137,13 @@
           </div>
           <div v-else-if="generatedArticle" class="article-result">
             <div class="article-content">{{ generatedArticle }}</div>
+            <div class="done-message">
+              <p class="done-title">生成任务已提交</p>
+              <p class="done-desc">文章已加入任务中心，请在「评审」页面查看。</p>
+            </div>
             <div class="card-actions">
               <el-button size="large" @click="currentStep = 3">返回修改大纲</el-button>
-              <el-button size="large" type="primary" @click="submitForReview">提交评审</el-button>
+              <el-button size="large" type="primary" @click="currentStep = 0">重新创作</el-button>
             </div>
           </div>
           <div v-else class="card-actions">
@@ -175,8 +179,6 @@ const loadingOutline = ref(false)
 const generating = ref(false)
 const generatingStatusText = ref('')
 const generatedArticle = ref('')
-const generatedArticleId = ref<number | null>(null)
-
 const selectedAccount = computed(() => accounts.value.find(a => a.id === selectedAccountId.value) || null)
 
 async function generateDirections() {
@@ -227,7 +229,6 @@ async function startGenerate() {
       const { data: taskData } = await api.getTaskStatus(taskId)
       if (taskData.status === 'success') {
         const articleId = taskData.article_id
-        generatedArticleId.value = articleId
         const { data: articleData } = await api.getArticle(articleId)
         generatedArticle.value = articleData.content || ''
         generating.value = false
@@ -243,22 +244,6 @@ async function startGenerate() {
     generating.value = false
     currentStep.value = 3
   }
-}
-
-async function submitForReview() {
-  if (!generatedArticleId.value) return
-  try {
-    await api.updateArticleStatus(generatedArticleId.value, 'approved')
-    ElMessage.success('已提交评审队列')
-    // 重置流程
-    currentStep.value = 0
-    idea.value = ''
-    directions.value = []
-    selectedDirection.value = null
-    outline.value = []
-    generatedArticle.value = ''
-    generatedArticleId.value = null
-  } catch (e: any) { ElMessage.error('提交失败') }
 }
 
 onMounted(async () => {
@@ -342,6 +327,10 @@ onMounted(async () => {
 /* 文章结果 */
 .article-content { white-space: pre-wrap; line-height: 1.8; color: var(--text-on-dark); background: var(--ink-surface); padding: var(--space-xl); border-radius: var(--radius-lg); margin-bottom: var(--space-xl); font-size: 15px; max-height: 500px; overflow-y: auto; }
 .loading-state { display: flex; align-items: center; gap: 12px; color: var(--text-muted); padding: var(--space-xl); justify-content: center; }
+
+.done-message { text-align: center; padding: var(--space-lg) 0; }
+.done-title { font-size: 20px; font-weight: 700; color: var(--green-muted); margin-bottom: 6px; }
+.done-desc { font-size: 14px; color: var(--text-muted); }
 
 .step-trans-enter-active, .step-trans-leave-active { transition: opacity 0.2s ease, transform 0.2s ease; }
 .step-trans-enter-from { opacity: 0; transform: translateX(20px); }
