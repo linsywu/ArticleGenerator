@@ -224,6 +224,14 @@ class ProviderUpdate(BaseModel):
     models: Optional[str] = None
     enabled: Optional[bool] = None
 
+    @field_validator("api_key", mode="before")
+    @classmethod
+    def skip_masked_key(cls, v: Optional[str]) -> Optional[str]:
+        """如果传入掩码后的 key（如 sk-a***xyz），视为留空"""
+        if v and "***" in v:
+            return None
+        return v
+
 class ProviderResponse(ProviderBase):
     id: int
     created_at: datetime
