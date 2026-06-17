@@ -82,7 +82,7 @@ pkill -f "celery.*article_generator" 2>/dev/null || true
 sleep 1
 
 find . -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null
-nohup watchfiles --filter python "celery -A app.tasks:celery_app worker -l info -n celery@%h" app/tasks.py > "$LOG_DIR/celery.log" 2>&1 &
+nohup watchfiles --filter python "celery -A app.celery_app:celery_app worker -l info -n celery@%h" app/tasks/ > "$LOG_DIR/celery.log" 2>&1 &
 CELERY_PID=$!
 echo "  Celery PID: $CELERY_PID"
 
