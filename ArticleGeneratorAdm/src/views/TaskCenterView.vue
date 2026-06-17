@@ -6,12 +6,12 @@
         <p class="page-subtitle">实时跟踪生成、微调等任务的执行状态</p>
       </div>
       <div class="page-header-counts">
-        <span class="count-badge running" v-if="runningCount > 0">
+        <span class="count-badge running" v-if="activeRunningCount > 0">
           <span class="count-dot"></span>
-          {{ runningCount }} 进行中
+          {{ activeRunningCount }} 进行中
         </span>
-        <span class="count-badge pending" v-if="pendingCount > 0">
-          {{ pendingCount }} 排队中
+        <span class="count-badge pending" v-if="activePendingCount > 0">
+          {{ activePendingCount }} 排队中
         </span>
       </div>
     </header>
@@ -140,17 +140,21 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from "vue";
+import { ref, computed, onMounted, onUnmounted } from "vue";
 import { api, type UnifiedTaskItem } from "@/api/client";
 import { formatDateTime, relativeTime } from "@/utils/format";
+import { useActiveTasks } from "@/hooks/useActiveTasks";
 
 const tasks = ref<UnifiedTaskItem[]>([]);
 const loading = ref(true);
 const showCompleted = ref(false);
 const now = ref(Date.now());
 
-// 计时器
-let pollTimer: ReturnType<typeof setInterval> | null = null;
+// 活跃任务信息（来自全局单例，用于头部徽章）
+const { runningCount: activeRunningCount, pendingCount: activePendingCount } = useActiveTasks();
+
+// 全量任务列表的轮询
+let listPollTimer: ReturnType<typeof setInterval> | null = null;
 let clockTimer: ReturnType<typeof setInterval> | null = null;
 
 const runningTasks = computed(() => tasks.value.filter(t => t.status === "running"));
@@ -158,9 +162,7 @@ const pendingTasks = computed(() => tasks.value.filter(t => t.status === "pendin
 const completedTasks = computed(() =>
   tasks.value.filter(t => ["success", "failed", "cancelled"].includes(t.status))
 );
-const runningCount = computed(() => runningTasks.value.length);
-const pendingCount = computed(() => pendingTasks.value.length);
-const hasActive = computed(() => runningCount.value > 0 || pendingCount.value > 0);
+const hasActive = computed(() => runningTasks.value.length > 0 || pendingTasks.value.length > 0);
 
 const TASK_TYPE_ICONS: Record<string, string> = {
   generate: "✏️",
@@ -220,10 +222,8 @@ function elapsedTime(task: UnifiedTaskItem): string {
 async function loadTasks() {
   try {
     const params: { status?: string; limit?: number } = {};
-    // Always fetch running+pending for the main view, plus some completed
     const { data } = await api.getUnifiedTasks({ status: "running,pending,success,failed", limit: 50 });
     tasks.value = data.tasks;
-    // Auto-collapse completed when there are active tasks
     if (hasActive.value && completedTasks.value.length > 0) {
       showCompleted.value = false;
     } else if (completedTasks.value.length > 0) {
@@ -236,34 +236,23 @@ async function loadTasks() {
   }
 }
 
-// Stop polling when no active tasks remain
-watch([runningCount, pendingCount], ([r, p]) => {
-  if (r === 0 && p === 0 && pollTimer) {
-    clearInterval(pollTimer);
-    pollTimer = null;
-  } else if ((r > 0 || p > 0) && !pollTimer) {
-    startPolling();
-  }
-});
-
-function startPolling() {
-  if (pollTimer) clearInterval(pollTimer);
-  pollTimer = setInterval(loadTasks, 3000);
+function startListPolling() {
+  if (listPollTimer) clearInterval(listPollTimer);
+  listPollTimer = setInterval(loadTasks, 3000);
 }
 
 onMounted(() => {
   loadTasks();
   if (hasActive.value) {
-    startPolling();
+    startListPolling();
   }
-  // Clock timer for elapsed display
   clockTimer = setInterval(() => {
     now.value = Date.now();
   }, 1000);
 });
 
 onUnmounted(() => {
-  if (pollTimer) clearInterval(pollTimer);
+  if (listPollTimer) clearInterval(listPollTimer);
   if (clockTimer) clearInterval(clockTimer);
 });
 </script>

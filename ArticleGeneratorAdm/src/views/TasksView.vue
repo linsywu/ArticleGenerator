@@ -1,5 +1,7 @@
 <template>
   <div class="page">
+    <PageHeader title="任务记录" subtitle="查看文章生成、微调等任务的执行记录" />
+
     <div class="toolbar">
       <el-select v-model="statusFilter" placeholder="任务状态" clearable style="width: 140px; margin-right: 12px">
         <el-option label="全部" value="" />
@@ -36,7 +38,7 @@
       <el-table-column label="创建时间" width="180">
         <template #default="{ row }">{{ formatDateTime(row.created_at) }}</template>
       </el-table-column>
-      <el-table-column label="操作" width="100" fixed="right">
+      <el-table-column label="操作" width="200" fixed="right">
         <template #default="{ row }">
           <el-button
             v-if="row.status === 'pending' || row.status === 'running'"
@@ -54,6 +56,21 @@
       </el-table-column>
     </el-table>
 
+    <ArticleEditorDialog
+      ref="articleEditorRef"
+      v-model="articleVisible"
+      :article="currentArticleData"
+      :dialog-title="editingArticle ? '编辑文章' : '文章详情'"
+      editable
+      @saved="onArticleSaved"
+    >
+      <template #footer>
+        <el-button @click="articleVisible = false">关闭</el-button>
+        <el-button @click="articleEditorRef?.startEditing()">编辑</el-button>
+        <el-button type="primary" @click="goToReview">去评审</el-button>
+      </template>
+    </ArticleEditorDialog>
+
     <el-pagination
       v-if="total > 0"
       v-model:current-page="page"
@@ -64,25 +81,6 @@
       @current-change="load"
       @size-change="load"
     />
-
-    <!-- 文章查看/编辑对话框 -->
-    <el-dialog v-model="articleVisible" :title="editingArticle ? '编辑文章' : '文章详情'" width="800px">
-      <el-input v-if="editingArticle" v-model="editContent" type="textarea" :rows="16" placeholder="文章内容" />
-      <div v-else class="article-content">{{ currentContent }}</div>
-      <div v-if="currentReviewNotes && !editingArticle" style="margin-top:12px;padding:12px;background:#f5f7fa;border-radius:4px">
-        <strong>AI 评审记录：</strong>
-        <pre style="white-space:pre-wrap;font-size:13px;color:#666;margin-top:4px">{{ currentReviewNotes }}</pre>
-      </div>
-      <template #footer>
-        <el-button v-if="editingArticle" @click="editingArticle = false">取消编辑</el-button>
-        <el-button v-if="editingArticle" type="primary" :loading="savingEdit" @click="saveArticleEdit">保存</el-button>
-        <template v-else>
-          <el-button @click="articleVisible = false">关闭</el-button>
-          <el-button @click="startEdit">编辑</el-button>
-          <el-button type="primary" @click="goToReview">去评审</el-button>
-        </template>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
@@ -90,8 +88,10 @@
 import { ref, onMounted } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { useRouter } from "vue-router";
-import { api } from "@/api/client";
+import { api, type Article } from "@/api/client";
 import { formatDateTime } from "@/utils/format";
+import PageHeader from "@/components/PageHeader.vue";
+import ArticleEditorDialog from "@/components/ArticleEditorDialog.vue";
 
 interface TaskItem {
   id: number;
@@ -117,42 +117,9 @@ const router = useRouter();
 const articleVisible = ref(false);
 const editingArticle = ref(false);
 const currentArticleId = ref<number | null>(null);
-const currentContent = ref("");
-const currentReviewNotes = ref("");
-const editContent = ref("");
-const savingEdit = ref(false);
+const currentArticleData = ref<Article | null>(null);
 
-async function viewArticle(row: TaskItem) {
-  currentArticleId.value = row.article_id || null;
-  editingArticle.value = false;
-  try {
-    const res = await api.getArticle(row.article_id!);
-    const data = res.data as { content: string; review_notes?: string };
-    currentContent.value = data.content;
-    currentReviewNotes.value = data.review_notes || "";
-    articleVisible.value = true;
-  } catch {
-    ElMessage.error("获取文章失败");
-  }
-}
-
-function startEdit() {
-  editContent.value = currentContent.value;
-  editingArticle.value = true;
-}
-
-async function saveArticleEdit() {
-  if (!currentArticleId.value) return;
-  savingEdit.value = true;
-  try {
-    await api.updateArticle(currentArticleId.value, { content: editContent.value });
-    currentContent.value = editContent.value;
-    ElMessage.success("已保存");
-    editingArticle.value = false;
-  } catch {
-    ElMessage.error("保存失败");
-  } finally { savingEdit.value = false; }
-}
+const articleEditorRef = ref<InstanceType<typeof ArticleEditorDialog> | null>(null);
 
 const taskStatusType: Record<string, string> = {
   pending: "warning",
@@ -168,6 +135,10 @@ const taskStatusText: Record<string, string> = {
   failed: "生成失败",
   cancelled: "已取消",
 };
+
+function onArticleSaved() {
+  load();
+}
 
 async function load() {
   loading.value = true;
@@ -185,6 +156,18 @@ async function load() {
   }
 }
 
+async function viewArticle(row: TaskItem) {
+  currentArticleId.value = row.article_id || null;
+  editingArticle.value = false;
+  try {
+    const res = await api.getArticle(row.article_id!);
+    currentArticleData.value = res.data as Article;
+    articleVisible.value = true;
+  } catch {
+    ElMessage.error("获取文章失败");
+  }
+}
+
 async function cancelTask(row: TaskItem) {
   try {
     await ElMessageBox.confirm(`确定取消任务「${row.hotspot?.title || row.task_id}」？`, "提示");
@@ -197,6 +180,7 @@ async function cancelTask(row: TaskItem) {
 }
 
 function goToReview() {
+  articleVisible.value = false;
   router.push("/review");
 }
 
@@ -206,19 +190,12 @@ onMounted(load);
 <style scoped>
 .page {
   background: transparent;
-  padding: 20px;
-  border-radius: 4px;
+  padding: 0;
 }
 .toolbar {
   margin-bottom: 16px;
 }
 .el-pagination {
   margin-top: 16px;
-}
-.article-content {
-  white-space: pre-wrap;
-  max-height: 500px;
-  overflow-y: auto;
-  line-height: 1.8;
 }
 </style>

@@ -1,11 +1,7 @@
 <template>
   <div class="page">
-    <header class="page-header">
-      <div>
-        <h1 class="page-title">文章发布</h1>
-        <p class="page-subtitle">评审通过的终稿，复制全文发布到各平台，标记发布状态</p>
-      </div>
-    </header>
+    <PageHeader title="文章发布" subtitle="评审通过的终稿，复制全文发布到各平台，标记发布状态" />
+
     <el-empty v-if="!loading && list.length === 0" description="暂无待发布文章" />
     <el-table v-else :data="list" v-loading="loading" style="width: 100%">
       <el-table-column prop="id" label="ID" width="70" />
@@ -28,22 +24,24 @@
       </el-table-column>
     </el-table>
 
-    <el-dialog v-model="previewVisible" title="文章预览" width="700px">
-      <div class="preview-content">{{ previewArticleContent }}</div>
+    <ArticleEditorDialog
+      v-model="dialogVisible"
+      :article="currentArticle"
+      :editable="isEditMode"
+      :initial-edit="isEditMode"
+      :dialog-title="isEditMode ? '编辑文章' : '文章预览'"
+      @saved="onArticleSaved"
+    >
       <template #footer>
-        <el-button @click="previewVisible = false">关闭</el-button>
-        <el-button type="primary" @click="copyFromPreview">复制全文</el-button>
+        <template v-if="isEditMode">
+          <!-- Edit mode: use internal save/cancel — just a placeholder for clarity -->
+        </template>
+        <template v-else>
+          <el-button @click="dialogVisible = false">关闭</el-button>
+          <el-button type="primary" @click="copyFromPreview">复制全文</el-button>
+        </template>
       </template>
-    </el-dialog>
-
-    <!-- 编辑对话框 -->
-    <el-dialog v-model="editVisible" title="编辑文章" width="800px">
-      <el-input v-model="editContent" type="textarea" :rows="16" placeholder="文章内容" />
-      <template #footer>
-        <el-button @click="editVisible = false">取消</el-button>
-        <el-button type="primary" :loading="savingEdit" @click="saveEdit">保存</el-button>
-      </template>
-    </el-dialog>
+    </ArticleEditorDialog>
 
     <el-pagination
       v-if="total > 0"
@@ -63,38 +61,20 @@ import { ref, onMounted } from "vue";
 import { ElMessage } from "element-plus";
 import { api, type Article } from "@/api/client";
 import { formatDateTime } from "@/utils/format";
+import PageHeader from "@/components/PageHeader.vue";
+import ArticleEditorDialog from "@/components/ArticleEditorDialog.vue";
 
 const list = ref<Article[]>([]);
 const loading = ref(false);
 const page = ref(1);
 const pageSize = ref(20);
 const total = ref(0);
-const previewVisible = ref(false);
-const previewArticleContent = ref("");
-const previewArticleRow = ref<Article | null>(null);
-const editVisible = ref(false);
-const editingArticleRow = ref<Article | null>(null);
-const editContent = ref("");
-const savingEdit = ref(false);
+const dialogVisible = ref(false);
+const currentArticle = ref<Article | null>(null);
+const isEditMode = ref(false);
 
-function editArticle(row: Article) {
-  editingArticleRow.value = row;
-  editContent.value = row.content;
-  editVisible.value = true;
-}
-
-async function saveEdit() {
-  if (!editingArticleRow.value) return;
-  savingEdit.value = true;
-  try {
-    await api.updateArticle(editingArticleRow.value.id, { content: editContent.value });
-    editingArticleRow.value.content = editContent.value;
-    ElMessage.success("已保存");
-    editVisible.value = false;
-    load();
-  } catch {
-    ElMessage.error("保存失败");
-  } finally { savingEdit.value = false; }
+function onArticleSaved() {
+  load();
 }
 
 async function load() {
@@ -112,15 +92,21 @@ async function load() {
 }
 
 function previewArticle(row: Article) {
-  previewArticleRow.value = row;
-  previewArticleContent.value = row.content;
-  previewVisible.value = true;
+  currentArticle.value = row;
+  isEditMode.value = false;
+  dialogVisible.value = true;
+}
+
+function editArticle(row: Article) {
+  currentArticle.value = row;
+  isEditMode.value = true;
+  dialogVisible.value = true;
 }
 
 async function copyFromPreview() {
-  if (!previewArticleRow.value) return;
-  await copyContent(previewArticleRow.value);
-  previewVisible.value = false;
+  if (!currentArticle.value) return;
+  await copyContent(currentArticle.value);
+  dialogVisible.value = false;
 }
 
 async function copyContent(row: Article) {
@@ -147,9 +133,5 @@ onMounted(load);
 
 <style scoped>
 .page { padding: 0; }
-.page-header { margin-bottom: var(--space-xl); }
-.page-title { font-family: var(--font-serif); font-size: 28px; font-weight: 900; color: var(--text-on-dark); letter-spacing: 1px; margin-bottom: 4px; }
-.page-subtitle { font-size: 14px; color: var(--text-muted); }
 .el-pagination { margin-top: 16px; }
-.preview-content { white-space: pre-wrap; max-height: 400px; overflow-y: auto; line-height: 1.6; color: var(--text-on-dark); }
 </style>

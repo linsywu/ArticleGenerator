@@ -105,28 +105,22 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from "vue";
 import { useRouter } from "vue-router";
-import { api, type UnifiedTaskItem } from "@/api/client";
+import { useActiveTasks } from "@/hooks/useActiveTasks";
 
 const router = useRouter();
-const activeTasks = ref<UnifiedTaskItem[]>([]);
-const runningCount = ref(0);
-const pendingCount = ref(0);
+const {
+  activeTasks,
+  runningCount,
+  pendingCount,
+  totalActive,
+  startPolling,
+  stopPolling,
+  fetchActiveTasks,
+} = useActiveTasks();
 const showDropdown = ref(false);
-let pollTimer: ReturnType<typeof setInterval> | null = null;
 let hoverTimer: ReturnType<typeof setTimeout> | null = null;
 
-const totalActive = computed(() => runningCount.value + pendingCount.value);
 const dropdownTasks = computed(() => activeTasks.value.slice(0, 3));
-
-function fetchActiveTasks() {
-  api.getUnifiedTasks({ status: "running,pending", limit: 5 })
-    .then(({ data }) => {
-      activeTasks.value = data.tasks;
-      runningCount.value = data.running_count;
-      pendingCount.value = data.pending_count;
-    })
-    .catch(() => { /* ignore */ });
-}
 
 function handleMouseEnter() {
   if (hoverTimer) clearTimeout(hoverTimer);
@@ -146,12 +140,11 @@ function goToTaskCenter() {
 }
 
 onMounted(() => {
-  fetchActiveTasks();
-  pollTimer = setInterval(fetchActiveTasks, 5000);
+  startPolling(5000);
 });
 
 onUnmounted(() => {
-  if (pollTimer) clearInterval(pollTimer);
+  stopPolling();
   if (hoverTimer) clearTimeout(hoverTimer);
 });
 </script>

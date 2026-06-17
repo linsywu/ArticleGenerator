@@ -1,11 +1,7 @@
 <template>
   <div class="page">
-    <header class="page-header">
-      <div>
-        <h1 class="page-title">评审队列</h1>
-        <p class="page-subtitle">查看文章质量评分，通过或拒绝，或触发微调循环</p>
-      </div>
-    </header>
+    <PageHeader title="评审队列" subtitle="查看文章质量评分，通过或拒绝，或触发微调循环" />
+
     <el-empty v-if="!loading && list.length === 0" description="暂无待评审文章" />
     <el-table v-else :data="list" v-loading="loading" style="width: 100%">
       <el-table-column prop="id" label="ID" width="70" />
@@ -55,30 +51,21 @@
       @size-change="load"
     />
 
-    <el-dialog v-model="detailVisible" :title="editingArticle ? '编辑文章' : '文章详情'" width="1000px">
-      <div class="article-content-bg">
-        <div v-if="editingArticle">
-        <el-input v-model="editContent" type="textarea" :rows="16" placeholder="文章内容" />
-      </div>
-      <div v-else class="article-content">{{ currentArticle?.content }}</div>
-      </div>
-      <div class="article-content-count">字数：{{ currentArticle?.content?.length || 0 }}</div>
-      <div class="article-content-review" v-if="currentArticle?.review_notes && !editingArticle">
-        <div class="article-content-review-title">AI 评审记录：</div>
-        <pre class="review-notes-text">{{ currentArticle.review_notes }}</pre>
-      </div>
+    <ArticleEditorDialog
+      ref="articleEditorRef"
+      v-model="detailVisible"
+      :article="currentArticle"
+      editable
+      @saved="onArticleSaved"
+    >
       <template #footer>
-        <el-button v-if="editingArticle" @click="editingArticle = false; editContent = ''">取消编辑</el-button>
-        <el-button v-if="editingArticle" type="primary" :loading="savingEdit" @click="saveEdit">保存</el-button>
-        <template v-else>
-          <el-button @click="detailVisible = false">关闭</el-button>
-          <el-button @click="startEdit(currentArticle!)">编辑</el-button>
-          <el-button type="success" @click="approve(currentArticle!)">通过</el-button>
-          <el-button type="danger" @click="reject(currentArticle!)">拒绝</el-button>
-          <el-button @click="openRefine(currentArticle!)">微调</el-button>
-        </template>
+        <el-button @click="detailVisible = false">关闭</el-button>
+        <el-button @click="articleEditorRef?.startEditing()">编辑</el-button>
+        <el-button type="success" @click="approve(currentArticle!)">通过</el-button>
+        <el-button type="danger" @click="reject(currentArticle!)">拒绝</el-button>
+        <el-button @click="openRefine(currentArticle!)">微调</el-button>
       </template>
-    </el-dialog>
+    </ArticleEditorDialog>
 
     <el-dialog v-model="refineVisible" title="微调" width="500px">
       <el-input
@@ -101,6 +88,8 @@ import { ref, onMounted } from "vue";
 import { ElMessage } from "element-plus";
 import { api, type Article } from "@/api/client";
 import { formatDateTime } from "@/utils/format";
+import PageHeader from "@/components/PageHeader.vue";
+import ArticleEditorDialog from "@/components/ArticleEditorDialog.vue";
 
 const list = ref<Article[]>([]);
 const loading = ref(false);
@@ -112,27 +101,11 @@ const currentArticle = ref<Article | null>(null);
 const refineVisible = ref(false);
 const refineKeywords = ref("");
 const refining = ref(false);
-const editingArticle = ref(false);
-const editContent = ref("");
-const savingEdit = ref(false);
 
-function startEdit(row: Article) {
-  editContent.value = row.content;
-  editingArticle.value = true;
-}
+const articleEditorRef = ref<InstanceType<typeof ArticleEditorDialog> | null>(null);
 
-async function saveEdit() {
-  if (!currentArticle.value) return;
-  savingEdit.value = true;
-  try {
-    await api.updateArticle(currentArticle.value.id, { content: editContent.value });
-    currentArticle.value.content = editContent.value;
-    ElMessage.success("已保存");
-    editingArticle.value = false;
-    load();
-  } catch {
-    ElMessage.error("保存失败");
-  } finally { savingEdit.value = false; }
+function onArticleSaved() {
+  load();
 }
 
 async function load() {
@@ -202,21 +175,11 @@ async function doRefine() {
   }
 }
 
-
 onMounted(load);
 </script>
 
 <style scoped>
 .page { padding: 0; }
-.page-header { margin-bottom: var(--space-xl); }
-.page-title { font-family: var(--font-serif); font-size: 28px; font-weight: 900; color: var(--text-on-dark); letter-spacing: 1px; margin-bottom: 4px; }
-.page-subtitle { font-size: 14px; color: var(--text-muted); }
-.article-content-bg { background: var(--ink-surface); padding: var(--space-xl); border-radius: var(--radius-lg); }
-.article-content-review { background: var(--ink-surface); padding: var(--space-md); border-radius: var(--radius-lg); margin-top: var(--space-md); }
-.article-content-review-title { font-size: 14px; color: var(--text-on-dark); font-weight: 500; margin-bottom: var(--space-md); }
-.review-notes-text { white-space: pre-wrap; font-size: 13px; color: var(--text-muted); margin-top: 4px; }
-.article-content { white-space: pre-wrap; max-height: 400px; overflow-y: auto; line-height: 1.6; color: var(--text-on-dark); }
-.article-content-count { font-size: 12px; color: var(--text-muted); margin-top: var(--space-md); text-align: right;}
 .refine-tip { margin-top: 12px; font-size: 12px; color: var(--text-muted); }
 .el-pagination { margin-top: 16px; }
 </style>
