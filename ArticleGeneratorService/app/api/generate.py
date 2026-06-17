@@ -8,10 +8,8 @@ from typing import Optional
 from ..database import get_db
 from ..models import Article, Account, GenerationTask, RefineTask
 from ..schemas import GenerateRequest, RefineRequest, DirectionsRequest, OutlineRequest, TitleRequest
-from ..celery_app import celery_app
-from ..tasks.generate import trigger_direction_generation, trigger_outline_generation, trigger_title_generation
-from ..tasks.review import trigger_refine
-from ..services import generate_service
+from ..tasks import celery_app, trigger_direction_generation, trigger_outline_generation, trigger_title_generation, trigger_refine
+from ..services.generate_service import trigger_generation, list_generation_tasks
 
 router = APIRouter(prefix="/generate", tags=["文章生成"])
 
@@ -19,7 +17,7 @@ router = APIRouter(prefix="/generate", tags=["文章生成"])
 @router.post("/trigger")
 def trigger_article_generation(data: GenerateRequest, db: Session = Depends(get_db)):
     """触发生成：热点 ID 列表 或 自定义主题 + 账号 ID"""
-    return generate_service.trigger_generation(
+    return trigger_generation(
         db=db,
         hotspot_ids=data.hotspot_ids,
         account_id=data.account_id,
@@ -78,7 +76,7 @@ def get_celery_task_result(task_id: str):
     仅用于 /directions、/outline、/titles 等非 GenerationTask 场景。
     """
     from celery.result import AsyncResult
-    from ..celery_app import celery_app as _celery
+    from ..tasks import celery_app as _celery
     async_result = AsyncResult(task_id, app=_celery)
 
     if async_result.state == "PENDING":
@@ -121,7 +119,7 @@ def list_generation_tasks(
     page_size: int = Query(20, ge=1, le=100),
 ):
     """任务列表，支持状态筛选和分页。generating 表示 pending+running"""
-    return generate_service.list_generation_tasks(db=db, status=status, page=page, page_size=page_size)
+    return list_generation_tasks(db=db, status=status, page=page, page_size=page_size)
 
 
 @router.post("/tasks/{task_id}/cancel")
