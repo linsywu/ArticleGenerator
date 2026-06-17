@@ -163,6 +163,15 @@ jsdom 环境不支持 Vue SFC 的动态 `import()`，会导致 `InvalidCharacter
 
 **原因**：`npm run build` 使用 esbuild 剥离类型不做检查；App.vue 级运行时逻辑无测试覆盖。本次 P0 修复中 `api.getUnifiedTasks is not a function` 在 build+test 全绿时未被发现，根因是 worktree base 落后 main 导致 client.ts 重构丢失新增方法。
 
+### 数据库操作红线（不可绕过）
+**禁止执行以下操作，除非用户明确授权：**
+- `rm` / `DROP TABLE` / `DELETE FROM` 删除数据库文件或数据
+- 任何会导致数据丢失的操作
+- 即使是 dev 环境 SQLite 也不得在未经确认的情况下删除
+
+**遇到 schema 不匹配时**：必须使用 `ALTER TABLE` 迁移脚本或请求用户确认重建。参见 `ArticleGeneratorDatabase/migrations/`。
+
+
 ### 生成 Prompt 分层架构
 generate 场景采用 4 层结构：(1) 角色定义 (2) 硬约束/禁用词 (3) `{{style_profile}}` 占位 (4) 任务指令 + `{{hotspot_title}}`。禁用词：总的来说、综上所述、首先其次最后、换言之、从某种程度上、随着、在当前。修改 Prompt 后需通过 Celery 重新生成验证效果。
 
