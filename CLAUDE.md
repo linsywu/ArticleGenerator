@@ -154,6 +154,15 @@ ArticleGeneratorAdm ──Vite proxy──┘    ▼
 ### 前端组件测试限制
 jsdom 环境不支持 Vue SFC 的动态 `import()`，会导致 `InvalidCharacterError`。组件级测试需改为浏览器手动验证。API client 和纯 JS/TS 模块测试正常。
 
+### 前端验证铁律（不可绕过）
+**前端代码变更后，禁止仅依赖 `npm run build` + `npm run test` 通过即声称验证完成。** 必须：
+1. 启动 Vite dev server（`npm run dev`）
+2. 浏览器访问受影响的页面，打开控制台
+3. 确认无 `Uncaught TypeError`、`is not a function` 等运行时错误
+4. 走通关键操作流程
+
+**原因**：`npm run build` 使用 esbuild 剥离类型不做检查；App.vue 级运行时逻辑无测试覆盖。本次 P0 修复中 `api.getUnifiedTasks is not a function` 在 build+test 全绿时未被发现，根因是 worktree base 落后 main 导致 client.ts 重构丢失新增方法。
+
 ### 生成 Prompt 分层架构
 generate 场景采用 4 层结构：(1) 角色定义 (2) 硬约束/禁用词 (3) `{{style_profile}}` 占位 (4) 任务指令 + `{{hotspot_title}}`。禁用词：总的来说、综上所述、首先其次最后、换言之、从某种程度上、随着、在当前。修改 Prompt 后需通过 Celery 重新生成验证效果。
 
