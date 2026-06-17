@@ -109,6 +109,7 @@ import type {
   DirectionItem,
   OutlinePoint,
   PaginatedResponse,
+  UnifiedTasksResponse,
 } from "@/api/types";
 
 /**
@@ -146,8 +147,10 @@ export const api = {
     post<{ directions: DirectionItem[] }>("/generate/directions", { account_id: accountId, idea }),
   generateOutline: (accountId: number, idea: string, direction: string) =>
     post<{ outline: OutlinePoint[] }>("/generate/outline", { account_id: accountId, idea, direction }),
-  triggerGenerateWithOutline: (accountId: number, customTopic: string, outline: string[]) =>
-    post("/generate/trigger", { hotspot_ids: [], account_id: accountId, custom_topic: customTopic, outline }),
+  generateTitles: (accountId: number, idea: string, direction: string, outline: string[]) =>
+    post<{ titles: string[] }>("/generate/titles", { account_id: accountId, idea, direction, outline }),
+  triggerGenerateWithOutline: (accountId: number, customTopic: string, outline: string[], wordCount?: string) =>
+    post("/generate/trigger", { hotspot_ids: [], account_id: accountId, custom_topic: customTopic, outline, word_count: wordCount || null }),
   triggerRefine: (articleId: number, keywords: string) =>
     post(`/generate/refine/${articleId}`, { keywords }),
   getTaskStatus: (taskId: string) => get(`/generate/task/${taskId}`),
@@ -157,6 +160,10 @@ export const api = {
     get<PaginatedResponse<unknown>>("/generate/tasks/list", params as Record<string, unknown>),
   cancelTask: (taskId: string) => post(`/generate/tasks/${taskId}/cancel`),
   getRefineTaskStatus: (taskId: string) => get(`/generate/refine-task/${taskId}`),
+
+  // 统一任务中心
+  getUnifiedTasks: (params?: { status?: string; limit?: number }) =>
+    get<UnifiedTasksResponse>("/tasks/unified", params as Record<string, unknown>),
 
   // 热点抓取
   crawlHotspots: () => post<{ created: number; total: number; error?: string }>("/hotspots/crawl"),
