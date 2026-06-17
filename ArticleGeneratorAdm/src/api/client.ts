@@ -144,9 +144,9 @@ export const api = {
   triggerGenerate: (accountId: number, hotspotIds?: number[], customTopic?: string) =>
     post("/generate/trigger", { hotspot_ids: hotspotIds || [], account_id: accountId, custom_topic: customTopic || null }),
   generateDirections: (accountId: number, idea: string) =>
-    post<{ directions: DirectionItem[] }>("/generate/directions", { account_id: accountId, idea }),
+    post<{ task_id: string; status: string; message: string }>("/generate/directions", { account_id: accountId, idea }),
   generateOutline: (accountId: number, idea: string, direction: string) =>
-    post<{ outline: OutlinePoint[] }>("/generate/outline", { account_id: accountId, idea, direction }),
+    post<{ task_id: string; status: string; message: string }>("/generate/outline", { account_id: accountId, idea, direction }),
   generateTitles: (accountId: number, idea: string, direction: string, outline: string[]) =>
     post<{ titles: string[] }>("/generate/titles", { account_id: accountId, idea, direction, outline }),
   triggerGenerateWithOutline: (accountId: number, customTopic: string, outline: string[], wordCount?: string) =>

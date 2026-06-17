@@ -158,7 +158,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { api, type DirectionItem, type OutlinePoint } from '@/api/client'
+import { api } from '@/api/client'
+import type { DirectionItem, OutlinePoint } from '@/api/client'
 import { useAccountsStore } from "@/store/accounts"
 
 const accountsStore = useAccountsStore()
@@ -189,12 +190,29 @@ async function generateDirections() {
   loadingDirections.value = true
   try {
     const { data } = await api.generateDirections(selectedAccountId.value, idea.value.trim())
-    directions.value = data.directions || []
-    if (directions.value.length) {
-      selectedDirection.value = directions.value[0]
-      currentStep.value = 2
+    const taskId = data.task_id
+    if (!taskId) throw new Error('未获取到任务 ID')
+
+    // 轮询任务状态
+    let attempts = 0
+    const maxAttempts = 30
+    while (attempts < maxAttempts) {
+      await new Promise(r => setTimeout(r, 2000))
+      const { data: taskData } = await api.getTaskStatus(taskId)
+      if (taskData.status === 'success') {
+        const result = (taskData as any).result
+        directions.value = result?.directions || []
+        if (directions.value.length) {
+          selectedDirection.value = directions.value[0]
+          currentStep.value = 2
+        }
+        return
+      }
+      if (taskData.status === 'failed') throw new Error((taskData as any).error_message || '方向生成失败')
+      attempts++
     }
-  } catch (e: any) { ElMessage.error(e?.response?.data?.detail || '方向生成失败') }
+    throw new Error('方向生成超时，请重试')
+  } catch (e: any) { ElMessage.error(e?.response?.data?.detail || e?.message || '方向生成失败') }
   finally { loadingDirections.value = false }
 }
 
@@ -203,9 +221,26 @@ async function generateOutline() {
   loadingOutline.value = true
   try {
     const { data } = await api.generateOutline(selectedAccountId.value, idea.value.trim(), selectedDirection.value.title)
-    outline.value = data.outline || []
-    if (outline.value.length) currentStep.value = 3
-  } catch (e: any) { ElMessage.error(e?.response?.data?.detail || '大纲生成失败') }
+    const taskId = data.task_id
+    if (!taskId) throw new Error('未获取到任务 ID')
+
+    // 轮询任务状态
+    let attempts = 0
+    const maxAttempts = 30
+    while (attempts < maxAttempts) {
+      await new Promise(r => setTimeout(r, 2000))
+      const { data: taskData } = await api.getTaskStatus(taskId)
+      if (taskData.status === 'success') {
+        const result = (taskData as any).result
+        outline.value = result?.outline || []
+        if (outline.value.length) currentStep.value = 3
+        return
+      }
+      if (taskData.status === 'failed') throw new Error((taskData as any).error_message || '大纲生成失败')
+      attempts++
+    }
+    throw new Error('大纲生成超时，请重试')
+  } catch (e: any) { ElMessage.error(e?.response?.data?.detail || e?.message || '大纲生成失败') }
   finally { loadingOutline.value = false }
 }
 

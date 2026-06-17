@@ -8,7 +8,9 @@ from typing import Optional
 from ..database import get_db
 from ..models import Article, Account, GenerationTask, RefineTask
 from ..schemas import GenerateRequest, RefineRequest, DirectionsRequest, OutlineRequest, TitleRequest
-from ..tasks import trigger_refine, celery_app, trigger_direction_generation, trigger_outline_generation, trigger_title_generation
+from ..celery_app import celery_app
+from ..tasks.generate import trigger_direction_generation, trigger_outline_generation, trigger_title_generation
+from ..tasks.review import trigger_refine
 from ..services import generate_service
 
 router = APIRouter(prefix="/generate", tags=["文章生成"])
@@ -58,14 +60,26 @@ def get_refine_task_status(task_id: str, db: Session = Depends(get_db)):
 def get_task_status(task_id: str, db: Session = Depends(get_db)):
     """查询生成任务状态"""
     task = db.query(GenerationTask).filter(GenerationTask.task_id == task_id).first()
-    if not task:
-        return {"task_id": task_id, "status": "unknown"}
-    return {
-        "task_id": task.task_id,
-        "status": task.status,
-        "article_id": task.article_id,
-        "error_message": task.error_message,
-    }
+    if task:
+        return {
+            "task_id": task.task_id,
+            "status": task.status,
+            "article_id": task.article_id,
+            "error_message": task.error_message,
+        }
+    # 方向/大纲/标题等非 GenerationTask 回退到 Celery 结果后端
+    from celery.result import AsyncResult
+    from ..celery_app import celery_app as _celery
+    async_result = AsyncResult(task_id, app=_celery)
+    if async_result.state == "PENDING":
+        return {"task_id": task_id, "status": "pending"}
+    if async_result.state == "STARTED":
+        return {"task_id": task_id, "status": "running"}
+    if async_result.state == "SUCCESS":
+        return {"task_id": task_id, "status": "success", "result": async_result.result}
+    if async_result.state == "FAILURE":
+        return {"task_id": task_id, "status": "failed", "error_message": str(async_result.result)}
+    return {"task_id": task_id, "status": "unknown"}
 
 
 @router.get("/tasks")
