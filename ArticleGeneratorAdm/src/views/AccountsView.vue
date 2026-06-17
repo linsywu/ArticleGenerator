@@ -188,10 +188,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from "vue";
+import { ref, reactive, computed, onMounted } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { api, Account, ReferenceArticle, StyleProfile } from "@/api/client";
+import { useAccountsStore } from "@/store/accounts";
 import { formatDateTime } from "@/utils/format";
+
+const accountsStore = useAccountsStore();
 
 const styleDimensions: { key: keyof StyleProfile; label: string; icon: string }[] = [
   { key: 'thinking_pattern', label: '思维特征', icon: '🧠' },
@@ -203,7 +206,7 @@ const styleDimensions: { key: keyof StyleProfile; label: string; icon: string }[
   { key: 'blank_leaving', label: '留白程度', icon: '💭' },
 ]
 
-const accounts = ref<Account[]>([]);
+const accounts = computed(() => accountsStore.accounts);
 const refArticles = ref<ReferenceArticle[]>([]);
 const detailVisible = ref(false);
 const editingAccount = ref<Account | null>(null);
@@ -228,8 +231,7 @@ const savingArticle = ref(false);
 const articleForm = reactive({ title: "", content: "", source_url: "", is_benchmark: false });
 
 async function loadAccounts() {
-  const { data } = await api.getAccounts();
-  accounts.value = data;
+  await accountsStore.fetch();
 }
 
 async function loadRefArticles(accountId: number) {

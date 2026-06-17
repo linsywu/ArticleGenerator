@@ -139,6 +139,8 @@ export interface UnifiedTaskItem {
 }
 
 export interface UnifiedTasksResponse {
-  data: UnifiedTaskItem[];
-  total: number;
+  tasks: UnifiedTaskItem[];
+  running_count: number;
+  pending_count: number;
+  completed_count: number;
 }

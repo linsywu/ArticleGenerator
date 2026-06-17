@@ -158,11 +158,14 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { api, type Account, type DirectionItem, type OutlinePoint } from '@/api/client'
+import { api, type DirectionItem, type OutlinePoint } from '@/api/client'
+import { useAccountsStore } from "@/store/accounts"
+
+const accountsStore = useAccountsStore()
 
 const steps = ['选择账号', '输入想法', '写作方向', '确认大纲', '生成全文']
 const currentStep = ref(0)
-const accounts = ref<Account[]>([])
+const accounts = computed(() => accountsStore.accounts)
 const selectedAccountId = ref<number | null>(null)
 const idea = ref('')
 
@@ -248,8 +251,7 @@ async function startGenerate() {
 
 onMounted(async () => {
   try {
-    const resp = await api.getAccounts()
-    accounts.value = resp.data as Account[]
+    await accountsStore.fetch()
     if (accounts.value.length) selectedAccountId.value = accounts.value[0].id
   } catch (e) { console.error('加载账号失败', e) }
 })

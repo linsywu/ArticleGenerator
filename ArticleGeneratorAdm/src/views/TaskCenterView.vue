@@ -143,15 +143,17 @@
 import { ref, computed, onMounted, onUnmounted } from "vue";
 import { api, type UnifiedTaskItem } from "@/api/client";
 import { formatDateTime, relativeTime } from "@/utils/format";
-import { useActiveTasks } from "@/hooks/useActiveTasks";
+import { storeToRefs } from "pinia";
+import { useTasksStore } from "@/store/tasks";
 
 const tasks = ref<UnifiedTaskItem[]>([]);
 const loading = ref(true);
 const showCompleted = ref(false);
 const now = ref(Date.now());
 
-// 活跃任务信息（来自全局单例，用于头部徽章）
-const { runningCount: activeRunningCount, pendingCount: activePendingCount } = useActiveTasks();
+// 活跃任务信息（来自 Pinia store，用于头部徽章）
+const tasksStore = useTasksStore();
+const { runningCount: activeRunningCount, pendingCount: activePendingCount } = storeToRefs(tasksStore);
 
 // 全量任务列表的轮询
 let listPollTimer: ReturnType<typeof setInterval> | null = null;

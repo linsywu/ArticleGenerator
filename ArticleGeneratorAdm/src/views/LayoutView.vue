@@ -105,18 +105,22 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from "vue";
 import { useRouter } from "vue-router";
-import { useActiveTasks } from "@/hooks/useActiveTasks";
+import { storeToRefs } from "pinia";
+import { useTasksStore } from "@/store/tasks";
 
 const router = useRouter();
+const tasksStore = useTasksStore();
 const {
   activeTasks,
   runningCount,
   pendingCount,
   totalActive,
+} = storeToRefs(tasksStore);
+const {
+  fetch: fetchActiveTasks,
   startPolling,
   stopPolling,
-  fetchActiveTasks,
-} = useActiveTasks();
+} = tasksStore;
 const showDropdown = ref(false);
 let hoverTimer: ReturnType<typeof setTimeout> | null = null;
 
