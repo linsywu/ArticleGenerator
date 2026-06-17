@@ -58,19 +58,29 @@ def get_refine_task_status(task_id: str, db: Session = Depends(get_db)):
 
 @router.get("/task/{task_id}")
 def get_task_status(task_id: str, db: Session = Depends(get_db)):
-    """查询生成任务状态"""
+    """查询生成任务状态（GenerationTask DB 记录）"""
     task = db.query(GenerationTask).filter(GenerationTask.task_id == task_id).first()
-    if task:
-        return {
-            "task_id": task.task_id,
-            "status": task.status,
-            "article_id": task.article_id,
-            "error_message": task.error_message,
-        }
-    # 方向/大纲/标题等非 GenerationTask 回退到 Celery 结果后端
+    if not task:
+        return {"task_id": task_id, "status": "unknown"}
+    return {
+        "task_id": task.task_id,
+        "status": task.status,
+        "article_id": task.article_id,
+        "error_message": task.error_message,
+    }
+
+
+@router.get("/task/{task_id}/result")
+def get_celery_task_result(task_id: str):
+    """查询 Celery 异步任务结果（方向/大纲/标题等无 DB 记录的任务）
+
+    从 Celery 结果后端获取任务状态与返回值。
+    仅用于 /directions、/outline、/titles 等非 GenerationTask 场景。
+    """
     from celery.result import AsyncResult
     from ..celery_app import celery_app as _celery
     async_result = AsyncResult(task_id, app=_celery)
+
     if async_result.state == "PENDING":
         return {"task_id": task_id, "status": "pending"}
     if async_result.state == "STARTED":

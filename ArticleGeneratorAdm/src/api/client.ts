@@ -154,6 +154,7 @@ export const api = {
   triggerRefine: (articleId: number, keywords: string) =>
     post(`/generate/refine/${articleId}`, { keywords }),
   getTaskStatus: (taskId: string) => get(`/generate/task/${taskId}`),
+  getTaskResult: (taskId: string) => get(`/generate/task/${taskId}/result`),
   getTasksBatch: (taskIds: string[]) =>
     get("/generate/tasks", { task_ids: taskIds.join(",") } as Record<string, unknown>),
   getTaskList: (params?: { status?: string; page?: number; page_size?: number }) =>

@@ -198,7 +198,7 @@ async function generateDirections() {
     const maxAttempts = 30
     while (attempts < maxAttempts) {
       await new Promise(r => setTimeout(r, 2000))
-      const { data: taskData } = await api.getTaskStatus(taskId)
+      const { data: taskData } = await api.getTaskResult(taskId)
       if (taskData.status === 'success') {
         const result = (taskData as any).result
         directions.value = result?.directions || []
@@ -229,7 +229,7 @@ async function generateOutline() {
     const maxAttempts = 30
     while (attempts < maxAttempts) {
       await new Promise(r => setTimeout(r, 2000))
-      const { data: taskData } = await api.getTaskStatus(taskId)
+      const { data: taskData } = await api.getTaskResult(taskId)
       if (taskData.status === 'success') {
         const result = (taskData as any).result
         outline.value = result?.outline || []
@@ -264,7 +264,7 @@ async function startGenerate() {
     const maxAttempts = 60
     while (attempts < maxAttempts) {
       await new Promise(r => setTimeout(r, 3000))
-      const { data: taskData } = await api.getTaskStatus(taskId)
+      const { data: taskData } = await api.getTaskResult(taskId)
       if (taskData.status === 'success') {
         const articleId = taskData.article_id
         const { data: articleData } = await api.getArticle(articleId)
