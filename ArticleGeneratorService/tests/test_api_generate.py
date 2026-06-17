@@ -4,6 +4,17 @@
 from unittest.mock import MagicMock, patch
 
 
+def test_trigger_generate_invalid_hotspot_id(auth_client):
+    """无效 hotspot_id 应返回 400"""
+    acc = auth_client.post("/api/accounts", json={"platform": "P", "account_name": "A"}).json()
+    resp = auth_client.post("/api/generate/trigger", json={
+        "hotspot_ids": [99999],
+        "account_id": acc["id"],
+    })
+    assert resp.status_code == 400
+    assert "99999" in resp.text
+
+
 def test_trigger_generate_account_not_found(auth_client):
     """账号不存在时返回 404"""
     r = auth_client.post("/api/generate/trigger", json={

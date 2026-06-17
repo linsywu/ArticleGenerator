@@ -36,6 +36,13 @@ def trigger_generation(
     if not hotspot_ids and not custom_topic:
         raise HTTPException(status_code=400, detail="请选择至少一个热点或输入自定义主题")
 
+    if hotspot_ids:
+        existing = db.query(Hotspot).filter(Hotspot.id.in_(hotspot_ids)).all()
+        existing_ids = {h.id for h in existing}
+        invalid_ids = [hid for hid in hotspot_ids if hid not in existing_ids]
+        if invalid_ids:
+            raise HTTPException(status_code=400, detail=f"无效的热点ID: {invalid_ids}")
+
     task_ids = []
 
     if custom_topic:
@@ -50,8 +57,6 @@ def trigger_generation(
     else:
         for hid in hotspot_ids:
             hotspot = db.query(Hotspot).filter(Hotspot.id == hid).first()
-            if not hotspot:
-                continue
             task = trigger_generate.delay(hotspot.title, account_id, hid, outline=outline, word_count=word_count)
             task_ids.append({"hotspot_id": hid, "task_id": task.id})
             gt = GenerationTask(
