@@ -82,6 +82,7 @@ class Article(Base):
     __tablename__ = "articles"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    title = Column(String(200))  # 文章标题
     hotspot_id = Column(Integer, ForeignKey("hotspots.id", ondelete="SET NULL"), nullable=True)
     account_id = Column(Integer, ForeignKey("accounts.id", ondelete="CASCADE"), nullable=False)
     content = Column(Text, nullable=False)
@@ -153,9 +154,11 @@ class ScenarioConfig(Base):
     system_prompt_template = Column(Text)
     params = Column(Text)  # JSON
     priority = Column(Integer, default=0)
+    description = Column(Text)  # 场景说明
+    sort_order = Column(Integer, default=0)  # 显示排序
     enabled = Column(Integer, default=1)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
+    updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
     provider = relationship("Provider", lazy="joined")
 
 

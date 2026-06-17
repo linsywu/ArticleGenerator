@@ -11,7 +11,7 @@ from .database import init_db, SessionLocal
 logger = logging.getLogger(__name__)
 from .models import User
 from .auth import get_password_hash
-from .api import accounts, hotspot_sources, hotspots, articles, generate, providers, scenario_configs, reference_articles, distill, generation_logs
+from .api import accounts, hotspot_sources, hotspots, articles, generate, providers, scenario_configs, reference_articles, distill, generation_logs, tasks
 from .api import auth as auth_api
 from .deps import get_current_user
 
@@ -60,6 +60,7 @@ app.include_router(scenario_configs.router, prefix="/api", dependencies=[Depends
 app.include_router(reference_articles.router, prefix="/api", dependencies=[Depends(get_current_user)])
 app.include_router(distill.router, prefix="/api", dependencies=[Depends(get_current_user)])
 app.include_router(generation_logs.router, prefix="/api", dependencies=[Depends(get_current_user)])
+app.include_router(tasks.router, prefix="/api", dependencies=[Depends(get_current_user)])
 
 
 def seed_admin_user():
