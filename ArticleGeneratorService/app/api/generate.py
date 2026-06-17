@@ -7,7 +7,7 @@ from typing import Optional
 
 from ..database import get_db
 from ..models import Article, Account, GenerationTask, RefineTask
-from ..schemas import GenerateRequest, RefineRequest, DirectionsRequest, DirectionsResponse, OutlineRequest, OutlineResponse, TitleRequest, TitleResponse
+from ..schemas import GenerateRequest, RefineRequest, DirectionsRequest, OutlineRequest, TitleRequest
 from ..tasks import trigger_refine, celery_app, trigger_direction_generation, trigger_outline_generation, trigger_title_generation
 from ..services import generate_service
 
@@ -117,7 +117,7 @@ def cancel_generation_task(task_id: str, db: Session = Depends(get_db)):
     return {"message": "已取消"}
 
 
-@router.post("/directions", response_model=DirectionsResponse)
+@router.post("/directions")
 def generate_directions(data: DirectionsRequest, db: Session = Depends(get_db)):
     """生成写作方向：根据想法和账号风格，生成 3-5 个不同的切入角度"""
     account = db.query(Account).filter(Account.id == data.account_id).first()
@@ -127,16 +127,10 @@ def generate_directions(data: DirectionsRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="想法不能为空")
 
     task = trigger_direction_generation.delay(data.account_id, data.idea.strip(), data.word_count)
-    result = task.get(timeout=120)
-
-    directions = result.get("directions", [])
-    if not directions:
-        raise HTTPException(status_code=500, detail="方向生成失败，请重试")
-
-    return DirectionsResponse(directions=[{"id": d.get("id", str(i)), "title": d.get("title", d)} for i, d in enumerate(directions)])
+    return {"task_id": task.id, "status": "pending", "message": "方向生成已提交"}
 
 
-@router.post("/outline", response_model=OutlineResponse)
+@router.post("/outline")
 def generate_outline(data: OutlineRequest, db: Session = Depends(get_db)):
     """生成大纲：根据想法、选中的方向和账号风格，生成 5-8 个要点"""
     account = db.query(Account).filter(Account.id == data.account_id).first()
@@ -148,16 +142,10 @@ def generate_outline(data: OutlineRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="写作方向不能为空")
 
     task = trigger_outline_generation.delay(data.account_id, data.idea.strip(), data.direction.strip())
-    result = task.get(timeout=120)
-
-    outline = result.get("outline", [])
-    if not outline:
-        raise HTTPException(status_code=500, detail="大纲生成失败，请重试")
-
-    return OutlineResponse(outline=[{"order": o.get("order", i+1), "point": o.get("point", o)} for i, o in enumerate(outline)])
+    return {"task_id": task.id, "status": "pending", "message": "大纲生成已提交"}
 
 
-@router.post("/titles", response_model=TitleResponse)
+@router.post("/titles")
 def generate_titles(data: TitleRequest, db: Session = Depends(get_db)):
     """生成候选标题：想法+方向+大纲 → 3-5 个标题"""
     account = db.query(Account).filter(Account.id == data.account_id).first()
@@ -168,10 +156,4 @@ def generate_titles(data: TitleRequest, db: Session = Depends(get_db)):
 
     outline_points = [p for p in data.outline if p.strip()]
     task = trigger_title_generation.delay(data.account_id, data.idea.strip(), data.direction.strip(), outline_points)
-    result = task.get(timeout=120)
-
-    titles = result.get("titles", [])
-    if not titles:
-        raise HTTPException(status_code=500, detail="标题生成失败，请重试")
-
-    return TitleResponse(titles=titles)
+    return {"task_id": task.id, "status": "pending", "message": "标题生成已提交"}
