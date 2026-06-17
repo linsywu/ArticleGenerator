@@ -1,25 +1,15 @@
 """
 文章生成与微调 API（触发 Celery 任务）
 """
-from datetime import timezone as dt_timezone
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import desc
-from typing import List, Optional
+from typing import Optional
 
 from ..database import get_db
-from ..models import Hotspot, Account, Article, GenerationTask, RefineTask
+from ..models import Article, Account, GenerationTask, RefineTask
 from ..schemas import GenerateRequest, RefineRequest, DirectionsRequest, DirectionsResponse, OutlineRequest, OutlineResponse, TitleRequest, TitleResponse
-from ..tasks import trigger_generate, trigger_refine, celery_app, trigger_direction_generation, trigger_outline_generation, trigger_title_generation
-
-
-def _as_utc(dt):
-    """确保 datetime 带 UTC 时区（兼容旧数据中 naive datetime）"""
-    if dt is None:
-        return None
-    if dt.tzinfo is None:
-        return dt.replace(tzinfo=dt_timezone.utc)
-    return dt
+from ..tasks import trigger_refine, celery_app, trigger_direction_generation, trigger_outline_generation, trigger_title_generation
+from ..services import generate_service
 
 router = APIRouter(prefix="/generate", tags=["文章生成"])
 
@@ -27,41 +17,14 @@ router = APIRouter(prefix="/generate", tags=["文章生成"])
 @router.post("/trigger")
 def trigger_article_generation(data: GenerateRequest, db: Session = Depends(get_db)):
     """触发生成：热点 ID 列表 或 自定义主题 + 账号 ID"""
-    account = db.query(Account).filter(Account.id == data.account_id).first()
-    if not account:
-        raise HTTPException(status_code=404, detail="账号不存在")
-
-    if not data.hotspot_ids and not data.custom_topic:
-        raise HTTPException(status_code=400, detail="请选择至少一个热点或输入自定义主题")
-
-    task_ids = []
-
-    # 自定义主题：创建独立任务（不关联热点）
-    if data.custom_topic:
-        task = trigger_generate.delay(data.custom_topic, data.account_id, hotspot_id=None, outline=data.outline, word_count=data.word_count)
-        task_ids.append({"topic": data.custom_topic, "task_id": task.id})
-        gt = GenerationTask(
-            task_id=task.id,
-            account_id=data.account_id,
-            status="pending",
-        )
-        db.add(gt)
-    else:
-        for hid in data.hotspot_ids:
-            hotspot = db.query(Hotspot).filter(Hotspot.id == hid).first()
-            if not hotspot:
-                continue
-            task = trigger_generate.delay(hotspot.title, data.account_id, hid, outline=data.outline, word_count=data.word_count)
-            task_ids.append({"hotspot_id": hid, "task_id": task.id})
-            gt = GenerationTask(
-                task_id=task.id,
-                hotspot_id=hid,
-                account_id=data.account_id,
-                status="pending",
-            )
-            db.add(gt)
-    db.commit()
-    return {"message": "任务已提交", "tasks": task_ids}
+    return generate_service.trigger_generation(
+        db=db,
+        hotspot_ids=data.hotspot_ids,
+        account_id=data.account_id,
+        custom_topic=data.custom_topic,
+        outline=data.outline,
+        word_count=data.word_count,
+    )
 
 
 @router.post("/refine/{article_id}")
@@ -134,41 +97,7 @@ def list_generation_tasks(
     page_size: int = Query(20, ge=1, le=100),
 ):
     """任务列表，支持状态筛选和分页。generating 表示 pending+running"""
-    q = db.query(GenerationTask)
-    if status:
-        if status == "generating":
-            q = q.filter(GenerationTask.status.in_(["pending", "running"]))
-        else:
-            q = q.filter(GenerationTask.status == status)
-    q = q.order_by(desc(GenerationTask.created_at))
-    total = q.count()
-    offset = (page - 1) * page_size
-    tasks = q.offset(offset).limit(page_size).all()
-    result = []
-    for t in tasks:
-        hotspot = db.query(Hotspot).filter(Hotspot.id == t.hotspot_id).first()
-        account = db.query(Account).filter(Account.id == t.account_id).first()
-        # 查找文章标题（优先文章自身标题 → 热点标题）
-        article_title = None
-        if t.article_id:
-            article = db.query(Article).filter(Article.id == t.article_id).first()
-            if article:
-                article_title = article.title
-
-        result.append({
-            "id": t.id,
-            "task_id": t.task_id,
-            "hotspot_id": t.hotspot_id,
-            "account_id": t.account_id,
-            "article_id": t.article_id,
-            "status": t.status,
-            "error_message": t.error_message,
-            "title": article_title,
-            "created_at": _as_utc(t.created_at),
-            "hotspot": {"id": hotspot.id, "title": hotspot.title, "source": hotspot.source} if hotspot else None,
-            "account": {"id": account.id, "account_name": account.account_name, "platform": account.platform} if account else None,
-        })
-    return {"data": result, "total": total}
+    return generate_service.list_generation_tasks(db=db, status=status, page=page, page_size=page_size)
 
 
 @router.post("/tasks/{task_id}/cancel")

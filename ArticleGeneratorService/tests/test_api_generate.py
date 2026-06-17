@@ -20,7 +20,7 @@ def test_trigger_generate_success(auth_client):
     mock_task = MagicMock()
     mock_task.id = "mock-task-id-123"
 
-    with patch("app.api.generate.trigger_generate") as m:
+    with patch("app.services.generate_service.trigger_generate") as m:
         m.delay.return_value = mock_task
         r = auth_client.post("/api/generate/trigger", json={
             "hotspot_ids": [hot["id"]],

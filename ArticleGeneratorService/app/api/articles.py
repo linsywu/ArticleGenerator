@@ -1,15 +1,15 @@
 """
 文章 API：评审、发布、微调
 """
-from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
-from typing import Optional, List
+from typing import Optional
 
 from ..database import get_db
 from ..models import Article, Hotspot, Account
 from ..schemas import ArticleResponse, ArticleStatusUpdate, ArticleUpdateRequest, ArticleWithRelations, ArticleListResponse
+from ..services import article_service
 
 router = APIRouter(prefix="/articles", tags=["文章"])
 
@@ -69,15 +69,7 @@ def get_article(article_id: int, db: Session = Depends(get_db)):
 @router.patch("/{article_id}/status")
 def update_article_status(article_id: int, data: ArticleStatusUpdate, db: Session = Depends(get_db)):
     """更新文章状态：通过/拒绝/已发布"""
-    article = db.query(Article).filter(Article.id == article_id).first()
-    if not article:
-        raise HTTPException(status_code=404, detail="文章不存在")
-    if data.status not in ("approved", "rejected", "published"):
-        raise HTTPException(status_code=400, detail="无效状态")
-    article.status = data.status
-    if data.status == "published":
-        article.published_at = datetime.now(timezone.utc)
-    db.commit()
+    article_service.update_article_status(db=db, article_id=article_id, new_status=data.status)
     return {"message": "更新成功"}
 
 
