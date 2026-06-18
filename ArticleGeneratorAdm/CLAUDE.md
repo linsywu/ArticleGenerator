@@ -31,12 +31,18 @@ npx vitest run
 
 | 路径 | 组件 | 用途 |
 |------|------|------|
+| `/login` | `LoginView` | 登录页 |
 | `/` | `HotspotsView` | 热点列表、多选、批量生成 |
+| `/create` | `CreateView` | 手动创建文章 |
+| `/task-center` | `TaskCenterView` | 统一任务中心 |
 | `/tasks` | `TasksView` | 生成任务状态、取消 |
 | `/review` | `ReviewView` | 文章评审（通过/拒绝/微调） |
 | `/publish` | `PublishView` | 待发布列表、复制、标记已发布 |
 | `/hotspot-sources` | `HotspotSourcesView` | 热点源配置管理 |
 | `/accounts` | `AccountsView` | 账号风格管理 |
+| `/providers` | `ProvidersView` | API 供应商管理 |
+| `/scenario-configs` | `ScenarioConfigsView` | 场景路由配置 |
+| (layout) | `LayoutView` | 布局外壳（包裹所有页面，非独立路由） |
 
 ## 代码约定
 

@@ -31,7 +31,6 @@ mysql -u root -p article_generator < migrations/001_initial_schema.sql
 - 脚本放在 `migrations/` 目录下
 - 命名格式：`NNN_description.sql`（如 `001_initial_schema.sql`、`002_add_user_auth.sql`）
 - 按序号升序执行，不可跳过
-- 每次新增迁移需在 `migrations/README.md` 中记录变更说明
 
 ## 已知陷阱
 

@@ -37,7 +37,7 @@ cd HotspotCrawler && pytest tests/ -v
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
 | `API_BASE` | `http://localhost:8000` | 后端 API 地址 |
-| `CRAWL_SOURCES` | `weibo,zhihu,baidu,douyin,bilibili` | 抓取源列表（逗号分隔） |
+| `CRAWL_SOURCES` | `weibo,zhihu,baidu,douyin,bilihot` | 抓取源列表（逗号分隔） |
 
 ## 已知陷阱
 

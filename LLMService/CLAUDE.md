@@ -3,7 +3,7 @@
 
 # LLMService — LLM 推理服务
 
-基于 FastAPI + transformers + peft 的模型推理服务，提供 `/generate` 和 `/refine` 端点。支持 `MOCK_MODE` 模拟和真实 LoRA 推理。
+基于 FastAPI + transformers + peft 的模型推理服务，提供 `/generate`、`/refine`、`/chat` 和 `/` 端点。支持 `MOCK_MODE` 模拟和真实 LoRA 推理。
 
 ## 常用命令
 
@@ -27,6 +27,8 @@ cd LLMService && pytest tests/ -v
 
 | 端点 | 用途 |
 |------|------|
+| `GET /` | 健康检查 |
+| `POST /chat` | 旧版聊天接口（兼容） |
 | `POST /generate` | 根据热点标题 + 账号风格生成文章 |
 | `POST /refine` | 根据评审意见微调已有文章 |
 

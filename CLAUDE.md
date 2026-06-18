@@ -8,7 +8,6 @@
 
 | 文件 | 路径 | 内容 |
 |------|------|------|
-| 根 CLAUDE.md | `CLAUDE.md` | 本文件 — 项目架构 + 全局约定 + 跨服务陷阱 |
 | 领域术语表 | `CONTEXT.md` | 核心领域概念 + 按服务区分的术语 |
 | 后端 CLAUDE.md | `ArticleGeneratorService/CLAUDE.md` | 后端 API 专用命令、路由、配置、陷阱 |
 | LLM CLAUDE.md | `LLMService/CLAUDE.md` | LLM 推理专用命令、模型配置、陷阱 |
@@ -24,6 +23,14 @@
 ## 项目概述
 
 ArticleGenerator 是一个半自动化内容创作辅助系统，流程：**热点抓取 → 人工选择 → 智能生成 → 评审微调 → 发布辅助**。
+
+## Agent 工具
+
+| 文档 | 路径 | 内容 |
+|------|------|------|
+| Issue Tracker | `docs/agents/issue-tracker.md` | 使用 `gh` CLI 管理 GitHub Issues |
+| Triage Labels | `docs/agents/triage-labels.md` | 标签词汇：`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix` |
+| Domain Docs | `docs/agents/domain.md` | 单上下文布局：`CONTEXT.md` + `docs/adr/` |
 
 ## 服务导航
 

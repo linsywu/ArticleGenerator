@@ -34,30 +34,26 @@ cd ArticleGeneratorService && pytest tests/ -v
 
 | 路由 | 文件 | 职责 |
 |------|------|------|
+| `/api/auth` | `app/api/auth.py` | 认证（登录、JWT） |
 | `/api/accounts` | `app/api/accounts.py` | 账号 CRUD |
+| `/api/distill` | `app/api/distill.py` | 风格蒸馏 |
+| `/api/reference-articles` | `app/api/reference_articles.py` | 参考文章管理 |
 | `/api/hotspots` | `app/api/hotspots.py` | 热点列表/批量创建/手动抓取 |
 | `/api/hotspot-sources` | `app/api/hotspot_sources.py` | 热点源配置 CRUD |
 | `/api/articles` | `app/api/articles.py` | 文章列表/详情/状态更新 |
-| `/api/generate` | `app/api/generate.py` | 触发生成/微调、任务状态查询/取消 |
+| `/api/generate` | `app/api/generate.py` | 触发生成/微调、写作方向、大纲、标题、任务状态 |
+| `/api/generation-logs` | `app/api/generation_logs.py` | LLM 回调日志 |
+| `/api/providers` | `app/api/providers.py` | API 提供商管理 |
+| `/api/scenario-configs` | `app/api/scenario_configs.py` | 场景路由配置 |
+| `/api/tasks` | `app/api/tasks.py` | 统一任务查询 |
 
-### 数据库表（6 张）
+### 数据库表
 
-| 表 | 用途 | 关键字段 |
-|----|------|----------|
-| `hotspots` | 热点数据 | title, source, heat_score, url, status |
-| `accounts` | 账号风格 | platform, account_name, lora_path, sample_articles |
-| `articles` | 生成文章 | hotspot_id FK, account_id FK, content, status, refine_history JSON |
-| `generation_tasks` | 生成任务 | task_id UNIQUE, status, article_id |
-| `refine_tasks` | 微调任务 | task_id UNIQUE, article_id FK |
-| `hotspot_sources` | 热点源配置 | name, type, config JSON, enabled |
+数据库表结构见 `ArticleGeneratorDatabase/CLAUDE.md`。共 6 张表：hotspots, accounts, articles, generation_tasks, refine_tasks, hotspot_sources。
 
 ### 服务内数据流
 
-1. HotspotCrawler POST `/api/hotspots/batch` → `hotspots` 表（status=unselected）
-2. 前端 POST `/api/generate/trigger` → Celery 任务 → `generation_tasks` 表
-3. Celery Worker 调 LLM `/generate` → `articles` 表（status=pending_review）
-4. 前端 PATCH `/api/articles/{id}/status` → 通过/拒绝
-5. 微调 POST `/api/generate/refine/{id}` → Celery → LLM `/refine`
+核心数据流见根 `CLAUDE.md`。服务内 Celery 任务编排细节见 `app/tasks.py`。
 
 ## 配置
 
