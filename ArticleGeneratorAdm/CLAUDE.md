@@ -44,12 +44,144 @@ npx vitest run
 | `/scenario-configs` | `ScenarioConfigsView` | 场景路由配置 |
 | (layout) | `LayoutView` | 布局外壳（包裹所有页面，非独立路由） |
 
+## 代码模式
+
+以下模式为强制规范，新代码必须遵循。反模式代码会被要求重写。
+
+### 组件分层
+
+```
+src/
+├── components/        ← 共享组件（跨页面复用）
+│   ├── PageHeader.vue          ✅ 通用页面头部
+│   └── ArticleEditorDialog.vue ✅ 文章编辑器弹窗
+├── views/             ← 页面壳（路由入口，只做编排，不写业务逻辑）
+│   ├── HotspotsView.vue       ← 组装子组件 + 调用 API
+│   └── AccountsView.vue
+├── hooks/             ← 可复用业务逻辑
+├── api/modules/       ← API 调用封装
+├── store/             ← Pinia 状态管理
+└── utils/             ← 纯工具函数
+```
+
+| 层级 | 职责 | 判断标准 |
+|------|------|----------|
+| `views/` | 页面壳：组装子组件、调用 API、管理页面级状态 | 能否在另一个页面直接复用？不能 → 属于 view 内部逻辑 |
+| `components/` | 可跨页面复用的 UI 组件 | 是否在两个以上页面出现？是 → 提取到 components/ |
+| `hooks/` | 可复用的状态/副作用逻辑 | 是否包含 `ref`/`reactive`/`onMounted` 且被多处使用？ |
+| `api/modules/` | HTTP 请求封装 | 是否调用后端接口？是 → 必须在 api/modules/ 中封装 |
+
+### 弹窗/对话框必须独立为组件
+
+**❌ 反模式：在页面中内联弹窗代码**
+
+```vue
+<!-- views/SomeView.vue — 错！ -->
+<template>
+  <el-button @click="dialogVisible = true">打开</el-button>
+  <el-dialog v-model="dialogVisible" title="新增" width="600px">
+    <el-form :model="form"> ... 大量表单项 ... </el-form>
+    <template #footer>
+      <el-button @click="dialogVisible = false">取消</el-button>
+      <el-button type="primary" @click="handleSubmit">确认</el-button>
+    </template>
+  </el-dialog>
+</template>
+```
+
+问题：页面文件臃肿（当前 `AccountsView.vue` 614 行）、弹窗逻辑无法复用、单文件职责不清。
+
+**✅ 正确：弹窗抽离为独立组件**
+
+```vue
+<!-- components/AccountCreateDialog.vue -->
+<script setup lang="ts">
+import { ref, defineEmits } from 'vue'
+import { createAccount } from '@/api/modules/accounts'
+import type { AccountCreate } from '@/api/types'
+
+const emit = defineEmits<{ success: [] }>()
+const visible = ref(false)
+const form = ref<AccountCreate>({ account_name: '', platform: '' })
+
+const open = () => { visible.value = true }
+const handleSubmit = async () => {
+  await createAccount(form.value)
+  visible.value = false
+  emit('success')
+}
+defineExpose({ open })
+</script>
+
+<template>
+  <el-dialog v-model="visible" title="新增账号" width="600px">
+    <el-form :model="form"> ... </el-form>
+    <template #footer>
+      <el-button @click="visible = false">取消</el-button>
+      <el-button type="primary" @click="handleSubmit">确认</el-button>
+    </template>
+  </el-dialog>
+</template>
+```
+
+```vue
+<!-- views/SomeView.vue — 页面只做编排 -->
+<script setup lang="ts">
+import { ref } from 'vue'
+import AccountCreateDialog from '@/components/AccountCreateDialog.vue'
+
+const dialogRef = ref<InstanceType<typeof AccountCreateDialog>>()
+</script>
+
+<template>
+  <el-button @click="dialogRef?.open()">新增</el-button>
+  <AccountCreateDialog ref="dialogRef" @success="refreshList" />
+</template>
+```
+
+**弹窗组件规范**：
+- 放在 `components/`，命名以 `Dialog.vue` 结尾
+- 通过 `defineExpose({ open })` 暴露打开方法
+- 通过 `emit('success')` 通知父组件刷新
+- 弹窗内部自己管理表单状态和提交逻辑
+
+### API 调用必须通过 client 封装
+
+**❌ 反模式**
+```ts
+// 组件中直接 fetch
+const res = await fetch('/api/accounts')
+const data = await res.json()
+```
+
+**✅ 正确**
+```ts
+// api/modules/accounts.ts
+import client from '../client'
+import type { Account, AccountCreate } from '../types'
+
+export const getAccounts = () => client.get<Account[]>('/api/accounts')
+export const createAccount = (data: AccountCreate) => client.post<Account>('/api/accounts', data)
+```
+
+详见 `src/api/client.ts` + `src/api/types.ts` + `src/api/modules/*.ts` + `src/api/index.ts`。
+
+### 新增页面的标准步骤
+
+1. 如果需要新弹窗 → `components/XxxDialog.vue` 创建弹窗组件
+2. 如果需要新 API → `api/types.ts` 加类型 + `api/modules/xxx.ts` 加方法 + `api/index.ts` 导出
+3. `views/XxxView.vue` 创建页面壳（组装组件 + 调 API）
+4. `router/index.ts` 注册路由
+5. 启动 `npm run dev`，浏览器验证控制台无报错
+
 ## 代码约定
 
 - 页面逻辑抽离为 `components/` 子组件
 - 公用工具：`utils/`、`api/`、`store/`
 - 业务 hooks：`hooks/`
 - API client 结构：`client.ts` + `types.ts` + `modules/*.ts` + `index.ts`
+- **弹窗必须独立为 `components/XxxDialog.vue`，禁止在 views 中内联** `el-dialog`
+- **单文件不超过 300 行**，超过则必须拆分
 
 ## 已知陷阱
 

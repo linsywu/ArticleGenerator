@@ -55,6 +55,108 @@ cd ArticleGeneratorService && pytest tests/ -v
 
 核心数据流见根 `CLAUDE.md`。服务内 Celery 任务编排细节见 `app/tasks.py`。
 
+## 代码模式
+
+以下模式为强制规范，参考实现见 `app/api/accounts.py`。
+
+### 新增 API 端点的标准步骤
+
+**Step 1: 定义 Schema**（`app/schemas.py`）
+
+```python
+class NewResourceCreate(BaseModel):
+    name: str
+    type: str = "default"
+
+class NewResourceResponse(BaseModel):
+    id: int
+    name: str
+    type: str
+    class Config:
+        from_attributes = True  # 允许从 ORM model 构建
+```
+
+**Step 2: 创建路由文件**（`app/api/new_resource.py`）
+
+```python
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from ..database import get_db
+from ..models import NewResource
+from ..schemas import NewResourceCreate, NewResourceResponse
+
+router = APIRouter(prefix="/api/new-resource", tags=["新资源"])
+
+@router.get("", response_model=List[NewResourceResponse])
+def list_resources(db: Session = Depends(get_db)):
+    return db.query(NewResource).order_by(NewResource.id.desc()).all()
+
+@router.post("", response_model=NewResourceResponse)
+def create_resource(data: NewResourceCreate, db: Session = Depends(get_db)):
+    resource = NewResource(**data.model_dump())
+    db.add(resource)
+    db.commit()
+    db.refresh(resource)
+    return resource
+```
+
+**Step 3: 注册路由**（`app/main.py`）
+
+```python
+from app.api.new_resource import router as new_resource_router
+app.include_router(new_resource_router)
+```
+
+**Step 4: 写测试**（`tests/test_api_new_resource.py`）
+
+```python
+def test_create_resource(client):
+    res = client.post("/api/new-resource", json={"name": "test"})
+    assert res.status_code == 200
+    assert res.json()["name"] == "test"
+```
+
+### 数据库迁移
+
+新增字段流程：`ArticleGeneratorDatabase/migrations/` 下新建 `NNN_description.sql` → `app/models.py` 添加 Column → `app/schemas.py` 添加字段。
+
+### 认证模式
+
+按端点按需引入，**不使用全局中间件**：
+
+```python
+from ..auth import get_current_user, get_crawler_key
+
+# 需要用户登录
+@router.get("/protected")
+def protected_route(user = Depends(get_current_user)): ...
+
+# Crawler Key 认证（机器调用）
+@router.post("/batch")
+def batch_create(key = Depends(get_crawler_key)): ...
+
+# 公开端点
+@router.get("/public")
+def public_route(): ...  # 不加 Depends
+```
+
+### Celery 任务
+
+```python
+# app/tasks.py — 定义任务
+@celery_app.task(bind=True, max_retries=3)
+def generate_article(self, task_data):
+    try:
+        # 调用 LLMService
+        ...
+    except Exception as e:
+        self.retry(exc=e, countdown=60)
+
+# API 中触发
+from .tasks import generate_article
+task = generate_article.delay(task_data)
+```
+
 ## 配置
 
 `.env` 文件（参考 `.env.example`）：
