@@ -181,7 +181,6 @@ export const createAccount = (data: AccountCreate) => client.post<Account>('/api
 - 业务 hooks：`hooks/`
 - API client 结构：`client.ts` + `types.ts` + `modules/*.ts` + `index.ts`
 - **弹窗必须独立为 `components/XxxDialog.vue`，禁止在 views 中内联** `el-dialog`
-- **单文件不超过 300 行**，超过则必须拆分
 
 ## 已知陷阱
 
