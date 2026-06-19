@@ -1,0 +1,86 @@
+<style>
+  table.data-table { width:100%; font-size:13px; border-collapse:collapse; }
+  table.data-table th { background:#37474f; color:#fff; padding:8px; text-align:left; }
+  table.data-table td { padding:6px 8px; border-bottom:1px solid #e0e0e0; color:#1d1d1f; }
+  table.data-table tr:nth-child(even) td { background:#f5f5f5; }
+  .green-box { background:#e8f5e9; border-radius:8px; padding:12px; text-align:center; flex:1; }
+  .green-box .icon { font-size:24px; }
+  .green-box strong { color:#1b5e20; }
+  .green-box span { font-size:12px; color:#2e7d32; }
+  .orange-box { background:#fff3e0; border-radius:8px; padding:12px; text-align:center; flex:1; }
+  .orange-box .icon { font-size:24px; }
+  .orange-box strong { color:#e65100; }
+  .orange-box span { font-size:12px; color:#bf360c; }
+  .red-box { background:#ffebee; border-radius:8px; padding:12px; text-align:center; flex:1; }
+  .red-box .icon { font-size:24px; }
+  .red-box strong { color:#c62828; }
+  .red-box span { font-size:12px; color:#b71c1c; }
+  .purple-box { background:#f3e5f5; border-radius:8px; padding:12px; text-align:center; flex:1; }
+  .purple-box .icon { font-size:24px; }
+  .purple-box strong { color:#4a148c; }
+  .purple-box span { font-size:12px; color:#6a1b9a; }
+  .blue-box { background:#e3f2fd; border-radius:8px; padding:12px; font-size:13px; color:#0d47a1; }
+  .green-box2 { background:#e8f5e9; border-radius:8px; padding:12px; font-size:13px; color:#1b5e20; }
+</style>
+
+<h2>📋 模块三：内容采集中心 (Part 1)</h2>
+<p class="subtitle">PRD 第四章+第五章 — 凭证管理 + 任务管理 + 采集执行 + 解析 + 去重 + 重试</p>
+
+<div class="section"><h3>子模块 3.1：采集凭证管理</h3></div>
+<table class="data-table">
+  <tr><th>字段</th><th>类型</th><th>说明</th></tr>
+  <tr><td>id</td><td>bigint</td><td>主键</td></tr>
+  <tr><td>name</td><td>varchar(100)</td><td>凭证名称（如：主号凭证）</td></tr>
+  <tr><td>token</td><td>varchar(500)</td><td>公众号后台 token</td></tr>
+  <tr><td>cookie</td><td>text</td><td>公众号后台 cookie 完整内容</td></tr>
+  <tr><td>status</td><td>varchar(20)</td><td>normal / expiring_soon / expired / error</td></tr>
+  <tr><td>check_time</td><td>datetime</td><td>最后有效性检测时间</td></tr>
+  <tr><td>created_at</td><td>datetime</td><td>创建时间</td></tr>
+</table>
+
+<div style="display: flex; gap: 12px; margin-top: 12px;">
+  <div class="green-box"><div class="icon">🟢</div><strong>正常</strong><br><span>可正常使用</span></div>
+  <div class="orange-box"><div class="icon">🟡</div><strong>即将失效</strong><br><span>24h内过期</span></div>
+  <div class="red-box"><div class="icon">🔴</div><strong>已失效</strong><br><span>需要重新填写</span></div>
+  <div class="purple-box"><div class="icon">⚠️</div><strong>异常</strong><br><span>接口调用异常</span></div>
+</div>
+
+<div class="section" style="margin-top:16px;"><h3>子模块 3.2：采集任务管理</h3></div>
+<table class="data-table">
+  <tr><th>字段</th><th>类型</th><th>说明</th></tr>
+  <tr><td>id</td><td>bigint</td><td>主键</td></tr>
+  <tr><td>name</td><td>varchar(200)</td><td>任务名称</td></tr>
+  <tr><td>credential_id</td><td>bigint FK</td><td>使用的采集凭证</td></tr>
+  <tr><td>track_ids</td><td>json</td><td>目标赛道</td></tr>
+  <tr><td>account_ids</td><td>json</td><td>目标公众号（空=按赛道全采）</td></tr>
+  <tr><td>collect_mode</td><td>varchar(30)</td><td>history_50/100/200 / date_range / incremental</td></tr>
+  <tr><td>schedule_type</td><td>varchar(20)</td><td>manual / interval / cron</td></tr>
+  <tr><td>cron</td><td>varchar(50)</td><td>cron 表达式（schedule_type=cron 时）</td></tr>
+  <tr><td>status</td><td>varchar(20)</td><td>idle / running / paused / error</td></tr>
+</table>
+
+<div class="section" style="margin-top:16px;"><h3>采集模式</h3></div>
+<div class="split">
+  <div class="blue-box">
+    <strong>📥 历史同步</strong>
+    <ul style="margin:8px 0 0 16px;">
+      <li>最近 50 篇</li><li>最近 100 篇</li><li>最近 200 篇</li>
+      <li>指定时间范围</li>
+    </ul>
+  </div>
+  <div class="green-box2">
+    <strong>📥 增量同步</strong>
+    <ul style="margin:8px 0 0 16px;">
+      <li>仅同步新文章</li>
+      <li>基于 last_collect_time</li>
+      <li>基于 URL + content_hash 去重</li>
+    </ul>
+  </div>
+</div>
+
+<div style="margin-top:12px; background:#fff3e0; padding:12px; border-radius:8px; font-size:13px; color:#e65100;">
+  <strong>⏰ 执行方式：</strong>
+  <span style="background:#2e7d32; color:#fff; padding:2px 8px; border-radius:4px; margin:0 4px;">定时任务 (cron)</span>
+  <span style="background:#1565c0; color:#fff; padding:2px 8px; border-radius:4px; margin:0 4px;">间隔任务 (每N小时)</span>
+  <span style="background:#616161; color:#fff; padding:2px 8px; border-radius:4px; margin:0 4px;">手动执行</span>
+</div>

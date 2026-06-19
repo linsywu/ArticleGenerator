@@ -1,0 +1,117 @@
+<style>
+  table.summary { width:100%; font-size:13px; border-collapse:collapse; }
+  table.summary th { background:#37474f; color:#fff; padding:10px 8px; text-align:left; }
+  table.summary td { padding:8px; border-bottom:1px solid #e0e0e0; color:#1d1d1f; vertical-align:top; }
+  table.summary tr:nth-child(even) td { background:#f5f5f5; }
+  .tag-doing { background:#1565c0; color:#fff; padding:2px 8px; border-radius:3px; font-size:11px; }
+  .tag-must { background:#c62828; color:#fff; padding:2px 8px; border-radius:3px; font-size:11px; }
+  .tag-next { background:#e65100; color:#fff; padding:2px 8px; border-radius:3px; font-size:11px; }
+  .tag-later { background:#6a1b9a; color:#fff; padding:2px 8px; border-radius:3px; font-size:11px; }
+  .tag-defer { background:#888; color:#fff; padding:2px 8px; border-radius:3px; font-size:11px; }
+  .tag-drop { background:#9e9e9e; color:#fff; padding:2px 8px; border-radius:3px; font-size:11px; text-decoration:line-through; }
+  .section-title { font-size:16px; font-weight:700; margin:20px 0 12px 0; padding-bottom:6px; border-bottom:2px solid #e0e0e0; }
+</style>
+
+<h2>📋 千机笔 PRD — 讨论小结</h2>
+<p class="subtitle">基于 PRD 功能补充文档 + 现有系统代码审查 + 多轮讨论的结果</p>
+
+<div class="section-title">一、系统现状（已实现）</div>
+<table class="summary">
+  <tr><th style="width:25%;">模块</th><th style="width:45%;">已实现功能</th><th style="width:30%;">技术基础</th></tr>
+  <tr><td>用户认证</td><td>JWT 登录 + Crawler Key 双认证</td><td>FastAPI middleware</td></tr>
+  <tr><td>热点发现</td><td>灵感墙 + 热点源管理 + HotspotCrawler</td><td>Celery + 爬虫调度</td></tr>
+  <tr><td>账号管理</td><td>CRUD + 7维结构化风格画像 + 蒸馏任务</td><td>Celery + LLM Gateway</td></tr>
+  <tr><td>风格蒸馏</td><td>样本文章 → AI 分析 → 7维画像 JSON</td><td>scenario=distill</td></tr>
+  <tr><td>文章创作</td><td>5步向导：选号→想法→方向→大纲→全文</td><td>Celery + 轮询 + LLM</td></tr>
+  <tr><td>评审发布</td><td>审核队列 + 审批/驳回 + 已发布列表</td><td>状态机流转</td></tr>
+  <tr><td>LLM Gateway</td><td>多供应商 + 场景路由 + 生成日志</td><td>Adapter 模式</td></tr>
+  <tr><td>任务中心</td><td>生成任务列表 + 状态追踪 + 取消</td><td>GenerationTask 表</td></tr>
+</table>
+
+<div class="section-title">二、PRD 新模块设计确认</div>
+<table class="summary">
+  <tr><th style="width:5%;">#</th><th style="width:18%;">模块</th><th style="width:12%;">状态</th><th style="width:35%;">设计要点</th><th style="width:30%;">关键决策</th></tr>
+  <tr>
+    <td>1</td><td><strong>赛道管理</strong></td>
+    <td><span class="tag-must">待开发</span></td>
+    <td>tracks + sub_tracks 两张表，keywords/forbidden_keywords，启停状态</td>
+    <td>标准 CRUD，1个API模块+2个页面</td>
+  </tr>
+  <tr>
+    <td>2</td><td><strong>公众号管理</strong></td>
+    <td><span class="tag-must">待开发</span></td>
+    <td>mp_accounts 表，两种导入：名称搜索(需凭证)+文章链接解析</td>
+    <td>两种导入都保留，凭证就绪后用名称导入</td>
+  </tr>
+  <tr>
+    <td>3</td><td><strong>内容采集中心</strong></td>
+    <td><span class="tag-must">待开发</span></td>
+    <td>凭证管理 + 采集任务(赛道×公众号多级选择) + 延迟解析 + 频次控制(防风控)</td>
+    <td>采集只存 raw_html，解析推迟到使用时；图片跳过；每天一次低频采集</td>
+  </tr>
+  <tr>
+    <td>4</td><td><strong>素材中心</strong></td>
+    <td><span class="tag-next">待开发</span></td>
+    <td>mp_materials 表 + 列表筛选 + 详情Tab(原文/Markdown)+ 创作方向按钮→论点风暴</td>
+    <td>延迟解析触发点；与 articles 表分开存储</td>
+  </tr>
+  <tr>
+    <td>5</td><td><strong>知识库中心</strong></td>
+    <td><span class="tag-next">待开发</span></td>
+    <td>四库：观点/案例/金句/标题，AI批量提取+手动管理，创作时侧边栏检索</td>
+    <td>4张独立表；复用 LLM Gateway 逐篇提取</td>
+  </tr>
+  <tr>
+    <td>6</td><td><strong>AI分析中心</strong></td>
+    <td><span class="tag-next">待开发</span></td>
+    <td>仅保留论点风暴(3个入口)；爆文拆解已砍掉</td>
+    <td>analysis_reports 统一存储，type 区分</td>
+  </tr>
+  <tr>
+    <td>7</td><td><strong>创作增强</strong></td>
+    <td><span class="tag-defer">延后</span></td>
+    <td>除「一键带入创作方向」外，其余延后</td>
+    <td>现有5步向导已足够好</td>
+  </tr>
+  <tr>
+    <td>8</td><td><strong>数据统计</strong></td>
+    <td><span class="tag-later">最后</span></td>
+    <td>Dashboard：内容统计+采集统计+AI统计，无新表</td>
+    <td>聚合查询，收尾阶段做</td>
+  </tr>
+  <tr>
+    <td>-</td><td><strong>爆文拆解</strong></td>
+    <td><span class="tag-drop">已砍</span></td>
+    <td>降级为论点风暴的附带信息</td>
+    <td>不是刚需，论点风暴覆盖了核心需求</td>
+  </tr>
+</table>
+
+<div class="section-title">三、采集中心设计定案（最核心模块）</div>
+<table class="summary">
+  <tr><th>子模块</th><th>数据表</th><th>核心设计</th></tr>
+  <tr><td>凭证管理</td><td>mp_credentials</td><td>token+cookie，4状态(normal/expiring_soon/expired/error)，每6h自动检测+任务前预检</td></tr>
+  <tr><td>任务管理</td><td>collect_tasks</td><td>赛道+公众号多级选择，采集模式(历史同步/增量)，执行方式(cron/interval/manual)</td></tr>
+  <tr><td>采集执行</td><td>—</td><td>Celery Beat调度→Worker拉取→MpClient(appmsg/searchbiz)→去重→存raw_html</td></tr>
+  <tr><td>频次控制</td><td>—</td><td>全局≥15s+随机抖动，同域≥20-30s，单号≥24h，并发≤2，防风控</td></tr>
+  <tr><td>去重</td><td>—</td><td>original_url唯一索引 + content_hash(SHA256) + 标题相似度</td></tr>
+  <tr><td>重试</td><td>—</td><td>3次(10min→30min→60min)，全失败标记failed</td></tr>
+  <tr><td>日志</td><td>collect_logs</td><td>任务+公众号+时间+文章数+成功/失败+错误信息</td></tr>
+</table>
+
+<div class="section-title">四、模块依赖链</div>
+<div style="background:#263238; color:#eceff1; padding:16px; border-radius:8px; font-family:monospace; font-size:13px; overflow-x:auto;">
+<pre style="margin:0; color:#eceff1;">
+Phase 1 (底座)     Phase 2 (数据)     Phase 3 (智能)      Phase 4 (收尾)
+
+赛道管理 ──┐
+          ├→ 公众号管理 ──→ 采集中心 ──→ 素材中心 ──→ 知识库中心
+          │                              │    │
+          │                              │    └──→ AI分析(论点风暴)
+          │                              │              │
+          │                              │              ↓
+          │                              └──→ 「一键带入创作」衔接
+          │
+          └──────────────────────────────────────────→ 数据统计
+</pre>
+</div>

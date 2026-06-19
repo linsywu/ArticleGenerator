@@ -1,0 +1,204 @@
+<style>
+  /* Override for readable tables and boxes */
+  .dark-box {
+    background: #263238;
+    color: #eceff1;
+    padding: 20px;
+    border-radius: 12px;
+    font-family: monospace;
+    font-size: 12px;
+    line-height: 1.8;
+    overflow-x: auto;
+  }
+  .dark-box pre { margin: 0; color: #eceff1; }
+  .info-box {
+    background: #e8f5e9;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    color: #1b5e20;
+  }
+  .warn-box {
+    background: #fff3e0;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    color: #e65100;
+  }
+  .blue-box {
+    background: #e3f2fd;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    color: #0d47a1;
+  }
+  table.data-table {
+    width: 100%;
+    font-size: 13px;
+    border-collapse: collapse;
+  }
+  table.data-table th {
+    background: #37474f;
+    color: #ffffff;
+    padding: 8px;
+    text-align: left;
+  }
+  table.data-table td {
+    padding: 6px 8px;
+    border-bottom: 1px solid #e0e0e0;
+    color: #1d1d1f;
+  }
+  table.data-table tr:nth-child(even) td {
+    background: #f5f5f5;
+  }
+  .status-tag {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+</style>
+
+<h2>📋 模块三：内容采集中心 — 修订版 v2</h2>
+<p class="subtitle">根据反馈更新：延迟解析 + 图片跳过 + 凭证检测 + 频次控制 + 多级选择</p>
+
+<div class="section">
+  <h3>🔁 简化后的采集链路</h3>
+</div>
+
+<div class="dark-box">
+<pre>
+┌─────────────────────────────────────────────────────────────────┐
+│  🎯 Scheduler (Celery Beat)                                     │
+│  扫描 collect_task → cron/interval 匹配 → 凭证预检 → 投递 Worker  │
+└────────────────────────────┬────────────────────────────────────┘
+                             │
+┌────────────────────────────┴────────────────────────────────────┐
+│  🔧 Worker (Celery)                                              │
+│  for each account:                                               │
+│    ├─ 频次检查（上次采集时间 < 最小间隔？→ skip）                   │
+│    ├─ 请求间隔控制（全局 ≥15s + 随机抖动，防风控）                  │
+│    ├─ GET /cgi-bin/appmsg?fakeid=xxx&begin=0&count=10            │
+│    └─ 收集文章 URL 列表                                          │
+└────────────────────────────┬────────────────────────────────────┘
+                             │
+┌────────────────────────────┴────────────────────────────────────┐
+│  📥 文章拉取 + 去重                                               │
+│  for each article_url:                                           │
+│    ├─ URL 去重（original_url 唯一索引）→ 已存在则 skip             │
+│    ├─ HTTP GET → 原始 HTML                                       │
+│    ├─ 提取：标题、作者、发布时间（从 HTML meta/选择器）             │
+│    ├─ 存储 raw_html 到 mp_materials                              │
+│    └─ content_hash = SHA256(raw_html)  ← 内容去重用               │
+│                                                                  │
+│  ⚡ 不在此阶段做：图片下载、Markdown转换、AI标签 ← 全部延迟         │
+└────────────────────────────┬────────────────────────────────────┘
+                             │
+┌────────────────────────────┴────────────────────────────────────┐
+│  ⏰ 延迟解析（使用时触发）                                         │
+│  触发场景：                                                      │
+│  ├─ 用户在素材中心查看某篇文章详情                                  │
+│  ├─ AI 分析中心对文章进行爆文拆解                                   │
+│  ├─ 知识库提取（观点/案例/金句）                                   │
+│  └─ 手动触发「解析」按钮                                          │
+│                                                                  │
+│  解析流程：HTML → Turndown → Markdown（纯文本，跳过图片）          │
+│  结果缓存到 content_markdown 字段，下次直接用                       │
+└─────────────────────────────────────────────────────────────────┘
+</pre>
+</div>
+
+<div class="section" style="margin-top:16px;">
+  <h3>🛡️ 凭证检测机制</h3>
+</div>
+
+<div class="split">
+  <div class="info-box">
+    <strong>✅ 定时检测（自动）</strong>
+    <ul style="margin:8px 0 0 16px;">
+      <li>每 6 小时自动检测一次</li>
+      <li>用 token+cookie 调 searchbiz</li>
+      <li>搜已知公众号验证响应码</li>
+      <li>正常 → 保持 normal</li>
+      <li>异常 → 标记 expiring_soon</li>
+      <li>连续失败 → 标记 expired</li>
+    </ul>
+  </div>
+  <div class="blue-box">
+    <strong>🔍 任务前预检（自动）</strong>
+    <ul style="margin:8px 0 0 16px;">
+      <li>采集任务启动前检查凭证 status</li>
+      <li>normal → 继续执行</li>
+      <li>expiring_soon → 继续但告警</li>
+      <li>expired/error → 中止，通知前端</li>
+    </ul>
+  </div>
+</div>
+
+<div class="section" style="margin-top:16px;">
+  <h3>📊 频次控制（低频场景，防风控优先）</h3>
+</div>
+
+<table class="data-table">
+  <tr><th>控制维度</th><th>策略</th><th>说明</th></tr>
+  <tr><td>全局请求间隔</td><td>≥ 15 秒 + 随机抖动</td><td>同一凭证所有请求的最小间隔，模拟人类节奏</td></tr>
+  <tr><td>同域请求间隔</td><td>≥ 20~30 秒</td><td>mp.weixin.qq.com 的连续请求间隔</td></tr>
+  <tr><td>单公众号采集间隔</td><td>≥ 24 小时</td><td>每天采集一次即可</td></tr>
+  <tr><td>单次任务文章上限</td><td>200 篇/公众号</td><td>防止历史同步时一次拉太多</td></tr>
+  <tr><td>并发 Worker 数</td><td>≤ 2</td><td>低频串行为主，避免并发特征</td></tr>
+</table>
+
+<div class="section" style="margin-top:16px;">
+  <h3>🎯 采集任务 — 赛道+公众号多级选择</h3>
+</div>
+
+<div class="mockup">
+  <div class="mockup-header">新建采集任务 — 目标选择</div>
+  <div class="mockup-body">
+    <div style="display:flex; gap:24px;">
+      <div style="flex:1;">
+        <strong style="color:#1d1d1f;">📂 赛道</strong>
+        <div style="margin-top:8px;">
+          <label style="display:block; padding:4px; color:#1d1d1f; cursor:pointer;">
+            <input type="checkbox" checked style="margin-right:6px;">AI科技 (12个公众号)
+          </label>
+          <div style="margin-left:24px; font-size:12px;">
+            <label style="display:block; padding:2px; color:#555; cursor:pointer;">
+              <input type="checkbox" checked style="margin-right:6px;">机器之心
+            </label>
+            <label style="display:block; padding:2px; color:#555; cursor:pointer;">
+              <input type="checkbox" checked style="margin-right:6px;">量子位
+            </label>
+            <label style="display:block; padding:2px; color:#555; cursor:pointer;">
+              <input type="checkbox" style="margin-right:6px;">新智元
+            </label>
+            <label style="display:block; padding:2px; color:#555; cursor:pointer;">
+              <input type="checkbox" checked style="margin-right:6px;">AI科技评论
+            </label>
+          </div>
+        </div>
+        <div style="margin-top:8px;">
+          <label style="display:block; padding:4px; color:#1d1d1f; cursor:pointer;">
+            <input type="checkbox" style="margin-right:6px;">商业财经 (8个公众号)
+          </label>
+        </div>
+        <div style="margin-top:8px;">
+          <label style="display:block; padding:4px; color:#1d1d1f; cursor:pointer;">
+            <input type="checkbox" style="margin-right:6px;">产品经理 (5个公众号)
+          </label>
+        </div>
+      </div>
+      <div style="flex:1; border-left:2px solid #e0e0e0; padding-left:24px;">
+        <strong style="color:#1d1d1f;">📝 已选择</strong>
+        <div style="margin-top:8px; font-size:13px; color:#1d1d1f;">
+          <div>🏷️ <strong>AI科技</strong> → 3/12 个公众号</div>
+          <div style="color:#666; margin-left:20px;">机器之心、量子位、AI科技评论</div>
+        </div>
+        <div class="warn-box" style="margin-top:12px;">
+          ⚠️ 取消勾选赛道 = 取消该赛道下所有公众号
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

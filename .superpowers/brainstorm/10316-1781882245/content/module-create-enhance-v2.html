@@ -1,0 +1,92 @@
+<style>
+  table.data-table { width:100%; font-size:13px; border-collapse:collapse; }
+  table.data-table th { background:#37474f; color:#fff; padding:8px; text-align:left; }
+  table.data-table td { padding:6px 8px; border-bottom:1px solid #e0e0e0; color:#1d1d1f; }
+  table.data-table tr:nth-child(even) td { background:#f5f5f5; }
+  .done-card { background:#e8f5e9; border:1px solid #4caf50; border-radius:8px; padding:14px; }
+  .done-card strong { color:#1b5e20; }
+  .todo-card { background:#fff3e0; border:1px solid #ff9800; border-radius:8px; padding:14px; }
+  .todo-card strong { color:#e65100; }
+</style>
+
+<h2>📋 模块七：文章创作增强（修订版）</h2>
+<p class="subtitle">基于对现有 CreateView 5步向导流程的充分理解</p>
+
+<div class="section"><h3>现有流程回顾（已经做得很好）</h3></div>
+<div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; font-size:14px; margin-bottom:16px;">
+  <div style="background:#e8f5e9; border-radius:8px; padding:10px 16px; text-align:center;"><strong>Step 1</strong><br><span style="font-size:12px; color:#555;">选择账号</span></div>
+  <span style="color:#888;">→</span>
+  <div style="background:#e8f5e9; border-radius:8px; padding:10px 16px; text-align:center;"><strong>Step 2</strong><br><span style="font-size:12px; color:#555;">输入想法</span></div>
+  <span style="color:#888;">→</span>
+  <div style="background:#e8f5e9; border-radius:8px; padding:10px 16px; text-align:center;"><strong>Step 3</strong><br><span style="font-size:12px; color:#555;">写作方向 ✅论点风暴</span></div>
+  <span style="color:#888;">→</span>
+  <div style="background:#e8f5e9; border-radius:8px; padding:10px 16px; text-align:center;"><strong>Step 4</strong><br><span style="font-size:12px; color:#555;">确认大纲 ✅可编辑</span></div>
+  <span style="color:#888;">→</span>
+  <div style="background:#e8f5e9; border-radius:8px; padding:10px 16px; text-align:center;"><strong>Step 5</strong><br><span style="font-size:12px; color:#555;">生成全文 ✅含轮询</span></div>
+</div>
+
+<div class="section" style="margin-top:20px;"><h3>真正需要增强的 4 个点</h3></div>
+
+<div style="display:flex; flex-direction:column; gap:12px;">
+
+  <div class="todo-card">
+    <strong>1. Step 2 增强：AI 参数面板</strong>
+    <p style="margin:6px 0 0 0; font-size:13px; color:#1d1d1f;">
+      在「输入想法」步骤增加可折叠的「高级设置」：
+    </p>
+    <ul style="margin:4px 0 0 16px; font-size:12px; color:#555;">
+      <li><strong>字数</strong> — 读取账号的 word_count 字段作为默认值，可手动覆盖（如：1500字左右、2000-3000字、3000字以上）</li>
+      <li><strong>写作形式</strong> — 深度分析 / 观点评论 / 实用教程 / 故事叙事</li>
+      <li><strong>原创度</strong> — 保守←→激进创新的 slider</li>
+      <li style="color:#888;">（风格模板已有：Step 1 选择账号 = 选择风格，不需要额外参数）</li>
+    </ul>
+  </div>
+
+  <div class="todo-card">
+    <strong>2. 生成输出增强：标题候选 + 摘要 + SEO</strong>
+    <p style="margin:6px 0 0 0; font-size:13px; color:#1d1d1f;">
+      现有 <code>/generate/titles</code> 已实现但未集成到 UI 流程中。生成全文后应展示：
+    </p>
+    <ul style="margin:4px 0 0 16px; font-size:12px; color:#555;">
+      <li><strong>3 个候选标题</strong> — 调用已有的 /generate/titles，展示在文章上方可选</li>
+      <li><strong>摘要</strong> — 200字文章摘要（新增 LLM 场景）</li>
+      <li><strong>SEO 关键词</strong> — 5-10个标签（新增 LLM 场景）</li>
+      <li style="color:#888;">（配图建议：用户反馈三方文章图片参考性低，同理 AI 生成的文章配图建议价值有限。可做可不做。）</li>
+    </ul>
+  </div>
+
+  <div class="todo-card">
+    <strong>3. 版本管理</strong>
+    <p style="margin:6px 0 0 0; font-size:13px; color:#1d1d1f;">
+      现有微调(refine)是覆盖式重写。改为版本累积：
+    </p>
+    <ul style="margin:4px 0 0 16px; font-size:12px; color:#555;">
+      <li>新增 <strong>article_versions</strong> 表（article_id + version_number + content + params 快照）</li>
+      <li>每次 refine 不是覆盖 articles.content，而是新增一条 version 记录</li>
+      <li>articles.content 保持为 current version，评审/发布用 current</li>
+      <li>ArticleEditorDialog 增加版本切换下拉框</li>
+    </ul>
+  </div>
+
+  <div class="todo-card">
+    <strong>4. 外部入口集成</strong>
+    <p style="margin:6px 0 0 0; font-size:13px; color:#1d1d1f;">
+      让创作中心能接收外部传入的上下文：
+    </p>
+    <ul style="margin:4px 0 0 16px; font-size:12px; color:#555;">
+      <li><strong>素材中心论点风暴 → 一键带入创作：</strong>路由携带预填参数（标题、目标人群、核心观点、大纲），直接跳转到 CreateView Step 3 或 Step 4</li>
+      <li><strong>知识库侧边栏：</strong>Step 4（确认大纲）和 Step 5（生成全文）时，侧边栏可检索观点/案例/金句/标题，用于参考引用</li>
+    </ul>
+  </div>
+
+</div>
+
+<div style="margin-top:16px; padding:14px; background:#e3f2fd; border-radius:10px; color:#0d47a1; font-size:13px;">
+  <strong>📊 增强工作量评估：</strong>
+  <ul style="margin:8px 0 0 16px;">
+    <li>AI 参数面板：~1天（前端为主，后端 /trigger 增加参数透传）</li>
+    <li>标题/摘要/SEO 输出：~1天（前端 Step 5 展示 + 后端新增 summary/seo 场景）</li>
+    <li>版本管理：~2天（新表 + 后端 API + 前端版本切换 UI）</li>
+    <li>外部入口集成：~1天（路由参数 + 侧边栏组件）</li>
+  </ul>
+</div>

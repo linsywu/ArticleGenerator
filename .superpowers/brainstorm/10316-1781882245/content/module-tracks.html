@@ -1,0 +1,70 @@
+<style>
+  table.data-table { width:100%; font-size:13px; border-collapse:collapse; }
+  table.data-table th { background:#37474f; color:#fff; padding:8px; text-align:left; }
+  table.data-table td { padding:6px 8px; border-bottom:1px solid #e0e0e0; color:#1d1d1f; }
+  table.data-table tr:nth-child(even) td { background:#f5f5f5; }
+</style>
+
+<h2>📋 模块一：赛道管理</h2>
+<p class="subtitle">PRD 第二章 — 内容分类体系的基础设施</p>
+
+<div class="section"><h3>数据模型</h3></div>
+<table class="data-table">
+  <tr><th>表</th><th>字段</th><th>类型</th><th>说明</th></tr>
+  <tr><td rowspan="6" style="vertical-align:top;"><strong>tracks</strong><br><span style="color:#888; font-size:11px;">一级赛道</span></td>
+    <td>id</td><td>bigint</td><td>主键</td></tr>
+  <tr><td>name</td><td>varchar(100)</td><td>赛道名称</td></tr>
+  <tr><td>description</td><td>text</td><td>赛道描述</td></tr>
+  <tr><td>keywords</td><td>json</td><td>热门关键词</td></tr>
+  <tr><td>forbidden_keywords</td><td>json</td><td>禁用关键词</td></tr>
+  <tr><td>status</td><td>tinyint</td><td>0=禁用 1=启用</td></tr>
+  <tr><td rowspan="3" style="vertical-align:top;"><strong>sub_tracks</strong><br><span style="color:#888; font-size:11px;">二级赛道</span></td>
+    <td>id</td><td>bigint</td><td>主键</td></tr>
+  <tr><td>track_id</td><td>bigint FK</td><td>关联一级赛道</td></tr>
+  <tr><td>name / description</td><td>varchar / text</td><td>名称和描述</td></tr>
+</table>
+
+<div class="section" style="margin-top:16px;"><h3>前端页面</h3></div>
+
+<div class="split">
+  <div style="flex:2;">
+    <div class="mockup">
+      <div class="mockup-header">赛道列表页</div>
+      <div class="mockup-body">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <input class="mock-input" style="width:200px; margin:0;" placeholder="搜索赛道...">
+          <button class="mock-button" style="margin:0;">+ 新增赛道</button>
+        </div>
+        <table style="width:100%; font-size:12px; border-collapse:collapse; color:#1d1d1f;">
+          <tr style="border-bottom:1px solid #e0e0e0;">
+            <th style="text-align:left; padding:6px;">赛道名称</th><th style="padding:6px;">描述</th><th style="padding:6px;">公众号数</th><th style="padding:6px;">文章数</th><th style="padding:6px;">状态</th><th style="padding:6px;">操作</th>
+          </tr>
+          <tr><td style="padding:6px;">🏷️ AI科技</td><td style="font-size:12px; padding:6px;">AI行业资讯与深度分析</td><td style="text-align:center; padding:6px;">12</td><td style="text-align:center; padding:6px;">358</td><td style="padding:6px;"><span style="color:#2e7d32;">● 启用</span></td><td style="padding:6px;"><span style="color:#1565c0;">编辑 停用 删除</span></td></tr>
+          <tr style="background:#f5f5f5;"><td style="padding:6px;">🏷️ 商业财经</td><td style="font-size:12px; padding:6px;">商业分析与财经观察</td><td style="text-align:center; padding:6px;">8</td><td style="text-align:center; padding:6px;">201</td><td style="padding:6px;"><span style="color:#2e7d32;">● 启用</span></td><td style="padding:6px;"><span style="color:#1565c0;">编辑 停用 删除</span></td></tr>
+          <tr><td style="padding:6px;">🏷️ 产品经理</td><td style="font-size:12px; padding:6px;">产品方法论与实战</td><td style="text-align:center; padding:6px;">5</td><td style="text-align:center; padding:6px;">142</td><td style="padding:6px;"><span style="color:#9e9e9e;">● 禁用</span></td><td style="padding:6px;"><span style="color:#1565c0;">编辑 启用 删除</span></td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div style="flex:1;">
+    <div class="mockup" style="margin-bottom:12px;">
+      <div class="mockup-header">新增/编辑赛道</div>
+      <div class="mockup-body" style="font-size:13px; color:#1d1d1f;">
+        <div style="margin-bottom:8px;"><strong>赛道名称 *</strong><br><input class="mock-input" style="width:100%;" placeholder="如：AI科技"></div>
+        <div style="margin-bottom:8px;"><strong>赛道描述</strong><br><textarea class="mock-input" style="width:100%; height:60px;" placeholder="赛道简介..."></textarea></div>
+        <div style="margin-bottom:8px;"><strong>热门关键词</strong><br><input class="mock-input" style="width:100%;" placeholder="AI, ChatGPT, 大模型..."></div>
+        <div style="margin-bottom:8px;"><strong>禁用关键词</strong><br><input class="mock-input" style="width:100%;" placeholder="赌博, 色情..."></div>
+        <div style="text-align:right;"><button class="mock-button">保存</button></div>
+      </div>
+    </div>
+    <div style="background:#fff3e0; padding:12px; border-radius:8px; font-size:12px; color:#e65100;">
+      <strong>💡 与现有系统的关系：</strong>
+      <ul style="margin:8px 0 0 16px; padding:0;">
+        <li>mp_accounts.track_ids 关联赛道</li>
+        <li>collect_task.track_ids 按赛道采集</li>
+        <li>articles 可关联赛道分类</li>
+        <li>仅需 1 个后端 API 模块 + 2 个前端页面</li>
+      </ul>
+    </div>
+  </div>
+</div>

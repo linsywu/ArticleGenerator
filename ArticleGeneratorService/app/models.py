@@ -219,3 +219,22 @@ class SubTrack(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     track = relationship("Track", back_populates="sub_tracks")
+
+
+class MpAccount(Base):
+    """公众号"""
+    __tablename__ = "mp_accounts"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(200), nullable=False)
+    alias = Column(String(100))
+    fakeid = Column(String(100))
+    biz = Column(String(100))
+    avatar = Column(String(500))
+    description = Column(Text)
+    track_ids = Column(Text)  # JSON string
+    article_count = Column(Integer, default=0)
+    last_collect_time = Column(DateTime)
+    status = Column(Integer, default=1)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

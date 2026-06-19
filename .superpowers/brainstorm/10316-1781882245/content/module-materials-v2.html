@@ -1,0 +1,129 @@
+<style>
+  table.data-table { width:100%; font-size:13px; border-collapse:collapse; }
+  table.data-table th { background:#37474f; color:#fff; padding:8px; text-align:left; }
+  table.data-table td { padding:6px 8px; border-bottom:1px solid #e0e0e0; color:#1d1d1f; }
+  table.data-table tr:nth-child(even) td { background:#f5f5f5; }
+  .dark-box { background:#263238; color:#eceff1; padding:20px; border-radius:12px; font-family:monospace; font-size:12px; line-height:1.8; overflow-x:auto; }
+  .dark-box pre { margin:0; color:#eceff1; }
+  .feature-card { background:#f3e5f5; border:1px solid #9c27b0; border-radius:8px; padding:14px; color:#4a148c; font-size:13px; }
+</style>
+
+<h2>📋 模块四：素材中心 v2</h2>
+<p class="subtitle">新增：文章操作区 → 创作方向生成（衔接到论点风暴）</p>
+
+<div class="section"><h3>文章列表 — 操作栏增强</h3></div>
+<div class="mockup">
+  <div class="mockup-header">素材中心 — 文章列表</div>
+  <div class="mockup-body">
+    <div style="display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap;">
+      <select class="mock-input" style="width:120px; margin:0; color:#1d1d1f;"><option>全部赛道</option></select>
+      <select class="mock-input" style="width:140px; margin:0; color:#1d1d1f;"><option>全部公众号</option></select>
+      <input class="mock-input" style="width:160px; margin:0;" placeholder="搜索标题...">
+    </div>
+    <table style="width:100%; font-size:12px; border-collapse:collapse; color:#1d1d1f;">
+      <tr style="border-bottom:2px solid #e0e0e0;">
+        <th style="text-align:left; padding:6px;">赛道</th><th style="text-align:left; padding:6px;">公众号</th><th style="text-align:left; padding:6px;">标题</th><th style="text-align:center; padding:6px;">字数</th><th style="text-align:left; padding:6px;">发布时间</th><th style="text-align:left; padding:6px;">操作</th>
+      </tr>
+      <tr>
+        <td style="padding:6px;">AI科技</td><td style="padding:6px;">机器之心</td><td style="padding:6px;">GPT-5 发布：OpenAI 的下一步棋</td><td style="text-align:center; padding:6px;">3,200</td><td style="padding:6px;">2026-06-18</td>
+        <td style="padding:6px;">
+          <span style="color:#1565c0; font-size:11px; margin-right:8px;">查看</span>
+          <span style="background:#7b1fa2; color:#fff; padding:2px 8px; border-radius:4px; font-size:11px; cursor:pointer;">💡 创作方向</span>
+        </td>
+      </tr>
+      <tr style="background:#f5f5f5;">
+        <td style="padding:6px;">AI科技</td><td style="padding:6px;">量子位</td><td style="padding:6px;">大模型价格战：谁是最后的赢家</td><td style="text-align:center; padding:6px;">2,800</td><td style="padding:6px;">2026-06-17</td>
+        <td style="padding:6px;">
+          <span style="color:#1565c0; font-size:11px; margin-right:8px;">查看</span>
+          <span style="background:#7b1fa2; color:#fff; padding:2px 8px; border-radius:4px; font-size:11px; cursor:pointer;">💡 创作方向</span>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:6px;">商业</td><td style="padding:6px;">36氪</td><td style="padding:6px;">2026年AI创投趋势报告</td><td style="text-align:center; padding:6px;">5,100</td><td style="padding:6px;">2026-06-16</td>
+        <td style="padding:6px;">
+          <span style="color:#1565c0; font-size:11px; margin-right:8px;">查看</span>
+          <span style="background:#7b1fa2; color:#fff; padding:2px 8px; border-radius:4px; font-size:11px; cursor:pointer;">💡 创作方向</span>
+        </td>
+      </tr>
+    </table>
+  </div>
+</div>
+
+<div class="section" style="margin-top:16px;"><h3>点击「创作方向」→ 弹出论点风暴结果</h3></div>
+<div class="mockup">
+  <div class="mockup-header">创作方向 — 基于「GPT-5 发布：OpenAI 的下一步棋」</div>
+  <div class="mockup-body" style="color:#1d1d1f; font-size:13px;">
+    <p style="color:#555;"><em>AI 基于原文自动生成 5 个创作方向（调用 LLM Gateway scenario=argument_storm）</em></p>
+
+    <div style="background:#f5f5f5; border-radius:8px; padding:12px; margin-top:12px;">
+      <strong>📌 方向 1：技术解读型</strong>
+      <div style="display:flex; gap:16px; margin-top:4px; font-size:12px; color:#555;">
+        <span><strong>标题：</strong>GPT-5 三项核心突破，将如何重塑 AI 应用格局</span>
+      </div>
+      <div style="font-size:12px; color:#777; margin-top:2px;">🎯 目标人群：AI从业者 · 📐 大纲：技术解读→应用场景→行业影响→趋势展望</div>
+    </div>
+
+    <div style="background:#f5f5f5; border-radius:8px; padding:12px; margin-top:8px;">
+      <strong>📌 方向 2：商业分析型</strong>
+      <div style="font-size:12px; color:#555; margin-top:4px;"><strong>标题：</strong>OpenAI 的护城河还深吗？GPT-5 后的竞争格局推演</div>
+      <div style="font-size:12px; color:#777; margin-top:2px;">🎯 目标人群：科技投资者 · 📐 大纲：竞争格局→优劣势对比→投资逻辑→风险提示</div>
+    </div>
+
+    <div style="background:#f5f5f5; border-radius:8px; padding:12px; margin-top:8px;">
+      <strong>📌 方向 3：实用教程型</strong>
+      <div style="font-size:12px; color:#555; margin-top:4px;"><strong>标题：</strong>GPT-5 上手实测：5个你意想不到的新玩法</div>
+      <div style="font-size:12px; color:#777; margin-top:2px;">🎯 目标人群：普通用户 · 📐 大纲：功能介绍→实操演示→效果对比→使用建议</div>
+    </div>
+
+    <div style="background:#f5f5f5; border-radius:8px; padding:12px; margin-top:8px;">
+      <strong>📌 方向 4：观点评论型</strong>
+      <div style="font-size:12px; color:#555; margin-top:4px;"><strong>标题：</strong>别神化 GPT-5：那些 OpenAI 发布会没说的事</div>
+      <div style="font-size:12px; color:#777; margin-top:2px;">🎯 目标人群：行业观察者 · 📐 大纲：信息整理→质疑论证→反方观点→理性总结</div>
+    </div>
+
+    <div style="background:#f5f5f5; border-radius:8px; padding:12px; margin-top:8px;">
+      <strong>📌 方向 5：故事叙事型</strong>
+      <div style="font-size:12px; color:#555; margin-top:4px;"><strong>标题：</strong>从 GPT-1 到 GPT-5：一个实习生亲历的 AI 七年</div>
+      <div style="font-size:12px; color:#777; margin-top:2px;">🎯 目标人群：泛科技读者 · 📐 大纲：时间线→关键事件→人物视角→情感共鸣</div>
+    </div>
+
+    <div style="display:flex; gap:8px; margin-top:12px; justify-content:flex-end;">
+      <button class="mock-button" style="background:#616161;">关闭</button>
+      <button class="mock-button" style="background:#2e7d32;">⭐ 一键带入创作</button>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:16px;"><h3>数据流：素材 → 论点风暴 → 创作中心</h3></div>
+<div class="dark-box">
+<pre>
+素材文章 (mp_materials)
+    │
+    ├─ 用户点击「💡 创作方向」
+    │       │
+    │       ↓
+    │  POST /api/articles/{material_id}/argument-storm
+    │       │  → LLM Gateway (scenario=argument_storm)
+    │       │  → 输入：文章 title + content_markdown（若未解析，先触发解析）
+    │       │  → 输出：5 个创作方向 JSON
+    │       │       │
+    │       │       ↓
+    │       │  前端展示创作方向 Modal
+    │       │
+    │       ├─ 「一键带入创作」→ 跳转 CreateView，预填：
+    │       │    - 标题、目标人群、核心观点、内容大纲
+    │       │    - 风格模板（默认账号风格）
+    │       │    - 参考素材（原文）
+    │       │
+    │       └─ 保存结果到 analysis_reports 表（可回溯）
+</pre>
+</div>
+
+<div class="feature-card" style="margin-top:16px;">
+  <strong>💡 这个按钮把三个模块串联起来了：</strong>
+  <ul style="margin:8px 0 0 16px;">
+    <li><strong>素材中心</strong> → 浏览对标文章</li>
+    <li><strong>AI分析中心</strong> → 论点风暴生成创作方向</li>
+    <li><strong>文章创作中心</strong> → 一键带入开始写作</li>
+  </ul>
+</div>

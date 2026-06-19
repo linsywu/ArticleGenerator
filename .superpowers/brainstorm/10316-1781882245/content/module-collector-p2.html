@@ -1,0 +1,88 @@
+<h2>📋 模块三：内容采集中心 (Part 2)</h2>
+<p class="subtitle">采集执行流程 + 文章解析 + 去重 + 重试 + 日志</p>
+
+<div class="section"><h3>采集执行流程</h3></div>
+
+<div style="background:#1a1a2e; color:#e0e0e0; padding: 24px; border-radius: 12px; font-family: monospace; font-size: 12px; line-height: 1.8;">
+<pre style="margin:0; color:#eceff1;">
+┌──────────────────────────────────────────────────────────────────┐
+│                    🎯 Collector Scheduler                         │
+│  Celery Beat / APScheduler → 扫描 collect_task 表                │
+│  匹配 cron/interval → 投递到 Worker Queue                        │
+└───────────────────────────┬──────────────────────────────────────┘
+                            │
+┌───────────────────────────┴──────────────────────────────────────┐
+│                    🔧 Collector Worker                            │
+│  Celery Worker → 逐个公众号 → 调用 MpClient                       │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │                  🌐 MpClient (HTTP)                       │   │
+│  │  GET /cgi-bin/searchbiz?query=名称&token=xxx              │   │
+│  │    → 获取 fakeid（如未获取过）                              │   │
+│  │  GET /cgi-bin/appmsg?fakeid=xxx&begin=0&count=10         │   │
+│  │    → 获取文章列表 (app_msg_list)                           │   │
+│  └───────────────────┬──────────────────────────────────────┘   │
+└──────────────────────┼───────────────────────────────────────────┘
+                       │
+┌──────────────────────┴───────────────────────────────────────────┐
+│                    📄 Parser                                      │
+│  对每篇文章：                                                      │
+│  1. HTTP GET 文章链接 → HTML                                      │
+│  2. 选择器 #js_content → 提取正文                                 │
+│  3. 提取：标题、摘要、封面、作者、发布时间                           │
+│  4. 图片：data-src → 下载 → OSS转存 → 替换URL                     │
+│  5. Turndown (HTML→Markdown)                                     │
+│  6. SHA256(content) → content_hash                               │
+└──────────────────────┬───────────────────────────────────────────┘
+                       │
+┌──────────────────────┴───────────────────────────────────────────┐
+│                    🗄️ Storage                                     │
+│  去重检查：                                                        │
+│  ├─ original_url 唯一索引（URL去重）                               │
+│  ├─ content_hash 对比（内容去重）                                  │
+│  └─ 标题相似度 → 跳过已存在                                       │
+│  入库 mp_materials 表                                             │
+└──────────────────────────────────────────────────────────────────┘
+</pre>
+</div>
+
+<div class="section" style="margin-top:16px;"><h3>失败重试策略</h3></div>
+<div style="display:flex; gap:12px;">
+  <div style="flex:1; text-align:center; padding:12px; background:#fff3e0; border-radius:8px;">
+    <div style="font-size:20px;">🔄 第1次</div>
+    <strong>10分钟后</strong>
+  </div>
+  <div style="flex:1; text-align:center; padding:12px; background:#ffe0b2; border-radius:8px;">
+    <div style="font-size:20px;">🔄 第2次</div>
+    <strong>30分钟后</strong>
+  </div>
+  <div style="flex:1; text-align:center; padding:12px; background:#ffcc80; border-radius:8px;">
+    <div style="font-size:20px;">🔄 第3次</div>
+    <strong>60分钟后</strong>
+  </div>
+  <div style="flex:1; text-align:center; padding:12px; background:#ffab91; border-radius:8px;">
+    <div style="font-size:20px;">❌ 失败</div>
+    <strong>标记为 failed</strong>
+  </div>
+</div>
+
+<div class="section" style="margin-top:16px;"><h3>采集日志</h3></div>
+<table style="width:100%; font-size:13px; border-collapse:collapse;">
+  <tr style="background:#263238; color:#fff;"><th style="padding:8px; text-align:left;">字段</th><th style="padding:8px; text-align:left;">说明</th></tr>
+  <tr><td>task_id</td><td>关联采集任务</td></tr>
+  <tr style="background:#f5f5f5;"><td>account_id</td><td>目标公众号</td></tr>
+  <tr><td>start_time / end_time</td><td>开始/结束时间</td></tr>
+  <tr style="background:#f5f5f5;"><td>total_count</td><td>发现文章数</td></tr>
+  <tr><td>success_count / fail_count</td><td>成功/失败数</td></tr>
+  <tr style="background:#f5f5f5;"><td>error_message</td><td>错误信息（JSON）</td></tr>
+</table>
+
+<div style="margin-top:16px; background:#ffebee; border:2px solid #e53935; border-radius:8px; padding:16px;">
+  <strong>🔴 技术难点预警</strong>
+  <ol style="margin:8px 0 0 16px; font-size:13px;">
+    <li><strong>公众号接口反爬：</strong>appmsg 接口有频率限制，需要请求间隔控制</li>
+    <li><strong>HTML 解析鲁棒性：</strong>文章页结构可能变化，#js_content 不是100%可靠</li>
+    <li><strong>图片转存：</strong>微信图片可能有防盗链，OSS 需要正确处理 referer</li>
+    <li><strong>凭证过期检测：</strong>需要主动探测 token/cookie 有效性，及时预警</li>
+    <li><strong>大量文章解析：</strong>单篇文章解析耗时可观，需要并发控制</li>
+  </ol>
+</div>

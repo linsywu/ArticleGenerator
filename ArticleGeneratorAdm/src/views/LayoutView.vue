@@ -38,6 +38,10 @@
             <span class="nav-icon">☰</span>
             <span class="nav-label">任务记录</span>
           </router-link>
+          <router-link to="/mp-accounts" class="nav-item" :class="{ active: $route.path === '/mp-accounts' }">
+            <span class="nav-icon">◎</span>
+            <span class="nav-label">公众号管理</span>
+          </router-link>
         </div>
 
         <div class="nav-section">

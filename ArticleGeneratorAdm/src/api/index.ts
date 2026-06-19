@@ -11,6 +11,7 @@ import AccountsApi from "@/api/modules/accounts";
 import ArticlesApi from "@/api/modules/articles";
 import TasksApi from "@/api/modules/tasks";
 import ProvidersApi from "@/api/modules/providers";
+import MpAccountsApi from "@/api/modules/mpAccounts";
 
 const api = {
   ...HotspotsApi,
@@ -18,6 +19,7 @@ const api = {
   ...ArticlesApi,
   ...TasksApi,
   ...ProvidersApi,
+  ...MpAccountsApi,
 };
 
 export default api;

@@ -7,9 +7,9 @@
     <!-- 登录卡片 -->
     <div class="login-panel">
       <div class="login-header">
-        <div class="brand-mark">墨</div>
-        <h1 class="brand-name">墨斋</h1>
-        <p class="brand-desc">半自动化内容创作辅助系统</p>
+        <img src="/favicon.png" alt="千机笔" class="brand-mark">
+        <h1 class="brand-name">千机笔</h1>
+        <p class="brand-desc">自媒体增长助手</p>
       </div>
 
       <el-form

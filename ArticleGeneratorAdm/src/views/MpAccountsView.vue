@@ -1,0 +1,368 @@
+<template>
+  <div class="mp-accounts-view">
+    <PageHeader title="公众号管理" subtitle="管理采集目标公众号" />
+
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <el-select
+          v-model="filterTrackId"
+          placeholder="选择赛道"
+          clearable
+          style="width: 150px"
+          @change="fetchMpAccounts"
+        >
+          <el-option
+            v-for="t in tracks"
+            :key="t.id"
+            :label="t.name"
+            :value="t.id"
+          />
+        </el-select>
+        <el-select
+          v-model="filterStatus"
+          placeholder="状态筛选"
+          clearable
+          style="width: 120px"
+          @change="fetchMpAccounts"
+        >
+          <el-option label="启用" :value="1" />
+          <el-option label="禁用" :value="0" />
+        </el-select>
+        <el-input
+          v-model="searchText"
+          placeholder="搜索公众号名称..."
+          style="width: 220px"
+          clearable
+          @clear="fetchMpAccounts"
+          @keyup.enter="fetchMpAccounts"
+        />
+      </div>
+      <el-button type="primary" @click="openCreateDialog">+ 新增公众号</el-button>
+      <el-button @click="openImportDialog">导入公众号</el-button>
+    </div>
+
+    <el-table :data="mpAccounts" v-loading="loading" style="width: 100%">
+      <el-table-column label="头像" width="60" align="center">
+        <template #default="{ row }">
+          <el-avatar shape="square" size="small">{{ row.name.charAt(0) }}</el-avatar>
+        </template>
+      </el-table-column>
+      <el-table-column prop="name" label="名称" min-width="160">
+        <template #default="{ row }">
+          <span style="font-weight: 600;">{{ row.name }}</span>
+          <span v-if="row.alias" style="color: #999; margin-left: 6px; font-size: 12px;">({{ row.alias }})</span>
+        </template>
+      </el-table-column>
+      <el-table-column prop="alias" label="微信号" width="130" />
+      <el-table-column label="赛道" min-width="160">
+        <template #default="{ row }">
+          <el-tag
+            v-for="tid in parseTrackIds(row.track_ids)"
+            :key="tid"
+            size="small"
+            style="margin-right: 4px; margin-bottom: 2px;"
+          >
+            {{ getTrackName(tid) }}
+          </el-tag>
+          <span v-if="!row.track_ids || parseTrackIds(row.track_ids).length === 0" style="color: #999;">未分配</span>
+        </template>
+      </el-table-column>
+      <el-table-column prop="article_count" label="文章数" width="70" align="center" />
+      <el-table-column label="最后采集时间" width="150">
+        <template #default="{ row }">
+          <span v-if="row.last_collect_time">{{ formatTime(row.last_collect_time) }}</span>
+          <span v-else style="color: #999;">-</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="状态" width="70" align="center">
+        <template #default="{ row }">
+          <el-tag :type="row.status === 1 ? 'success' : 'info'" size="small">
+            {{ row.status === 1 ? '启用' : '禁用' }}
+          </el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="操作" width="240">
+        <template #default="{ row }">
+          <el-button size="small" text type="primary" @click="openEditDialog(row)">编辑</el-button>
+          <el-button size="small" text @click="toggleStatus(row)">
+            {{ row.status === 1 ? '停用' : '启用' }}
+          </el-button>
+          <el-popconfirm title="确认删除此公众号？" @confirm="handleDelete(row.id)">
+            <template #reference>
+              <el-button size="small" text type="danger">删除</el-button>
+            </template>
+          </el-popconfirm>
+        </template>
+      </el-table-column>
+    </el-table>
+
+    <!-- Add / Edit Dialog -->
+    <el-dialog
+      v-model="dialogVisible"
+      :title="editingAccount ? '编辑公众号' : '新增公众号'"
+      width="560px"
+    >
+      <el-form :model="form" label-position="top">
+        <el-form-item label="公众号名称" required>
+          <el-input v-model="form.name" placeholder="如：AI科技前沿" />
+        </el-form-item>
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="微信号(alias)">
+              <el-input v-model="form.alias" placeholder="微信号" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="fakeid">
+              <el-input v-model="form.fakeid" placeholder="fakeid" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-form-item label="biz">
+          <el-input v-model="form.biz" placeholder="biz 参数" />
+        </el-form-item>
+        <el-form-item label="头像 URL">
+          <el-input v-model="form.avatar" placeholder="https://..." />
+        </el-form-item>
+        <el-form-item label="描述">
+          <el-input v-model="form.description" type="textarea" :rows="3" placeholder="公众号简介..." />
+        </el-form-item>
+        <el-form-item label="赛道 (JSON 数组, track_id)">
+          <el-input v-model="form.track_ids" placeholder='[1, 2, 3]' />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="dialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="saving" @click="handleSave">保存</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- Import Dialog -->
+    <el-dialog v-model="importDialogVisible" title="导入公众号" width="600px">
+      <el-tabs v-model="importTab">
+        <el-tab-pane label="名称导入" name="name">
+          <p style="color: #999; margin-bottom: 8px; font-size: 13px;">
+            每行一个公众号名称
+          </p>
+          <el-input
+            v-model="importNames"
+            type="textarea"
+            :rows="6"
+            placeholder="AI科技前沿&#10;财经观察&#10;数码评测"
+          />
+          <div style="margin-top: 12px;">
+            <el-button type="primary" :disabled="!importNames.trim()" @click="handleImportByName">
+              开始导入
+            </el-button>
+          </div>
+        </el-tab-pane>
+        <el-tab-pane label="链接导入" name="url">
+          <p style="color: #999; margin-bottom: 8px; font-size: 13px;">
+            每行一个公众号链接
+          </p>
+          <el-input
+            v-model="importUrls"
+            type="textarea"
+            :rows="6"
+            placeholder="https://mp.weixin.qq.com/s/...&#10;https://mp.weixin.qq.com/s/..."
+          />
+          <div style="margin-top: 12px;">
+            <el-button type="primary" :disabled="!importUrls.trim()" @click="handleImportByUrl">
+              开始导入
+            </el-button>
+          </div>
+        </el-tab-pane>
+      </el-tabs>
+    </el-dialog>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, onMounted } from "vue";
+import { ElMessage } from "element-plus";
+import mpAccountsApi from "@/api/modules/mpAccounts";
+import tracksApi from "@/api/modules/tracks";
+import type { MpAccount, Track } from "@/api/types";
+import PageHeader from "@/components/PageHeader.vue";
+
+const mpAccounts = ref<MpAccount[]>([]);
+const tracks = ref<Track[]>([]);
+const loading = ref(false);
+const saving = ref(false);
+
+const filterTrackId = ref<number | undefined>(undefined);
+const filterStatus = ref<number | undefined>(undefined);
+const searchText = ref("");
+
+const dialogVisible = ref(false);
+const editingAccount = ref<MpAccount | null>(null);
+const form = ref({
+  name: "",
+  alias: "",
+  fakeid: "",
+  biz: "",
+  avatar: "",
+  description: "",
+  track_ids: "",
+});
+
+const importDialogVisible = ref(false);
+const importTab = ref("name");
+const importNames = ref("");
+const importUrls = ref("");
+
+function parseTrackIds(trackIdsStr?: string): number[] {
+  if (!trackIdsStr) return [];
+  try {
+    return JSON.parse(trackIdsStr);
+  } catch {
+    return [];
+  }
+}
+
+function getTrackName(trackId: number): string {
+  const t = tracks.value.find((t) => t.id === trackId);
+  return t ? t.name : `赛道${trackId}`;
+}
+
+function formatTime(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleDateString("zh-CN") + " " + d.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" });
+}
+
+function openCreateDialog() {
+  editingAccount.value = null;
+  form.value = { name: "", alias: "", fakeid: "", biz: "", avatar: "", description: "", track_ids: "" };
+  dialogVisible.value = true;
+}
+
+function openEditDialog(row: MpAccount) {
+  editingAccount.value = row;
+  form.value = {
+    name: row.name,
+    alias: row.alias || "",
+    fakeid: row.fakeid || "",
+    biz: row.biz || "",
+    avatar: row.avatar || "",
+    description: row.description || "",
+    track_ids: row.track_ids || "",
+  };
+  dialogVisible.value = true;
+}
+
+async function handleSave() {
+  if (!form.value.name.trim()) {
+    ElMessage.warning("请输入公众号名称");
+    return;
+  }
+  saving.value = true;
+  try {
+    if (editingAccount.value) {
+      await mpAccountsApi.updateMpAccount(editingAccount.value.id, form.value);
+      ElMessage.success("公众号已更新");
+    } else {
+      await mpAccountsApi.createMpAccount(form.value);
+      ElMessage.success("公众号已创建");
+    }
+    dialogVisible.value = false;
+    await fetchMpAccounts();
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.detail || "操作失败");
+  } finally {
+    saving.value = false;
+  }
+}
+
+async function toggleStatus(row: MpAccount) {
+  const newStatus = row.status === 1 ? 0 : 1;
+  try {
+    await mpAccountsApi.toggleMpAccountStatus(row.id);
+    row.status = newStatus;
+    ElMessage.success(newStatus === 1 ? "已启用" : "已停用");
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.detail || "操作失败");
+  }
+}
+
+async function handleDelete(id: number) {
+  try {
+    await mpAccountsApi.deleteMpAccount(id);
+    ElMessage.success("公众号已删除");
+    await fetchMpAccounts();
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.detail || "操作失败");
+  }
+}
+
+function openImportDialog() {
+  importNames.value = "";
+  importUrls.value = "";
+  importTab.value = "name";
+  importDialogVisible.value = true;
+}
+
+async function handleImportByName() {
+  ElMessage.info("功能开发中 — 导入功能将在采集引擎完成后提供");
+}
+
+async function handleImportByUrl() {
+  ElMessage.info("功能开发中 — 导入功能将在采集引擎完成后提供");
+}
+
+async function fetchMpAccounts() {
+  loading.value = true;
+  try {
+    const params: Record<string, unknown> = {};
+    if (filterTrackId.value !== undefined && filterTrackId.value !== null) {
+      params.track_id = filterTrackId.value;
+    }
+    if (filterStatus.value !== undefined && filterStatus.value !== null) {
+      params.status = filterStatus.value;
+    }
+    if (searchText.value) {
+      params.search = searchText.value;
+    }
+    const { data } = await mpAccountsApi.fetchMpAccounts(params);
+    mpAccounts.value = data as any;
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.detail || "获取列表失败");
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function fetchTracks() {
+  try {
+    const { data } = await tracksApi.fetchTracks();
+    tracks.value = data as any;
+  } catch {
+    // tracks not required for basic operation
+  }
+}
+
+onMounted(() => {
+  fetchMpAccounts();
+  fetchTracks();
+});
+</script>
+
+<style scoped>
+.mp-accounts-view {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+</style>

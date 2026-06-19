@@ -1,0 +1,152 @@
+<style>
+  table.data-table { width:100%; font-size:13px; border-collapse:collapse; }
+  table.data-table th { background:#37474f; color:#fff; padding:8px; text-align:left; }
+  table.data-table td { padding:6px 8px; border-bottom:1px solid #e0e0e0; color:#1d1d1f; }
+  table.data-table tr:nth-child(even) td { background:#f5f5f5; }
+  .dark-box { background:#263238; color:#eceff1; padding:20px; border-radius:12px; font-family:monospace; font-size:12px; line-height:1.8; overflow-x:auto; }
+  .dark-box pre { margin:0; color:#eceff1; }
+  .lib-card { border-radius:10px; padding:16px; }
+</style>
+
+<h2>📋 模块五：知识库中心</h2>
+<p class="subtitle">PRD 第七章 — 四库建设：观点库 / 案例库 / 金句库 / 标题库</p>
+
+<div class="section"><h3>总览：四个知识库，统一的数据来源和提取机制</h3></div>
+
+<div class="dark-box">
+<pre>
+                     mp_materials (素材文章)
+                           │
+                           ↓
+              选中文章 → 触发 AI 提取
+                           │
+        ┌──────────────────┼──────────────────┐
+        ↓                  ↓                  ↓
+   ┌──────────┐     ┌──────────┐     ┌──────────┐
+   │ 观点库    │     │ 案例库    │     │ 金句库    │
+   │ opinions │     │ cases    │     │ quotes   │
+   └──────────┘     └──────────┘     └──────────┘
+                           │
+                           ↓
+                    ┌──────────┐
+                    │ 标题库    │
+                    │ titles   │
+                    └──────────┘
+
+  每库都支持：
+  • 从素材文章批量提取
+  • 手动增删改
+  • 按赛道/公众号筛选
+  • 创作时检索引用
+</pre>
+</div>
+
+<div class="section" style="margin-top:16px;"><h3>数据模型</h3></div>
+
+<table class="data-table">
+  <tr><th>库</th><th>表名</th><th>核心字段</th><th>提取内容</th></tr>
+  <tr>
+    <td><strong>💡 观点库</strong></td>
+    <td>knowledge_opinions</td>
+    <td>id, material_id, content(text), category, keywords(json), created_at</td>
+    <td>核心观点、支撑论据、结论</td>
+  </tr>
+  <tr>
+    <td><strong>📊 案例库</strong></td>
+    <td>knowledge_cases</td>
+    <td>id, material_id, name(varchar), type(人物/企业/产品/数据), description(text), created_at</td>
+    <td>人物、企业、产品、数据</td>
+  </tr>
+  <tr>
+    <td><strong>✨ 金句库</strong></td>
+    <td>knowledge_quotes</td>
+    <td>id, material_id, content(text), style(varchar), created_at</td>
+    <td>精彩表达、金句</td>
+  </tr>
+  <tr>
+    <td><strong>📝 标题库</strong></td>
+    <td>knowledge_titles</td>
+    <td>id, material_id, title(varchar), structure(varchar), keywords(json), created_at</td>
+    <td>标题模板、标题结构</td>
+  </tr>
+</table>
+
+<div class="section" style="margin-top:16px;"><h3>前端页面 — 四个 Tab 切换</h3></div>
+
+<div class="mockup">
+  <div class="mockup-header">知识库中心</div>
+  <div class="mockup-body" style="color:#1d1d1f;">
+    <div style="display:flex; gap:4px; margin-bottom:16px; border-bottom:2px solid #e0e0e0;">
+      <div style="padding:8px 16px; border-bottom:2px solid #7b1fa2; color:#7b1fa2; font-weight:600; margin-bottom:-2px;">💡 观点库</div>
+      <div style="padding:8px 16px; color:#888;">📊 案例库</div>
+      <div style="padding:8px 16px; color:#888;">✨ 金句库</div>
+      <div style="padding:8px 16px; color:#888;">📝 标题库</div>
+    </div>
+
+    <div style="display:flex; gap:8px; margin-bottom:12px;">
+      <select class="mock-input" style="width:120px; margin:0; color:#1d1d1f;"><option>全部赛道</option></select>
+      <select class="mock-input" style="width:100px; margin:0; color:#1d1d1f;"><option>全部类型</option></select>
+      <input class="mock-input" style="width:200px; margin:0;" placeholder="搜索观点内容...">
+      <button class="mock-button" style="margin:0;">+ 手动添加</button>
+      <button class="mock-button" style="margin:0; background:#7b1fa2;">🤖 从素材批量提取</button>
+    </div>
+
+    <table style="width:100%; font-size:12px; border-collapse:collapse; color:#1d1d1f;">
+      <tr style="border-bottom:2px solid #e0e0e0;">
+        <th style="text-align:left; padding:6px;">核心观点</th><th style="text-align:left; padding:6px;">来源文章</th><th style="text-align:left; padding:6px;">类型</th><th style="text-align:left; padding:6px;">赛道</th><th style="text-align:left; padding:6px;">时间</th><th style="text-align:left; padding:6px;">操作</th>
+      </tr>
+      <tr>
+        <td style="padding:6px;">AI模型能力提升不必然带来商业成功，生态锁定才是护城河</td>
+        <td style="padding:6px; color:#888;">GPT-5 发布：OpenAI...</td>
+        <td style="padding:6px;"><span style="background:#e3f2fd; padding:2px 6px; border-radius:3px; font-size:11px;">结论</span></td>
+        <td style="padding:6px;">AI科技</td><td style="padding:6px; color:#888;">06-18</td>
+        <td style="padding:6px; font-size:11px; color:#1565c0;">编辑 删除</td>
+      </tr>
+      <tr style="background:#f5f5f5;">
+        <td style="padding:6px;">价格战是短期获客手段，长期竞争力取决于模型差异化和成本结构</td>
+        <td style="padding:6px; color:#888;">大模型价格战...</td>
+        <td style="padding:6px;"><span style="background:#fff3e0; padding:2px 6px; border-radius:3px; font-size:11px;">论据</span></td>
+        <td style="padding:6px;">AI科技</td><td style="padding:6px; color:#888;">06-17</td>
+        <td style="padding:6px; font-size:11px; color:#1565c0;">编辑 删除</td>
+      </tr>
+      <tr>
+        <td style="padding:6px;">AI投资热度回归理性，市场关注从"概念"转向"营收"</td>
+        <td style="padding:6px; color:#888;">2026年AI创投趋势...</td>
+        <td style="padding:6px;"><span style="background:#e8f5e9; padding:2px 6px; border-radius:3px; font-size:11px;">观点</span></td>
+        <td style="padding:6px;">商业</td><td style="padding:6px; color:#888;">06-16</td>
+        <td style="padding:6px; font-size:11px; color:#1565c0;">编辑 删除</td>
+      </tr>
+    </table>
+  </div>
+</div>
+
+<div class="section" style="margin-top:16px;"><h3>批量提取流程</h3></div>
+
+<div class="split">
+  <div style="background:#f3e5f5; border-radius:10px; padding:16px;">
+    <strong style="color:#4a148c;">🤖 AI 批量提取</strong>
+    <ol style="margin:8px 0 0 16px; font-size:13px; color:#1d1d1f;">
+      <li>用户在素材中心选中多篇文章</li>
+      <li>点击「提取到知识库」</li>
+      <li>选择目标库（观点/案例/金句/标题 可多选）</li>
+      <li>调用 LLM Gateway 逐篇提取</li>
+      <li>结构化结果自动入库</li>
+    </ol>
+  </div>
+  <div style="background:#e8f5e9; border-radius:10px; padding:16px;">
+    <strong style="color:#1b5e20;">✍️ 手动添加</strong>
+    <ol style="margin:8px 0 0 16px; font-size:13px; color:#1d1d1f;">
+      <li>用户在对应库中点击「手动添加」</li>
+      <li>填写内容和分类信息</li>
+      <li>可选关联来源文章</li>
+      <li>入库后可在创作时检索</li>
+    </ol>
+  </div>
+</div>
+
+<div style="margin-top:16px; background:#e3f2fd; padding:14px; border-radius:10px;">
+  <strong style="color:#0d47a1;">📌 与创作中心的关系：</strong>
+  <p style="margin:8px 0 0 0; font-size:13px; color:#1d1d1f;">
+    创作文章时，侧边栏可检索知识库：找相关观点支撑文章论点、引用案例增加说服力、插入金句提升可读性、借鉴标题模板优化标题。四库是创作的"弹药库"。
+  </p>
+</div>

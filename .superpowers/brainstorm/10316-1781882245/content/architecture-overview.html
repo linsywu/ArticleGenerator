@@ -1,0 +1,92 @@
+<style>
+  .dark-diagram {
+    background: #263238; color: #eceff1; padding: 20px; border-radius: 12px;
+    font-family: monospace; font-size: 11px; line-height: 1.5; overflow-x: auto;
+  }
+  .done-table td { padding: 4px 8px; font-size: 13px; color: #1d1d1f; }
+  .todo-table td { padding: 4px 8px; font-size: 13px; color: #1d1d1f; }
+</style>
+
+<h2>🏗️ 千机笔 — 系统全景架构</h2>
+<p class="subtitle">PRD 定义的系统架构 + 现有系统映射 + 数据流方向</p>
+
+<div class="section"><h3>一、分层架构图</h3></div>
+<div class="dark-diagram">
+<pre style="margin:0; color:#eceff1;">
+┌─────────────────────────────────────────────────────────────────────┐
+│                        📱 前端展示层 (Vue 3)                          │
+│  CreateView  ReviewView  PublishView  素材中心  知识库  统计中心       │
+│  AccountsView  HotspotsView  赛道管理  公众号管理  采集任务管理        │
+└──────────────────────────────┬──────────────────────────────────────┘
+                               │ HTTP/REST
+┌──────────────────────────────┴──────────────────────────────────────┐
+│                    🔧 后端服务层 (FastAPI)                             │
+│                                                                      │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌──────────────────┐    │
+│  │ ArticleGeneratorService │  │ LLM Gateway     │  │ HotspotCrawler  │    │
+│  │ (主服务：CRUD+生成)     │  │ (LLM路由+适配)   │  │ (热点采集)       │    │
+│  │ • accounts           │  │ • providers     │  │ • sources       │    │
+│  │ • articles           │  │ • scenario_conf │  │ • sync_to_back  │    │
+│  │ • hotspots           │  │ • adapters      │  └──────────────────┘    │
+│  │ • generate           │  │ • generation_log│                          │
+│  │ • distill            │  └─────────────────┘                          │
+│  │ • reference_articles │                                               │
+│  │ • tasks              │  ┌─────────────────┐                          │
+│  │  ┌──────── NEW ────┐ │  │ 🆕 Collector Svc │  ← 新增                │
+│  │  │ tracks           │ │  │ (公众号采集引擎)  │                          │
+│  │  │ mp_accounts      │ │  │ • mp_credential │                          │
+│  │  │ collect_tasks    │ │  │ • collect_task  │                          │
+│  │  │ mp_materials     │ │  │ • scheduler     │                          │
+│  │  │ knowledge_base   │ │  │ • worker/parser │                          │
+│  │  │ analysis         │ │  │ • storage       │                          │
+│  │  │ stats            │ │  └─────────────────┘                          │
+│  │  └──────────────────┘ │                                               │
+│  └────────────────────────┴──────────────────────────────────────────────┘
+└──────────────────────────────┬──────────────────────────────────────┘
+                               │
+┌──────────────────────────────┴──────────────────────────────────────┐
+│                      🗄️ 数据层 (MySQL / SQLite)                       │
+│                                                                      │
+│  ✅ users  ✅ accounts  ✅ hotspots  ✅ articles                     │
+│  ✅ generation_tasks  ✅ refine_tasks  ✅ providers                   │
+│  ✅ scenario_configs  ✅ reference_articles  ✅ generation_logs      │
+│  ✅ hotspot_sources                                                  │
+│                                                                      │
+│  🆕 tracks (一/二级赛道)      🆕 mp_accounts (公众号)                   │
+│  🆕 mp_credentials (采集凭证)  🆕 collect_tasks (采集任务)              │
+│  🆕 collect_logs (采集日志)    🆕 mp_materials (素材文章)               │
+│  🆕 knowledge_opinions (观点)  🆕 knowledge_cases (案例)               │
+│  🆕 knowledge_quotes (金句)    🆕 knowledge_titles (标题模板)          │
+│  🆕 analysis_reports (分析报告) 🆕 article_versions (文章版本)          │
+└──────────────────────────────────────────────────────────────────────┘
+</pre>
+</div>
+
+<div class="section" style="margin-top: 20px;"><h3>二、模块拆解总览</h3></div>
+<div class="split">
+  <div>
+    <h4 style="color:#2e7d32;">✅ 已完成 (Phase 0)</h4>
+    <table style="width:100%; font-size:13px; border-collapse:collapse;">
+      <tr style="border-bottom:1px solid #e0e0e0;"><td style="padding:4px 8px; color:#1d1d1f;">用户认证</td><td style="color:#2e7d32; padding:4px 8px;">JWT + Crawler Key</td></tr>
+      <tr style="border-bottom:1px solid #e0e0e0;"><td style="padding:4px 8px; color:#1d1d1f;">热点发现</td><td style="color:#2e7d32; padding:4px 8px;">HotspotCrawler + 灵感墙</td></tr>
+      <tr style="border-bottom:1px solid #e0e0e0;"><td style="padding:4px 8px; color:#1d1d1f;">账号管理</td><td style="color:#2e7d32; padding:4px 8px;">CRUD + 7维风格画像</td></tr>
+      <tr style="border-bottom:1px solid #e0e0e0;"><td style="padding:4px 8px; color:#1d1d1f;">风格蒸馏</td><td style="color:#2e7d32; padding:4px 8px;">Celery 异步任务</td></tr>
+      <tr style="border-bottom:1px solid #e0e0e0;"><td style="padding:4px 8px; color:#1d1d1f;">文章创作</td><td style="color:#e65100; padding:4px 8px;">⚠️ 基础版(单次生成+微调)</td></tr>
+      <tr style="border-bottom:1px solid #e0e0e0;"><td style="padding:4px 8px; color:#1d1d1f;">评审发布</td><td style="color:#2e7d32; padding:4px 8px;">审核队列+状态流转</td></tr>
+      <tr><td style="padding:4px 8px; color:#1d1d1f;">LLM Gateway</td><td style="color:#2e7d32; padding:4px 8px;">多供应商+场景路由</td></tr>
+    </table>
+  </div>
+  <div>
+    <h4 style="color:#c62828;">🆕 待开发</h4>
+    <table style="width:100%; font-size:13px; border-collapse:collapse;">
+      <tr style="border-bottom:1px solid #e0e0e0;"><td style="color:#e65100; padding:4px 8px;"><strong>P1</strong></td><td style="color:#1d1d1f; padding:4px 8px;">赛道管理</td><td style="color:#555; padding:4px 8px;">2表+1页</td></tr>
+      <tr style="border-bottom:1px solid #e0e0e0;"><td style="color:#e65100; padding:4px 8px;"><strong>P1</strong></td><td style="color:#1d1d1f; padding:4px 8px;">公众号管理</td><td style="color:#555; padding:4px 8px;">1表+导入</td></tr>
+      <tr style="border-bottom:1px solid #e0e0e0;"><td style="color:#c62828; padding:4px 8px;"><strong>P1</strong></td><td style="color:#1d1d1f; padding:4px 8px;">采集引擎</td><td style="color:#555; padding:4px 8px;">6表+爬虫</td></tr>
+      <tr style="border-bottom:1px solid #e0e0e0;"><td style="color:#e65100; padding:4px 8px;"><strong>P2</strong></td><td style="color:#1d1d1f; padding:4px 8px;">素材中心</td><td style="color:#555; padding:4px 8px;">列表+详情</td></tr>
+      <tr style="border-bottom:1px solid #e0e0e0;"><td style="color:#7b1fa2; padding:4px 8px;"><strong>P2</strong></td><td style="color:#1d1d1f; padding:4px 8px;">知识库中心</td><td style="color:#555; padding:4px 8px;">4库+AI提取</td></tr>
+      <tr style="border-bottom:1px solid #e0e0e0;"><td style="color:#1565c0; padding:4px 8px;"><strong>P3</strong></td><td style="color:#1d1d1f; padding:4px 8px;">AI分析中心</td><td style="color:#555; padding:4px 8px;">拆解+论点</td></tr>
+      <tr style="border-bottom:1px solid #e0e0e0;"><td style="color:#1565c0; padding:4px 8px;"><strong>P3</strong></td><td style="color:#1d1d1f; padding:4px 8px;">创作增强</td><td style="color:#555; padding:4px 8px;">版本+带入</td></tr>
+      <tr><td style="color:#2e7d32; padding:4px 8px;"><strong>P4</strong></td><td style="color:#1d1d1f; padding:4px 8px;">数据统计</td><td style="color:#555; padding:4px 8px;">Dashboard</td></tr>
+    </table>
+  </div>
+</div>

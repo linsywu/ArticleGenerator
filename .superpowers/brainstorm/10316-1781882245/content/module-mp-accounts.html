@@ -1,0 +1,94 @@
+<style>
+  table.data-table { width:100%; font-size:13px; border-collapse:collapse; }
+  table.data-table th { background:#37474f; color:#fff; padding:8px; text-align:left; }
+  table.data-table td { padding:6px 8px; border-bottom:1px solid #e0e0e0; color:#1d1d1f; }
+  table.data-table tr:nth-child(even) td { background:#f5f5f5; }
+</style>
+
+<h2>📋 模块二：公众号管理</h2>
+<p class="subtitle">PRD 第三章 — 管理采集目标公众号，支持两种导入方式</p>
+
+<div class="section"><h3>数据模型：mp_accounts</h3></div>
+<table class="data-table">
+  <tr><th>字段</th><th>类型</th><th>说明</th></tr>
+  <tr><td>id</td><td>bigint</td><td>主键</td></tr>
+  <tr><td>name</td><td>varchar(200)</td><td>公众号名称</td></tr>
+  <tr><td>alias</td><td>varchar(100)</td><td>微信号 (如: woaichuqizhi)</td></tr>
+  <tr><td>fakeid</td><td>varchar(100)</td><td>公众号 fakeid (采集关键参数)</td></tr>
+  <tr><td>biz</td><td>varchar(100)</td><td>biz 参数 (文章链接可解析)</td></tr>
+  <tr><td>avatar</td><td>varchar(500)</td><td>头像 URL</td></tr>
+  <tr><td>description</td><td>text</td><td>公众号简介</td></tr>
+  <tr><td>track_ids</td><td>json</td><td>所属赛道 ID 数组</td></tr>
+  <tr><td>article_count</td><td>int</td><td>已采集文章数</td></tr>
+  <tr><td>last_collect_time</td><td>datetime</td><td>最后采集时间</td></tr>
+  <tr><td>status</td><td>tinyint</td><td>0=停用 1=正常</td></tr>
+</table>
+
+<div class="section" style="margin-top:16px;"><h3>两种导入方式</h3></div>
+
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header">方式一：公众号名称导入</div>
+    <div class="mockup-body" style="color:#1d1d1f; font-size:13px;">
+      <textarea class="mock-input" style="width:100%; height:110px; font-family:monospace;" placeholder="每行一个公众号名称&#10;如：&#10;36氪&#10;鸟哥笔记&#10;人人都是产品经理&#10;机器之心&#10;量子位"></textarea>
+      <div style="margin-top:8px; font-size:12px; color:#555;">
+        <strong>提交后系统自动：</strong>
+        <ol style="margin:4px 0 0 16px;">
+          <li>调用 searchbiz 接口搜索</li>
+          <li>获取 fakeid + biz + 头像 + 简介</li>
+          <li>自动填充并入库</li>
+        </ol>
+      </div>
+      <div style="text-align:right; margin-top:8px;">
+        <button class="mock-button">导入并搜索</button>
+      </div>
+    </div>
+  </div>
+  <div class="mockup">
+    <div class="mockup-header">方式二：文章链接导入</div>
+    <div class="mockup-body" style="color:#1d1d1f; font-size:13px;">
+      <textarea class="mock-input" style="width:100%; height:110px; font-family:monospace;" placeholder="每行一个文章链接&#10;如：&#10;https://mp.weixin.qq.com/s/xxxx&#10;https://mp.weixin.qq.com/s/yyyy"></textarea>
+      <div style="margin-top:8px; font-size:12px; color:#555;">
+        <strong>提交后系统自动：</strong>
+        <ol style="margin:4px 0 0 16px;">
+          <li>解析链接提取 biz 参数</li>
+          <li>通过 biz 反查公众号信息</li>
+          <li>同时采集该篇文章</li>
+        </ol>
+      </div>
+      <div style="text-align:right; margin-top:8px;">
+        <button class="mock-button">导入并解析</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:16px;"><h3>前端页面</h3></div>
+<div class="mockup">
+  <div class="mockup-header">公众号列表页</div>
+  <div class="mockup-body">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+      <div style="display:flex; gap:8px;">
+        <select class="mock-input" style="width:120px; margin:0; color:#1d1d1f;"><option>全部赛道</option><option>AI科技</option></select>
+        <select class="mock-input" style="width:100px; margin:0; color:#1d1d1f;"><option>全部状态</option><option>正常</option></select>
+        <input class="mock-input" style="width:180px; margin:0;" placeholder="搜索名称/微信号...">
+      </div>
+      <button class="mock-button" style="margin:0;">+ 新增公众号</button>
+    </div>
+    <table style="width:100%; font-size:12px; border-collapse:collapse; color:#1d1d1f;">
+      <tr style="border-bottom:2px solid #e0e0e0;">
+        <th style="text-align:left; padding:6px;">头像</th><th style="text-align:left; padding:6px;">名称</th><th style="text-align:left; padding:6px;">微信号</th><th style="text-align:left; padding:6px;">赛道</th><th style="text-align:center; padding:6px;">文章数</th><th style="text-align:left; padding:6px;">最后采集</th><th style="text-align:center; padding:6px;">状态</th><th style="text-align:left; padding:6px;">操作</th>
+      </tr>
+      <tr>
+        <td style="padding:6px;"><div style="width:32px; height:32px; background:#bdbdbd; border-radius:50%;"></div></td>
+        <td style="padding:6px;">36氪</td><td style="padding:6px;">wow36kr</td><td style="padding:6px;">AI科技, 商业</td><td style="text-align:center; padding:6px;">523</td><td style="padding:6px;">2小时前</td>
+        <td style="text-align:center; padding:6px;"><span style="color:#2e7d32;">●</span></td><td style="padding:6px; font-size:12px; color:#1565c0;">查看 采集 编辑</td>
+      </tr>
+      <tr style="background:#f5f5f5;">
+        <td style="padding:6px;"><div style="width:32px; height:32px; background:#bdbdbd; border-radius:50%;"></div></td>
+        <td style="padding:6px;">鸟哥笔记</td><td style="padding:6px;">niaoge8</td><td style="padding:6px;">产品经理</td><td style="text-align:center; padding:6px;">189</td><td style="padding:6px;">1天前</td>
+        <td style="text-align:center; padding:6px;"><span style="color:#2e7d32;">●</span></td><td style="padding:6px; font-size:12px; color:#1565c0;">查看 采集 编辑</td>
+      </tr>
+    </table>
+  </div>
+</div>

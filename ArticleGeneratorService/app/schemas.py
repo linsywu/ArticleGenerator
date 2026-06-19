@@ -403,3 +403,42 @@ class TrackResponse(TrackBase):
     created_at: datetime
     updated_at: datetime
     class Config: from_attributes = True
+
+
+# ----- 公众号 -----
+class MpAccountBase(BaseModel):
+    name: str
+    alias: Optional[str] = None
+    fakeid: Optional[str] = None
+    biz: Optional[str] = None
+    avatar: Optional[str] = None
+    description: Optional[str] = None
+    track_ids: Optional[str] = None
+
+class MpAccountCreate(MpAccountBase): pass
+
+class MpAccountUpdate(BaseModel):
+    name: Optional[str] = None
+    alias: Optional[str] = None
+    fakeid: Optional[str] = None
+    biz: Optional[str] = None
+    avatar: Optional[str] = None
+    description: Optional[str] = None
+    track_ids: Optional[str] = None
+
+class MpAccountResponse(MpAccountBase):
+    id: int
+    article_count: int = 0
+    last_collect_time: Optional[datetime] = None
+    status: int = 1
+    created_at: datetime
+    updated_at: datetime
+    class Config: from_attributes = True
+
+class MpAccountImportByNameRequest(BaseModel):
+    names: List[str]
+    credential_id: int
+
+class MpAccountImportByUrlRequest(BaseModel):
+    urls: List[str]
+    credential_id: int

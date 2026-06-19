@@ -158,6 +158,22 @@ export interface Track {
   updated_at: string;
 }
 
+export interface MpAccount {
+  id: number;
+  name: string;
+  alias?: string;
+  fakeid?: string;
+  biz?: string;
+  avatar?: string;
+  description?: string;
+  track_ids?: string;
+  article_count: number;
+  last_collect_time?: string;
+  status: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface UnifiedTasksResponse {
   tasks: UnifiedTaskItem[];
   running_count: number;

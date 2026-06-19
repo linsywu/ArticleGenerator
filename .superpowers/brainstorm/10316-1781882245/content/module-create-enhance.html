@@ -1,0 +1,111 @@
+<style>
+  table.data-table { width:100%; font-size:13px; border-collapse:collapse; }
+  table.data-table th { background:#37474f; color:#fff; padding:8px; text-align:left; }
+  table.data-table td { padding:6px 8px; border-bottom:1px solid #e0e0e0; color:#1d1d1f; }
+  .dark-box { background:#263238; color:#eceff1; padding:20px; border-radius:12px; font-family:monospace; font-size:12px; line-height:1.8; overflow-x:auto; }
+  .dark-box pre { margin:0; color:#eceff1; }
+</style>
+
+<h2>📋 模块七：文章创作增强</h2>
+<p class="subtitle">对现有 CreateView 的增强：论点带入 + AI 参数 + 版本管理</p>
+
+<div class="section"><h3>增强项对比：现有 vs 目标</h3></div>
+<table class="data-table">
+  <tr><th>维度</th><th>现有 CreateView</th><th>增强后</th></tr>
+  <tr><td><strong>创作入口</strong></td><td>手动选择热点 + 账号</td><td>+ 论点风暴一键带入 + 自定义主题</td></tr>
+  <tr><td><strong>AI 参数</strong></td><td>无（固定参数）</td><td>风格模板 + 字数 + 写作形式 + 原创度</td></tr>
+  <tr><td><strong>输出</strong></td><td>正文</td><td>标题 + 摘要 + 正文 + 配图建议 + SEO 关键词</td></tr>
+  <tr><td><strong>版本管理</strong></td><td>无（微调覆盖）</td><td>V1/V2/V3 版本留存 + 回溯</td></tr>
+  <tr><td><strong>知识库引用</strong></td><td>无</td><td>侧边栏检索观点/案例/金句/标题</td></tr>
+</table>
+
+<div class="section" style="margin-top:16px;"><h3>核心增强 1：版本管理</h3></div>
+<div class="mockup">
+  <div class="mockup-header">文章创作页 — 版本管理</div>
+  <div class="mockup-body" style="color:#1d1d1f; font-size:13px;">
+    <div style="display:flex; gap:16px;">
+      <div style="flex:2;">
+        <textarea class="mock-input" style="width:100%; height:200px; font-size:13px;" placeholder="AI 生成的文章正文..."></textarea>
+      </div>
+      <div style="flex:1; border-left:1px solid #e0e0e0; padding-left:16px;">
+        <strong>📜 版本历史</strong>
+        <div style="margin-top:8px; font-size:12px;">
+          <div style="background:#e8f5e9; padding:8px; border-radius:4px; margin-bottom:4px; border-left:3px solid #2e7d32;">
+            <strong>V3</strong> <span style="color:#888;">刚刚</span><br>
+            <span style="color:#555;">字数调整至 3000 + 增强原创度</span><br>
+            <span style="color:#1565c0; font-size:11px;">恢复此版本</span>
+          </div>
+          <div style="background:#f5f5f5; padding:8px; border-radius:4px; margin-bottom:4px;">
+            <strong>V2</strong> <span style="color:#888;">10分钟前</span><br>
+            <span style="color:#555;">口语化风格 + 增加案例</span><br>
+            <span style="color:#1565c0; font-size:11px;">恢复此版本</span>
+          </div>
+          <div style="background:#f5f5f5; padding:8px; border-radius:4px;">
+            <strong>V1</strong> <span style="color:#888;">30分钟前</span><br>
+            <span style="color:#555;">初始生成 (基于论点风暴方向1)</span><br>
+            <span style="color:#1565c0; font-size:11px;">恢复此版本</span>
+          </div>
+        </div>
+        <div style="margin-top:8px;">
+          <button class="mock-button" style="background:#1565c0; width:100%;">🔄 生成新版本</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:16px;"><h3>核心增强 2：AI 参数面板 + 输出增强</h3></div>
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header">AI 参数面板</div>
+    <div class="mockup-body" style="color:#1d1d1f; font-size:13px;">
+      <div style="margin-bottom:8px;">
+        <strong>风格模板</strong><br>
+        <select class="mock-input" style="width:100%; color:#1d1d1f;"><option>当前账号风格</option><option>通用风格</option></select>
+      </div>
+      <div style="margin-bottom:8px;">
+        <strong>字数</strong><br>
+        <select class="mock-input" style="width:100%; color:#1d1d1f;"><option>1500字左右</option><option>2000-3000字</option><option>3000字以上</option></select>
+      </div>
+      <div style="margin-bottom:8px;">
+        <strong>写作形式</strong><br>
+        <select class="mock-input" style="width:100%; color:#1d1d1f;"><option>深度分析</option><option>观点评论</option><option>实用教程</option><option>故事叙事</option></select>
+      </div>
+      <div style="margin-bottom:8px;">
+        <strong>原创度</strong><br>
+        <input type="range" style="width:100%;"><br>
+        <span style="font-size:11px; color:#888;">保守 ← → 激进创新</span>
+      </div>
+    </div>
+  </div>
+  <div style="background:#e8f5e9; border-radius:10px; padding:14px;">
+    <strong style="color:#1b5e20;">📦 增强输出</strong>
+    <ul style="margin:8px 0 0 16px; font-size:13px; color:#1d1d1f;">
+      <li><strong>标题</strong> — 3 个候选标题</li>
+      <li><strong>摘要</strong> — 200 字摘要</li>
+      <li><strong>正文</strong> — Markdown 格式</li>
+      <li><strong>配图建议</strong> — 推荐配图类型和位置</li>
+      <li><strong>SEO 关键词</strong> — 5-10 个</li>
+    </ul>
+  </div>
+</div>
+
+<div class="section" style="margin-top:16px;"><h3>数据模型：article_versions</h3></div>
+<table class="data-table">
+  <tr><th>字段</th><th>类型</th><th>说明</th></tr>
+  <tr><td>id</td><td>bigint</td><td>主键</td></tr>
+  <tr><td>article_id</td><td>bigint FK</td><td>关联文章</td></tr>
+  <tr><td>version_number</td><td>int</td><td>版本号 V1/V2/V3...</td></tr>
+  <tr><td>content</td><td>longtext</td><td>该版本正文</td></tr>
+  <tr><td>title</td><td>varchar(500)</td><td>该版本标题</td></tr>
+  <tr><td>summary</td><td>text</td><td>摘要</td></tr>
+  <tr><td>params</td><td>json</td><td>生成参数快照</td></tr>
+  <tr><td>created_at</td><td>datetime</td><td>版本创建时间</td></tr>
+</table>
+
+<div style="margin-top:16px; background:#e3f2fd; padding:14px; border-radius:10px;">
+  <strong style="color:#0d47a1;">💡 实现策略：</strong>
+  <p style="margin:8px 0 0 0; font-size:13px; color:#1d1d1f;">
+    版本管理不改变现有的 articles 表结构。articles 保持 current 版本，article_versions 存历史快照。微调(refine)不再是覆盖，而是生成新的 version。
+  </p>
+</div>

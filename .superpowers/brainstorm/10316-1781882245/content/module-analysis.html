@@ -1,0 +1,80 @@
+<style>
+  table.data-table { width:100%; font-size:13px; border-collapse:collapse; }
+  table.data-table th { background:#37474f; color:#fff; padding:8px; text-align:left; }
+  table.data-table td { padding:6px 8px; border-bottom:1px solid #e0e0e0; color:#1d1d1f; }
+  table.data-table tr:nth-child(even) td { background:#f5f5f5; }
+  .dark-box { background:#263238; color:#eceff1; padding:20px; border-radius:12px; font-family:monospace; font-size:12px; line-height:1.8; overflow-x:auto; }
+  .dark-box pre { margin:0; color:#eceff1; }
+</style>
+
+<h2>📋 模块六：AI 分析中心</h2>
+<p class="subtitle">PRD 第八章 — 爆文拆解 + 论点风暴（与素材中心/知识库/创作中心联动）</p>
+
+<div class="section"><h3>子模块 6.1：爆文拆解</h3></div>
+
+<table class="data-table">
+  <tr><th>分析维度</th><th>输出内容</th><th>示例</th></tr>
+  <tr><td><strong>📰 标题分析</strong></td><td>标题结构、关键词、情绪触发点、点击诱因</td><td>"数字+悬念+颠覆性结论"型标题</td></tr>
+  <tr><td><strong>🚪 开头分析</strong></td><td>开头类型、吸引力技巧、代入感来源</td><td>故事化开头：从个人经历切入，建立共鸣</td></tr>
+  <tr><td><strong>🏗️ 内容结构</strong></td><td>整体框架、段落逻辑、信息密度分布</td><td>总分总结构，每段"案例→分析→结论"</td></tr>
+  <tr><td><strong>💥 爆点分析</strong></td><td>传播驱动力、情绪共鸣点、争议性、时机</td><td>抓住"AI替代焦虑"+ 具体数据支撑</td></tr>
+  <tr><td><strong>👤 读者画像</strong></td><td>目标人群特征、阅读动机、分享动机</td><td>25-35岁科技从业者，关注职业发展</td></tr>
+</table>
+
+<div class="mockup" style="margin-top:14px;">
+  <div class="mockup-header">爆文拆解结果页 — 基于「GPT-5 发布」</div>
+  <div class="mockup-body" style="color:#1d1d1f; font-size:13px;">
+    <div style="display:flex; gap:4px; margin-bottom:14px; border-bottom:2px solid #e0e0e0;">
+      <div style="padding:8px 16px; border-bottom:2px solid #1565c0; color:#1565c0; font-weight:600; margin-bottom:-2px;">📰 标题分析</div>
+      <div style="padding:8px 16px; color:#888;">🚪 开头分析</div>
+      <div style="padding:8px 16px; color:#888;">🏗️ 结构分析</div>
+      <div style="padding:8px 16px; color:#888;">💥 爆点分析</div>
+      <div style="padding:8px 16px; color:#888;">👤 读者画像</div>
+    </div>
+    <div style="background:#f5f5f5; padding:14px; border-radius:8px; line-height:1.8;">
+      <strong>标题：</strong>"GPT-5 发布：OpenAI 的下一步棋，藏着一个你不想听的真相"<br>
+      <strong>结构：</strong>事件 + 悬念 + 负面暗示<br>
+      <strong>关键词：</strong>GPT-5、OpenAI、真相、下一步<br>
+      <strong>情绪触发点：</strong>好奇（什么真相？）+ 焦虑（不想听？）+ FOMO（下一步？）<br>
+      <strong>点击诱因：</strong>信息不对称 + 权威背书 + 负面偏好
+    </div>
+    <div style="margin-top:12px; display:flex; gap:8px; justify-content:flex-end;">
+      <button class="mock-button" style="background:#7b1fa2;">📥 保存到知识库</button>
+      <button class="mock-button" style="background:#2e7d32;">⭐ 参考此结构创作</button>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:20px;"><h3>子模块 6.2：论点风暴（已在素材中心讨论过，此处补充入口设计）</h3></div>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-top:12px;">
+  <div style="background:#e3f2fd; border-radius:10px; padding:14px;">
+    <strong style="color:#0d47a1;">📌 入口一</strong>
+    <p style="font-size:12px; color:#1d1d1f; margin-top:4px;">素材中心 → 文章列表 →<br>「💡 创作方向」按钮</p>
+    <p style="font-size:11px; color:#888;">基于单篇文章生成</p>
+  </div>
+  <div style="background:#e8f5e9; border-radius:10px; padding:14px;">
+    <strong style="color:#1b5e20;">📌 入口二</strong>
+    <p style="font-size:12px; color:#1d1d1f; margin-top:4px;">热点 → 灵感墙 →<br>选中热点 → 「论点风暴」</p>
+    <p style="font-size:11px; color:#888;">基于热点事件生成</p>
+  </div>
+  <div style="background:#f3e5f5; border-radius:10px; padding:14px;">
+    <strong style="color:#4a148c;">📌 入口三</strong>
+    <p style="font-size:12px; color:#1d1d1f; margin-top:4px;">创作中心 →<br>「自定义主题」→ 论点风暴</p>
+    <p style="font-size:11px; color:#888;">手动输入主题生成</p>
+  </div>
+</div>
+
+<div class="section" style="margin-top:20px;"><h3>数据模型</h3></div>
+<table class="data-table">
+  <tr><th>表名</th><th>核心字段</th><th>说明</th></tr>
+  <tr>
+    <td><strong>analysis_reports</strong></td>
+    <td>id, material_id, type(viral_analysis/argument_storm), result(json), created_at</td>
+    <td>统一的 AI 分析结果存储，type 区分分析类型，result 存结构化 JSON</td>
+  </tr>
+</table>
+
+<div style="margin-top:16px; background:#fff3e0; padding:14px; border-radius:10px; color:#e65100; font-size:13px;">
+  <strong>⚠️ 设计决策：</strong>爆文拆解和论点风暴的结果都存 analysis_reports 表（type 字段区分）。不做独立的「爆文拆解」和「论点风暴」表——减少表数量，增加灵活性。未来新增分析类型只需加 type 枚举值。
+</div>
