@@ -271,3 +271,40 @@ class CollectTask(Base):
     status = Column(String(20), default="idle")
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class MpMaterial(Base):
+    """素材文章"""
+    __tablename__ = "mp_materials"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    account_id = Column(Integer, ForeignKey("mp_accounts.id", ondelete="CASCADE"), nullable=False)
+    title = Column(String(500))
+    author = Column(String(100))
+    original_url = Column(String(1000), nullable=False)
+    cover_url = Column(String(500))
+    summary = Column(Text)
+    raw_html = Column(Text)
+    content_markdown = Column(Text)
+    content_hash = Column(String(64))
+    word_count = Column(Integer, default=0)
+    is_original = Column(Integer, default=0)
+    published_at = Column(DateTime)
+    collected_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class CollectLog(Base):
+    """采集日志"""
+    __tablename__ = "collect_logs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    task_id = Column(Integer, ForeignKey("collect_tasks.id", ondelete="CASCADE"), nullable=False)
+    account_id = Column(Integer)
+    start_time = Column(DateTime)
+    end_time = Column(DateTime)
+    total_count = Column(Integer, default=0)
+    success_count = Column(Integer, default=0)
+    fail_count = Column(Integer, default=0)
+    error_message = Column(Text)
+    created_at = Column(DateTime, default=datetime.utcnow)

@@ -20,6 +20,7 @@ from .models import (
     ReferenceArticle,
     GenerationLog,
 )
+from app.collector.worker import execute_collect_task, check_credentials_health
 
 # Celery 应用
 celery_app = Celery(
@@ -30,6 +31,12 @@ celery_app = Celery(
 celery_app.conf.task_serializer = "json"
 celery_app.conf.result_serializer = "json"
 celery_app.conf.accept_content = ["json"]
+celery_app.conf.beat_schedule = {
+    'check-credentials-health': {
+        'task': 'app.collector.worker.check_credentials_health',
+        'schedule': 21600.0,
+    },
+}
 
 
 def get_db_session():
