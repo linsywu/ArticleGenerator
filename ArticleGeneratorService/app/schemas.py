@@ -364,3 +364,42 @@ class OutlinePoint(BaseModel):
 
 class OutlineResponse(BaseModel):
     outline: List[OutlinePoint]
+
+
+# ----- 赛道 -----
+class SubTrackBase(BaseModel):
+    name: str
+    description: Optional[str] = None
+
+class SubTrackCreate(SubTrackBase): pass
+
+class SubTrackResponse(SubTrackBase):
+    id: int
+    track_id: int
+    created_at: datetime
+    class Config: from_attributes = True
+
+class TrackBase(BaseModel):
+    name: str
+    description: Optional[str] = None
+    keywords: Optional[str] = None
+    forbidden_keywords: Optional[str] = None
+
+class TrackCreate(TrackBase): pass
+
+class TrackUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    keywords: Optional[str] = None
+    forbidden_keywords: Optional[str] = None
+
+class TrackStatusUpdate(BaseModel):
+    status: int
+
+class TrackResponse(TrackBase):
+    id: int
+    status: int = 1
+    sub_tracks: List[SubTrackResponse] = []
+    created_at: datetime
+    updated_at: datetime
+    class Config: from_attributes = True

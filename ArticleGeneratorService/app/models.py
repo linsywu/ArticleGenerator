@@ -190,3 +190,32 @@ class GenerationLog(Base):
     status = Column(String(20), default="success")
     error_message = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class Track(Base):
+    """一级赛道"""
+    __tablename__ = "tracks"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(100), nullable=False)
+    description = Column(Text)
+    keywords = Column(Text)  # JSON string
+    forbidden_keywords = Column(Text)  # JSON string
+    status = Column(Integer, default=1)  # 0=禁用 1=启用
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    sub_tracks = relationship("SubTrack", back_populates="track", cascade="all, delete-orphan")
+
+
+class SubTrack(Base):
+    """二级赛道"""
+    __tablename__ = "sub_tracks"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    track_id = Column(Integer, ForeignKey("tracks.id", ondelete="CASCADE"), nullable=False)
+    name = Column(String(100), nullable=False)
+    description = Column(Text)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    track = relationship("Track", back_populates="sub_tracks")
