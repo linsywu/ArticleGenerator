@@ -42,6 +42,10 @@
 
         <div class="nav-section">
           <span class="nav-section-title">配置</span>
+          <router-link to="/tracks" class="nav-item" :class="{ active: $route.path === '/tracks' }">
+            <span class="nav-icon">⊞</span>
+            <span class="nav-label">赛道管理</span>
+          </router-link>
           <router-link to="/hotspot-sources" class="nav-item" :class="{ active: $route.path === '/hotspot-sources' }">
             <span class="nav-icon">⚑</span>
             <span class="nav-label">热点源管理</span>

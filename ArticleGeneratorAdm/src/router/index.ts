@@ -21,6 +21,7 @@ export const routes: RouteRecordRaw[] = [
       { path: "hotspot-sources", name: "HotspotSources", component: () => import("@/views/HotspotSourcesView.vue"), meta: { title: "热点源管理" } },
       { path: "providers", name: "Providers", component: () => import("@/views/ProvidersView.vue"), meta: { title: "API供应商" } },
       { path: "scenario-configs", name: "ScenarioConfigs", component: () => import("@/views/ScenarioConfigsView.vue"), meta: { title: "场景配置" } },
+      { path: "tracks", name: "Tracks", component: () => import("@/views/TracksView.vue"), meta: { title: "赛道管理" } },
       { path: "tasks-center", name: "TaskCenter", component: () => import("@/views/TaskCenterView.vue"), meta: { title: "任务中心" } },
     ],
   },

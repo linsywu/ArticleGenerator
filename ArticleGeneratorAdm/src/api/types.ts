@@ -138,6 +138,26 @@ export interface UnifiedTaskItem {
   account: { id: number; account_name: string; platform: string } | null;
 }
 
+export interface SubTrack {
+  id: number;
+  track_id: number;
+  name: string;
+  description?: string;
+  created_at: string;
+}
+
+export interface Track {
+  id: number;
+  name: string;
+  description?: string;
+  keywords?: string;
+  forbidden_keywords?: string;
+  status: number;
+  sub_tracks: SubTrack[];
+  created_at: string;
+  updated_at: string;
+}
+
 export interface UnifiedTasksResponse {
   tasks: UnifiedTaskItem[];
   running_count: number;
