@@ -69,11 +69,16 @@ def delete_collect_task(task_id: int, db: Session = Depends(get_db)):
 
 @router.post("/{task_id}/execute")
 def execute_collect_task(task_id: int, db: Session = Depends(get_db)):
-    """执行采集任务（暂未实现）"""
+    """手动执行采集任务"""
     task = db.query(CollectTask).filter(CollectTask.id == task_id).first()
     if not task:
-        raise HTTPException(status_code=404, detail="采集任务不存在")
-    return {"status": "not_implemented"}
+        raise HTTPException(status_code=404, detail="任务不存在")
+    if task.status == "running":
+        raise HTTPException(status_code=400, detail="任务正在执行中")
+
+    from ..collector.worker import execute_collect_task as celery_execute
+    celery_task = celery_execute.delay(task_id)
+    return {"message": "采集任务已提交", "celery_task_id": celery_task.id}
 
 
 @router.post("/{task_id}/pause")
