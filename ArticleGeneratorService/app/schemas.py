@@ -1,7 +1,7 @@
 """
 Pydantic 请求/响应模型
 """
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date
 from typing import Optional, List, Any, Annotated
 from pydantic import BaseModel, Field, field_validator, BeforeValidator
 import json
@@ -442,3 +442,78 @@ class MpAccountImportByNameRequest(BaseModel):
 class MpAccountImportByUrlRequest(BaseModel):
     urls: List[str]
     credential_id: int
+
+
+# ----- 采集凭证 -----
+class MpCredentialCreate(BaseModel):
+    name: str
+    token: str
+    cookie: str
+
+class MpCredentialUpdate(BaseModel):
+    name: Optional[str] = None
+    token: Optional[str] = None
+    cookie: Optional[str] = None
+
+class MpCredentialResponse(BaseModel):
+    id: int
+    name: str
+    token: str
+    cookie: str
+    status: str
+    check_time: Optional[datetime] = None
+    created_at: datetime
+    class Config: from_attributes = True
+
+    @field_validator("token", mode="after")
+    @classmethod
+    def mask_token(cls, v): return v[:3] + "***" + v[-4:] if v and len(v) > 7 else v
+
+    @field_validator("cookie", mode="after")
+    @classmethod
+    def mask_cookie(cls, v):
+        if not v or len(v) <= 20: return v
+        return v[:10] + "***" + v[-10:]
+
+
+# ----- 采集任务 -----
+class CollectTaskCreate(BaseModel):
+    name: str
+    credential_id: int
+    track_ids: Optional[str] = None
+    account_ids: Optional[str] = None
+    collect_mode: str = "incremental"
+    date_start: Optional[date] = None
+    date_end: Optional[date] = None
+    schedule_type: str = "manual"
+    cron: Optional[str] = None
+    interval_hours: Optional[int] = None
+
+class CollectTaskUpdate(BaseModel):
+    name: Optional[str] = None
+    credential_id: Optional[int] = None
+    track_ids: Optional[str] = None
+    account_ids: Optional[str] = None
+    collect_mode: Optional[str] = None
+    date_start: Optional[date] = None
+    date_end: Optional[date] = None
+    schedule_type: Optional[str] = None
+    cron: Optional[str] = None
+    interval_hours: Optional[int] = None
+
+class CollectTaskResponse(BaseModel):
+    id: int
+    name: str
+    credential_id: int
+    track_ids: Optional[str] = None
+    account_ids: Optional[str] = None
+    collect_mode: str
+    date_start: Optional[date] = None
+    date_end: Optional[date] = None
+    schedule_type: str
+    cron: Optional[str] = None
+    interval_hours: Optional[int] = None
+    status: str
+    created_at: datetime
+    updated_at: datetime
+    class Config: from_attributes = True

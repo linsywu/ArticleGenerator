@@ -1,8 +1,8 @@
 """
 数据模型定义
 """
-from datetime import datetime, timezone
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Boolean
+from datetime import datetime, timezone, date
+from sqlalchemy import Column, Integer, String, Text, DateTime, Date, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
 from .database import Base
 
@@ -236,5 +236,38 @@ class MpAccount(Base):
     article_count = Column(Integer, default=0)
     last_collect_time = Column(DateTime)
     status = Column(Integer, default=1)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class MpCredential(Base):
+    """采集凭证"""
+    __tablename__ = "mp_credentials"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(100), nullable=False)
+    token = Column(String(500), nullable=False)
+    cookie = Column(Text, nullable=False)
+    status = Column(String(20), default="normal")
+    check_time = Column(DateTime)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class CollectTask(Base):
+    """采集任务"""
+    __tablename__ = "collect_tasks"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(200), nullable=False)
+    credential_id = Column(Integer, ForeignKey("mp_credentials.id", ondelete="RESTRICT"), nullable=False)
+    track_ids = Column(Text)
+    account_ids = Column(Text)
+    collect_mode = Column(String(30), default="incremental")
+    date_start = Column(Date)
+    date_end = Column(Date)
+    schedule_type = Column(String(20), default="manual")
+    cron = Column(String(50))
+    interval_hours = Column(Integer)
+    status = Column(String(20), default="idle")
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

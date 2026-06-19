@@ -180,3 +180,30 @@ export interface UnifiedTasksResponse {
   pending_count: number;
   completed_count: number;
 }
+
+export interface MpCredential {
+  id: number;
+  name: string;
+  token: string;
+  cookie: string;
+  status: string;
+  check_time?: string;
+  created_at: string;
+}
+
+export interface CollectTask {
+  id: number;
+  name: string;
+  credential_id: number;
+  track_ids?: string;
+  account_ids?: string;
+  collect_mode: string;
+  date_start?: string;
+  date_end?: string;
+  schedule_type: string;
+  cron?: string;
+  interval_hours?: number;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}

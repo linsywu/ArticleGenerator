@@ -42,6 +42,14 @@
             <span class="nav-icon">◎</span>
             <span class="nav-label">公众号管理</span>
           </router-link>
+          <router-link to="/credentials" class="nav-item" :class="{ active: $route.path === '/credentials' }">
+            <span class="nav-icon">🔑</span>
+            <span class="nav-label">采集凭证</span>
+          </router-link>
+          <router-link to="/collect-tasks" class="nav-item" :class="{ active: $route.path === '/collect-tasks' }">
+            <span class="nav-icon">📥</span>
+            <span class="nav-label">采集任务</span>
+          </router-link>
         </div>
 
         <div class="nav-section">
