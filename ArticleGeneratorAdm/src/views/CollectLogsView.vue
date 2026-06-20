@@ -11,6 +11,7 @@
     </div>
 
     <el-table :data="logs" v-loading="loading" style="width: 100%">
+      <template #empty>暂无采集日志</template>
       <el-table-column prop="task_name" label="任务名称" min-width="180" />
       <el-table-column label="公众号" width="140">
         <template #default="{ row }">{{ row.account?.name || '-' }}</template>
@@ -39,10 +40,6 @@
       layout="prev, pager, next" style="margin-top:16px; justify-content:center;"
       @current-change="fetchLogs"
     />
-
-    <div v-if="!loading && logs.length === 0" class="empty-state">
-      暂无采集日志
-    </div>
   </div>
 </template>
 
@@ -70,8 +67,8 @@ async function fetchLogs() {
     const params: Record<string, unknown> = { page: page.value, page_size: pageSize.value };
     if (filterTaskId.value) params.task_id = filterTaskId.value;
     const { data } = await collectLogsApi.fetchCollectLogs(params);
-    logs.value = (data as any).data || [];
-    total.value = (data as any).total || 0;
+    logs.value = data.data;
+    total.value = data.total;
   } finally {
     loading.value = false;
   }
@@ -80,8 +77,10 @@ async function fetchLogs() {
 async function fetchTasks() {
   try {
     const { data } = await collectTasksApi.fetchCollectTasks();
-    tasks.value = data as any;
-  } catch (_) {}
+    tasks.value = data;
+  } catch (e) {
+    console.error("Failed to load tasks for filter", e);
+  }
 }
 
 watch(filterTaskId, () => { page.value = 1; fetchLogs(); });
@@ -106,11 +105,5 @@ onMounted(() => {
 .filters {
   display: flex;
   gap: 12px;
-}
-.empty-state {
-  text-align: center;
-  padding: 60px 0;
-  color: #666;
-  font-size: 14px;
 }
 </style>
