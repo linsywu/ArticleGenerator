@@ -69,6 +69,7 @@ def get_material(material_id: int, db: Session = Depends(get_db)):
         "cover_url": material.cover_url,
         "summary": material.summary,
         "raw_html": material.raw_html,
+        "content_html": material.content_html,
         "content_markdown": material.content_markdown,
         "word_count": material.word_count,
         "is_original": material.is_original,

@@ -545,6 +545,7 @@ class MpMaterialResponse(BaseModel):
     cover_url: Optional[str] = None
     summary: Optional[str] = None
     raw_html: Optional[str] = None
+    content_html: Optional[str] = None
     content_markdown: Optional[str] = None
     content_hash: Optional[str] = None
     word_count: int = 0
