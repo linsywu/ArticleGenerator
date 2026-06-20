@@ -9,11 +9,12 @@ from typing import Optional
 
 from ..database import get_db
 from ..models import MpMaterial, MpAccount
+from ..schemas import MpMaterialResponse, MpMaterialListResponse
 
 router = APIRouter(prefix="/materials", tags=["素材中心"])
 
 
-@router.get("")
+@router.get("", response_model=MpMaterialListResponse)
 def list_materials(
     db: Session = Depends(get_db),
     account_id: Optional[int] = Query(None),
@@ -52,7 +53,7 @@ def list_materials(
     return {"data": result, "total": total}
 
 
-@router.get("/{material_id}")
+@router.get("/{material_id}", response_model=MpMaterialResponse)
 def get_material(material_id: int, db: Session = Depends(get_db)):
     """获取素材详情"""
     material = db.query(MpMaterial).filter(MpMaterial.id == material_id).first()

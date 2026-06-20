@@ -536,3 +536,74 @@ class CollectTaskResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     class Config: from_attributes = True
+
+
+# ----- 素材中心 -----
+
+class MpMaterialResponse(BaseModel):
+    id: int
+    account_id: int
+    title: Optional[str] = None
+    author: Optional[str] = None
+    original_url: str
+    cover_url: Optional[str] = None
+    summary: Optional[str] = None
+    raw_html: Optional[str] = None
+    content_markdown: Optional[str] = None
+    content_hash: Optional[str] = None
+    word_count: int = 0
+    is_original: int = 0
+    published_at: Optional[datetime] = None
+    collected_at: Optional[datetime] = None
+    created_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class MpMaterialListItem(BaseModel):
+    id: int
+    account_id: int
+    title: Optional[str] = None
+    author: Optional[str] = None
+    original_url: str
+    cover_url: Optional[str] = None
+    summary: Optional[str] = None
+    word_count: int = 0
+    is_original: int = 0
+    published_at: Optional[datetime] = None
+    collected_at: Optional[datetime] = None
+    created_at: Optional[datetime] = None
+    account: Optional[dict] = None
+
+    class Config:
+        from_attributes = True
+
+
+class MpMaterialListResponse(BaseModel):
+    data: list[MpMaterialListItem]
+    total: int
+
+
+# ----- 采集日志 -----
+
+class CollectLogResponse(BaseModel):
+    id: int
+    task_id: int
+    task_name: Optional[str] = None
+    account_id: Optional[int] = None
+    start_time: Optional[datetime] = None
+    end_time: Optional[datetime] = None
+    total_count: int = 0
+    success_count: int = 0
+    fail_count: int = 0
+    error_message: Optional[str] = None
+    created_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class CollectLogListResponse(BaseModel):
+    data: list[CollectLogResponse]
+    total: int

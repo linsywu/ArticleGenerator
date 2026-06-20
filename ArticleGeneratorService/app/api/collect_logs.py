@@ -8,11 +8,12 @@ from typing import Optional
 
 from ..database import get_db
 from ..models import CollectLog, CollectTask
+from ..schemas import CollectLogResponse, CollectLogListResponse
 
 router = APIRouter(prefix="/collect-logs", tags=["采集日志"])
 
 
-@router.get("")
+@router.get("", response_model=CollectLogListResponse)
 def list_collect_logs(
     db: Session = Depends(get_db),
     task_id: Optional[int] = Query(None),
