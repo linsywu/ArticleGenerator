@@ -49,7 +49,8 @@
         </p>
         <el-tabs v-model="activeTab">
           <el-tab-pane label="原文 (HTML)" name="html">
-            <div class="html-preview" v-html="currentMaterial.raw_html || '(无内容)'" />
+            <div v-if="currentMaterial.content_html" class="html-preview" v-html="currentMaterial.content_html" />
+            <div v-else style="text-align:center; padding:40px; color:#888;">暂无原文内容</div>
           </el-tab-pane>
           <el-tab-pane label="Markdown (清洗后)" name="markdown" @click="loadMarkdown">
             <pre class="markdown-preview" v-if="markdownContent">{{ markdownContent }}</pre>

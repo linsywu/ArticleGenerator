@@ -219,6 +219,9 @@ export interface MpMaterial {
   original_url: string;
   cover_url?: string;
   summary?: string;
+  raw_html?: string;
+  content_html?: string;
+  content_markdown?: string;
   word_count: number;
   is_original: number;
   published_at?: string;
