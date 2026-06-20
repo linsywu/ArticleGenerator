@@ -23,11 +23,21 @@ def _as_utc(dt):
     return dt
 
 
+# Valid non-DB task types for Celery fallback
+_CELERY_TASK_TYPES = {"humanize", "distill", "direction", "outline", "title", "quality_review", "compliance_review"}
+
+
 def _infer_task_type(task_name: str) -> str:
-    """Infer task type from Celery task name."""
-    for ttype in ("humanize", "distill", "direction", "outline", "title", "quality_review", "compliance_review"):
-        if ttype in task_name:
-            return ttype
+    """Infer task type from Celery task name by extracting suffix after trigger_.
+
+    Example: app.tasks.trigger_humanize -> humanize
+    """
+    if "trigger_" in task_name:
+        suffix = task_name.split("trigger_")[-1]
+        # Strip any sub-module prefix (e.g., "collector." in "trigger_collector.run")
+        task_type = suffix.split(".")[0]
+        if task_type in _CELERY_TASK_TYPES:
+            return task_type
     return "unknown"
 
 
@@ -160,7 +170,6 @@ def query_unified_tasks(
     ).count()
 
     # ── Celery fallback: query non-DB task types (humanize, distill, direction, outline, title, reviews) ──
-    CELERY_TASK_TYPES = {"humanize", "distill", "direction", "outline", "title", "quality_review", "compliance_review"}
 
     try:
         inspector = _celery_app.control.inspect()
@@ -185,7 +194,7 @@ def query_unified_tasks(
                 continue
 
             task_type = _infer_task_type(task_name)
-            if task_type not in CELERY_TASK_TYPES:
+            if task_type not in _CELERY_TASK_TYPES:
                 continue
 
             async_result = AsyncResult(task_id, app=_celery_app)
@@ -196,6 +205,8 @@ def query_unified_tasks(
                 status = "success"
             elif async_result.state == "FAILURE":
                 status = "failed"
+            elif async_result.state == "REVOKED":
+                status = "cancelled"
 
             if status_list and status not in status_list:
                 continue
