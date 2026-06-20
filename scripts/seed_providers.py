@@ -1,4 +1,4 @@
-"""写入初始 Provider + ScenarioConfig 配置"""
+"""写入初始 Provider + ScenarioConfig 配置（幂等 UPSERT）"""
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "ArticleGeneratorService"))
 
@@ -8,47 +8,37 @@ from app.models import Provider, ScenarioConfig
 Base.metadata.create_all(bind=engine)
 db = SessionLocal()
 
-# 清除旧配置（幂等）
-db.query(ScenarioConfig).delete()
-db.query(Provider).delete()
-db.commit()
-
-# Provider: CrazyRouter
-provider = Provider(
+# ---------------------------------------------------------------------------
+# Provider: CrazyRouter  ——  UPSERT 模式
+# ---------------------------------------------------------------------------
+provider_data = dict(
     name="CrazyRouter",
     base_url="https://crazyrouter.com/v1",
     api_key="sk-mhntt7cQ2icV1w6HZIr0EjRPp0v6WxAorYA609ZuIxvyamp5",
     models='["claude-sonnet-4-20250514", "deepseek-chat"]',
     enabled=1,
 )
-db.add(provider)
+
+existing_provider = db.query(Provider).filter(Provider.name == "CrazyRouter").first()
+if existing_provider:
+    # 保留既有的 api_key，更新可能发生变化的字段
+    existing_provider.base_url = provider_data["base_url"]
+    existing_provider.models = provider_data["models"]
+    existing_provider.enabled = provider_data["enabled"]
+    provider = existing_provider
+    print(f"Updated existing provider: {provider.name} (id={provider.id})")
+else:
+    provider = Provider(**provider_data)
+    db.add(provider)
+    print(f"Created new provider: {provider.name}")
+
 db.flush()
 
+# ---------------------------------------------------------------------------
+# 9 个 ScenarioConfig ——  UPSERT 模式
+# ---------------------------------------------------------------------------
 scenarios = [
-    {
-        "scenario": "generate",
-        "model": "claude-sonnet-4-20250514",
-        "system_prompt_template": (
-            "你是一个专业的内容创作者。根据热点标题和风格要求，创作一篇高质量的文章。"
-            "文章需要有吸引人的标题、清晰的结构、充实的内容。\n\n"
-            "风格要求：{{style_profile}}\n\n"
-            "热点标题：{{hotspot_title}}"
-        ),
-        "params": '{"max_tokens": 4096, "temperature": 0.8}',
-        "priority": 10,
-    },
-    {
-        "scenario": "refine",
-        "model": "claude-sonnet-4-20250514",
-        "system_prompt_template": (
-            "你是一个专业的内容编辑。根据修改关键词对原文进行重写优化，"
-            "保持文章核心信息不变，但按照关键词方向调整风格、语气或侧重点。\n\n"
-            "原文：{{article_content}}\n\n"
-            "修改关键词：{{keywords}}"
-        ),
-        "params": '{"max_tokens": 4096, "temperature": 0.7}',
-        "priority": 10,
-    },
+    # ── ① 风格蒸馏 ──────────────────────────────────────────────────────────
     {
         "scenario": "distill",
         "model": "claude-sonnet-4-20250514",
@@ -66,7 +56,96 @@ scenarios = [
         ),
         "params": '{"max_tokens": 2048, "temperature": 0.5}',
         "priority": 10,
+        "description": "① 风格蒸馏：分析参考文章，提取7维度结构化风格画像",
+        "sort_order": 1,
     },
+    # ── ② 方向生成 ──────────────────────────────────────────────────────────
+    {
+        "scenario": "direction",
+        "model": "claude-sonnet-4-20250514",
+        "system_prompt_template": (
+            "你是一个专业的内容策划。根据给定的想法和账号写作风格，生成3-5个不同的写作方向。\n\n"
+            "每个方向应该是一个不同的切入角度，用一句话描述。\n\n"
+            "风格要求：{{style_profile}}\n"
+            "想法：{{idea}}"
+        ),
+        "params": '{"max_tokens": 2048, "temperature": 0.9}',
+        "priority": 10,
+        "description": "② 方向生成：根据想法和账号风格，生成3-5个切入角度",
+        "sort_order": 2,
+    },
+    # ── ③ 大纲生成 ──────────────────────────────────────────────────────────
+    {
+        "scenario": "outline",
+        "model": "claude-sonnet-4-20250514",
+        "system_prompt_template": (
+            "你是一个专业的内容策划。根据想法、写作方向和账号风格，生成5-8个要点的文章大纲。\n\n"
+            "每个要点用一句话概括核心内容。\n\n"
+            "风格要求：{{style_profile}}\n"
+            "想法：{{idea}}\n"
+            "方向：{{direction}}"
+        ),
+        "params": '{"max_tokens": 2048, "temperature": 0.8}',
+        "priority": 10,
+        "description": "③ 大纲生成：根据想法+方向+风格，生成5-8个要点大纲",
+        "sort_order": 3,
+    },
+    # ── ④ 标题生成 ──────────────────────────────────────────────────────────
+    {
+        "scenario": "title",
+        "model": "claude-sonnet-4-20250514",
+        "system_prompt_template": (
+            "你是一个专业的内容编辑。根据想法、写作方向和大纲，生成3-5个吸引人的文章标题。\n\n"
+            "标题要求：\n"
+            "1. 简洁有力，15字以内为佳\n"
+            "2. 能准确传达文章核心观点\n"
+            "3. 符合账号的写作风格\n"
+            "4. 有一定吸引力但不标题党\n\n"
+            "风格要求：{{style_profile}}\n"
+            "想法：{{idea}}\n"
+            "方向：{{direction}}\n"
+            "大纲：{{outline}}"
+        ),
+        "params": '{"max_tokens": 1024, "temperature": 0.9}',
+        "priority": 10,
+        "description": "④ 标题生成：根据想法+方向+大纲，生成3-5个候选标题",
+        "sort_order": 4,
+    },
+    # ── ⑤ 文章生成 ──────────────────────────────────────────────────────────
+    {
+        "scenario": "generate",
+        "model": "claude-sonnet-4-20250514",
+        "system_prompt_template": (
+            "你是一个专业的内容创作者。根据热点标题和风格要求，创作一篇高质量的文章。"
+            "文章需要有吸引人的标题、清晰的结构、充实的内容。\n\n"
+            "风格要求：{{style_profile}}\n\n"
+            "热点标题：{{hotspot_title}}"
+        ),
+        "params": '{"max_tokens": 4096, "temperature": 0.8}',
+        "priority": 10,
+        "description": "⑤ 文章生成：根据热点/想法 + 风格画像 + 大纲生成全文",
+        "sort_order": 5,
+    },
+    # ── ⑥ 去AI味 ────────────────────────────────────────────────────────────
+    {
+        "scenario": "humanize",
+        "model": "claude-sonnet-4-20250514",
+        "system_prompt_template": (
+            "你是一个资深编辑，擅长让AI生成的文章读起来像真人写的。\n\n"
+            "请对以下文章进行「去AI味」处理：\n"
+            "1. 打破过于工整的对称结构\n"
+            "2. 加入自然的语气变化和口语化表达\n"
+            "3. 减少「首先/其次/最后/总而言之」等套路连接词\n"
+            "4. 适当加入个人化的观点和感受\n"
+            "5. 段落长短错落，避免每段都是3-4句\n\n"
+            "文章内容：\n{{article_content}}"
+        ),
+        "params": '{"max_tokens": 4096, "temperature": 0.7}',
+        "priority": 5,
+        "description": "⑥ 去AI味：重写文章，消除AI写作痕迹，增加人味儿",
+        "sort_order": 6,
+    },
+    # ── ⑦ 质量评审 ──────────────────────────────────────────────────────────
     {
         "scenario": "quality_review",
         "model": "deepseek-chat",
@@ -82,7 +161,10 @@ scenarios = [
         ),
         "params": '{"max_tokens": 1024, "temperature": 0.3}',
         "priority": 5,
+        "description": "⑦ 质量评审：从原创性、逻辑、可读性、信息密度四个维度评分",
+        "sort_order": 7,
     },
+    # ── ⑧ 合规评审 ──────────────────────────────────────────────────────────
     {
         "scenario": "compliance_review",
         "model": "deepseek-chat",
@@ -100,12 +182,39 @@ scenarios = [
         ),
         "params": '{"max_tokens": 1024, "temperature": 0.1}',
         "priority": 5,
+        "description": "⑧ 合规评审：检查政治敏感、色情、暴力、虚假信息、侵权风险",
+        "sort_order": 8,
+    },
+    # ── ⑨ 微调重写 ──────────────────────────────────────────────────────────
+    {
+        "scenario": "refine",
+        "model": "claude-sonnet-4-20250514",
+        "system_prompt_template": (
+            "你是一个专业的内容编辑。根据修改关键词对原文进行重写优化，"
+            "保持文章核心信息不变，但按照关键词方向调整风格、语气或侧重点。\n\n"
+            "原文：{{article_content}}\n\n"
+            "修改关键词：{{keywords}}"
+        ),
+        "params": '{"max_tokens": 4096, "temperature": 0.7}',
+        "priority": 10,
+        "description": "⑨ 微调重写：根据修改关键词调整文章风格/语气/侧重点",
+        "sort_order": 9,
     },
 ]
 
 for s in scenarios:
-    db.add(ScenarioConfig(provider_id=provider.id, enabled=1, **s))
+    existing = db.query(ScenarioConfig).filter(ScenarioConfig.scenario == s["scenario"]).first()
+    if existing:
+        # 只更新元数据字段，不覆盖用户已调试好的 prompt/model/params/priority
+        existing.description = s.get("description")
+        existing.sort_order = s.get("sort_order", 0)
+        existing.provider_id = provider.id
+        existing.enabled = 1
+        print(f"Updated scenario (metadata only): {s['scenario']}")
+    else:
+        db.add(ScenarioConfig(provider_id=provider.id, enabled=1, **s))
+        print(f"Created scenario: {s['scenario']}")
 
 db.commit()
 db.close()
-print("Done: 1 provider + 5 scenario configs seeded.")
+print("Done: 1 provider + 9 scenario configs seeded (UPSERT).")

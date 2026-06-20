@@ -17,7 +17,7 @@
         >
           <span class="step-number">{{ i < currentStep ? '✓' : i + 1 }}</span>
           <span class="step-label">{{ step }}</span>
-          <span v-if="i < 4" class="step-line" :class="{ filled: i < currentStep }"></span>
+          <span v-if="i < 5" class="step-line" :class="{ filled: i < currentStep }"></span>
         </div>
       </div>
     </div>
@@ -119,16 +119,56 @@
           <el-button size="small" @click="outline.push({ order: outline.length + 1, point: '' })" style="margin-top:12px">＋ 添加要点</el-button>
           <div class="card-actions">
             <el-button size="large" @click="currentStep = 2">返回上一步</el-button>
-            <el-button size="large" type="primary" :disabled="!outline.length || !outline.every(o => o.point.trim())" @click="startGenerate">
-              生成全文
+            <el-button size="large" type="primary" :disabled="!outline.length || !outline.every(o => o.point.trim())" @click="generateTitles">
+              下一步 · 生成标题
             </el-button>
           </div>
         </div>
 
-        <!-- 步骤 5: 生成全文 -->
-        <div v-else key="step5" class="step-card">
+        <!-- 步骤 5: 生成标题 -->
+        <div v-else-if="currentStep === 4" key="step5" class="step-card">
           <div class="card-header">
             <span class="card-number">05</span>
+            <h2 class="card-title">选择文章标题</h2>
+          </div>
+          <p class="card-desc">方向：{{ selectedDirection?.title }}。从候选标题中选择或编辑。</p>
+          <div v-if="titles.length" class="titles-grid">
+            <div
+              v-for="(t, i) in titles"
+              :key="i"
+              class="title-card"
+              :class="{ selected: selectedTitle === t }"
+              @click="selectedTitle = t; editedTitle = t"
+            >
+              <span class="title-index">{{ i + 1 }}</span>
+              <span class="title-text">{{ t }}</span>
+              <span v-if="selectedTitle === t" class="title-check">✓</span>
+            </div>
+          </div>
+          <div v-if="titles.length" class="title-edit-area">
+            <label class="title-edit-label">编辑选中标题</label>
+            <el-input v-model="editedTitle" size="large" placeholder="编辑或自定义标题" />
+          </div>
+          <div v-else-if="loadingTitles" class="loading-state">
+            <span>⏳ 正在生成标题...</span>
+          </div>
+          <div class="card-actions">
+            <el-button size="large" @click="currentStep = 3">返回修改大纲</el-button>
+            <el-button
+              size="large"
+              type="primary"
+              :disabled="!editedTitle.trim()"
+              @click="currentStep = 5"
+            >
+              确认标题 · 生成全文
+            </el-button>
+          </div>
+        </div>
+
+        <!-- 步骤 6: 生成全文 -->
+        <div v-else key="step6" class="step-card">
+          <div class="card-header">
+            <span class="card-number">06</span>
             <h2 class="card-title">生成全文</h2>
           </div>
           <div v-if="generating" class="generating-state">
@@ -142,12 +182,12 @@
               <p class="done-desc">文章已加入任务中心，请在「评审」页面查看。</p>
             </div>
             <div class="card-actions">
-              <el-button size="large" @click="currentStep = 3">返回修改大纲</el-button>
+              <el-button size="large" @click="currentStep = 4">返回修改标题</el-button>
               <el-button size="large" type="primary" @click="currentStep = 0">重新创作</el-button>
             </div>
           </div>
           <div v-else class="card-actions">
-            <el-button size="large" @click="currentStep = 3">返回上一步</el-button>
+            <el-button size="large" @click="currentStep = 4">返回上一步</el-button>
           </div>
         </div>
       </transition>
@@ -164,7 +204,7 @@ import { useAccountsStore } from "@/store/accounts"
 
 const accountsStore = useAccountsStore()
 
-const steps = ['选择账号', '输入想法', '写作方向', '确认大纲', '生成全文']
+const steps = ['选择账号', '输入想法', '写作方向', '确认大纲', '生成标题', '生成全文']
 const currentStep = ref(0)
 const accounts = computed(() => accountsStore.accounts)
 const selectedAccountId = ref<number | null>(null)
@@ -183,6 +223,11 @@ const loadingOutline = ref(false)
 const generating = ref(false)
 const generatingStatusText = ref('')
 const generatedArticle = ref('')
+// 步骤 5: 标题
+const titles = ref<string[]>([])
+const selectedTitle = ref('')
+const editedTitle = ref('')
+const loadingTitles = ref(false)
 const selectedAccount = computed(() => accounts.value.find(a => a.id === selectedAccountId.value) || null)
 
 async function generateDirections() {
@@ -244,18 +289,54 @@ async function generateOutline() {
   finally { loadingOutline.value = false }
 }
 
+async function generateTitles() {
+  if (!selectedAccountId.value || !selectedDirection.value || !outline.value.length) return
+  loadingTitles.value = true
+  try {
+    const points = outline.value.map(o => o.point)
+    const { data } = await api.generateTitles(selectedAccountId.value, idea.value.trim(), selectedDirection.value.title, points)
+    const taskId = data.task_id
+    if (!taskId) throw new Error('未获取到任务 ID')
+
+    // 轮询任务状态
+    let attempts = 0
+    const maxAttempts = 30
+    while (attempts < maxAttempts) {
+      await new Promise(r => setTimeout(r, 2000))
+      const { data: taskData } = await api.getTaskResult(taskId)
+      if (taskData.status === 'success') {
+        const result = (taskData as any).result
+        titles.value = result?.titles || []
+        if (titles.value.length) {
+          selectedTitle.value = titles.value[0]
+          editedTitle.value = titles.value[0]
+          currentStep.value = 4
+        }
+        return
+      }
+      if (taskData.status === 'failed') throw new Error((taskData as any).error_message || '标题生成失败')
+      attempts++
+    }
+    throw new Error('标题生成超时，请重试')
+  } catch (e: any) { ElMessage.error(e?.response?.data?.detail || e?.message || '标题生成失败') }
+  finally { loadingTitles.value = false }
+}
+
 function moveOutlineUp(i: number) { if (i > 0) { const t = outline.value[i]; outline.value[i] = outline.value[i-1]; outline.value[i-1] = t } }
 function moveOutlineDown(i: number) { if (i < outline.value.length - 1) { const t = outline.value[i]; outline.value[i] = outline.value[i+1]; outline.value[i+1] = t } }
 
 async function startGenerate() {
   if (!selectedAccountId.value || !idea.value.trim()) return
   generating.value = true
-  currentStep.value = 4
+  currentStep.value = 5
   generatingStatusText.value = '正在生成文章...'
 
   try {
     const points = outline.value.map(o => o.point)
-    const { data } = await api.triggerGenerateWithOutline(selectedAccountId.value, idea.value.trim(), points)
+    const topicWithTitle = editedTitle.value
+      ? `${editedTitle.value}\n\n${idea.value.trim()}`
+      : idea.value.trim()
+    const { data } = await api.triggerGenerateWithOutline(selectedAccountId.value, topicWithTitle, points)
     const taskId = data.tasks?.[0]?.task_id
     if (!taskId) throw new Error('未获取到任务 ID')
 
@@ -348,6 +429,17 @@ onMounted(async () => {
 .direction-id { font-family: var(--font-serif); font-size: 20px; font-weight: 700; color: var(--amber); width: 32px; flex-shrink: 0; }
 .direction-title { flex: 1; font-size: 15px; color: var(--text-on-dark); }
 .direction-check { color: var(--amber); font-weight: 700; }
+
+/* 标题卡片 */
+.titles-grid { display: flex; flex-direction: column; gap: 8px; margin-bottom: var(--space-lg); }
+.title-card { display: flex; align-items: center; gap: 12px; padding: 14px 18px; background: var(--ink-surface); border: 1px solid var(--ink-border); border-radius: var(--radius-lg); cursor: pointer; transition: all var(--duration-fast) var(--ease-out); }
+.title-card:hover { border-color: var(--text-dim); }
+.title-card.selected { border-color: var(--amber); background: rgba(200,132,60,0.06); }
+.title-index { font-family: var(--font-serif); font-size: 16px; font-weight: 700; color: var(--amber); width: 24px; flex-shrink: 0; }
+.title-text { flex: 1; font-size: 15px; color: var(--text-on-dark); }
+.title-check { color: var(--amber); font-weight: 700; flex-shrink: 0; }
+.title-edit-area { margin-bottom: var(--space-xl); }
+.title-edit-label { display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 6px; }
 
 /* 大纲列表 */
 .outline-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: var(--space-md); }

@@ -175,6 +175,7 @@ const TASK_TYPE_ICONS: Record<string, string> = {
   outline: "📋",
   quality_review: "✅",
   compliance_review: "🛡️",
+  title: "🎯",
 };
 
 const TASK_TYPE_LABELS: Record<string, string> = {
@@ -184,6 +185,7 @@ const TASK_TYPE_LABELS: Record<string, string> = {
   distill: "风格蒸馏",
   direction: "方向生成",
   outline: "大纲生成",
+  title: "标题生成",
   quality_review: "质量评审",
   compliance_review: "合规审查",
 };

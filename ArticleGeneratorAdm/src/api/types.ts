@@ -50,6 +50,7 @@ export interface Article {
   id: number;
   hotspot_id: number;
   account_id: number;
+  title?: string;
   content: string;
   status: string;
   refine_history?: string;
@@ -81,6 +82,8 @@ export interface ScenarioConfig {
   system_prompt_template?: string;
   params?: string;
   priority: number;
+  description?: string;
+  sort_order?: number;
   enabled: boolean;
   provider?: Provider;
   created_at: string;
@@ -126,16 +129,16 @@ export interface PaginatedResponse<T> {
 }
 
 export interface UnifiedTaskItem {
-  id: number;
   task_id: string;
-  hotspot_id: number | null;
-  account_id: number;
-  article_id: number | null;
+  task_type: string;
   status: string;
+  target: string;
+  article_id: number | null;
+  account_name?: string;
+  extra_info?: string;
   error_message: string | null;
   created_at: string;
-  hotspot: { id: number; title: string; source: string } | null;
-  account: { id: number; account_name: string; platform: string } | null;
+  updated_at?: string;
 }
 
 export interface SubTrack {

@@ -10,6 +10,8 @@ import json
 
 from ..database import get_db
 from ..models import GenerationTask, RefineTask, Article, Hotspot, Account
+from celery.result import AsyncResult
+from ..tasks import celery_app as _celery_app
 
 
 def _as_utc(dt):
@@ -19,6 +21,39 @@ def _as_utc(dt):
     if dt.tzinfo is None:
         return dt.replace(tzinfo=dt_timezone.utc)
     return dt
+
+
+# Valid non-DB task types for Celery fallback
+_CELERY_TASK_TYPES = {"humanize", "distill", "direction", "outline", "title", "quality_review", "compliance_review"}
+
+
+def _infer_task_type(task_name: str) -> str:
+    """Infer task type from Celery task name by extracting suffix after trigger_.
+
+    Example: app.tasks.trigger_humanize -> humanize
+    """
+    if "trigger_" in task_name:
+        suffix = task_name.split("trigger_")[-1]
+        # Strip any sub-module prefix (e.g., "collector." in "trigger_collector.run")
+        task_type = suffix.split(".")[0]
+        if task_type in _CELERY_TASK_TYPES:
+            return task_type
+    return "unknown"
+
+
+def _celery_target(task_type: str) -> str:
+    """Return a readable target label for non-DB task types."""
+    labels = {
+        "humanize": "去AI味处理",
+        "distill": "风格蒸馏",
+        "direction": "方向生成",
+        "outline": "大纲生成",
+        "title": "标题生成",
+        "quality_review": "质量评审",
+        "compliance_review": "合规评审",
+    }
+    return labels.get(task_type, "后台任务")
+
 
 router = APIRouter(prefix="/tasks", tags=["任务中心"])
 
@@ -133,6 +168,70 @@ def query_unified_tasks(
     completed_ref_q = db.query(RefineTask).filter(
         RefineTask.status.in_(["success", "failed"])
     ).count()
+
+    # ── Celery fallback: query non-DB task types (humanize, distill, direction, outline, title, reviews) ──
+
+    try:
+        inspector = _celery_app.control.inspect()
+        active_tasks = inspector.active() or {}
+        reserved_tasks = inspector.reserved() or {}
+
+        celery_task_ids = set()
+        for worker_tasks in active_tasks.values():
+            for t in worker_tasks:
+                task_name = t.get("name", "")
+                if task_name.startswith("app.tasks.trigger_"):
+                    celery_task_ids.add((t["id"], task_name))
+        for worker_tasks in reserved_tasks.values():
+            for t in worker_tasks:
+                task_name = t.get("name", "")
+                if task_name.startswith("app.tasks.trigger_"):
+                    celery_task_ids.add((t["id"], task_name))
+
+        for task_id, task_name in celery_task_ids:
+            # Skip if already in DB-tracked tasks
+            if any(t["task_id"] == task_id for t in tasks):
+                continue
+
+            task_type = _infer_task_type(task_name)
+            if task_type not in _CELERY_TASK_TYPES:
+                continue
+
+            async_result = AsyncResult(task_id, app=_celery_app)
+            status = "running"
+            if async_result.state == "PENDING":
+                status = "pending"
+            elif async_result.state == "SUCCESS":
+                status = "success"
+            elif async_result.state == "FAILURE":
+                status = "failed"
+            elif async_result.state == "REVOKED":
+                status = "cancelled"
+
+            if status_list and status not in status_list:
+                continue
+
+            task_item = {
+                "task_id": task_id,
+                "task_type": task_type,
+                "status": status,
+                "target": _celery_target(task_type) or "未知任务",
+                "article_id": None,
+                "account_name": None,
+                "extra_info": None,
+                "error_message": str(async_result.result) if async_result.state == "FAILURE" else None,
+                "created_at": None,
+                "updated_at": None,
+            }
+            tasks.append(task_item)
+            if status == "running":
+                running_count += 1
+            elif status == "pending":
+                pending_count += 1
+
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(f"Celery task inspection failed (tasks will only show DB-tracked): {e}")
 
     return {
         "tasks": tasks,
