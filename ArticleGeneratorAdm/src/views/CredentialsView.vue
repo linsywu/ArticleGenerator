@@ -167,7 +167,13 @@ async function handleSave() {
 async function handleCheck(id: number) {
   try {
     await credentialsApi.checkCredential(id);
-    ElMessage.info("功能开发中");
+    try {
+    await credentialsApi.checkCredential(row.id);
+    await fetchCredentials();
+    ElMessage.success("检测完成");
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.detail || "检测失败");
+  };
   } catch (e: any) {
     ElMessage.error(e?.response?.data?.detail || "操作失败");
   }

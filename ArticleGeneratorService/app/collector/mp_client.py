@@ -60,7 +60,7 @@ class MpClient:
             "name": item.get("nickname", name),
             "alias": item.get("alias", ""),
             "fakeid": str(item.get("fakeid", "")),
-            "biz": item.get("alias", ""),
+            "biz": str(item.get("biz") or item.get("__biz") or ""),
             "avatar": item.get("round_head_img", ""),
             "description": item.get("signature", ""),
         }
@@ -103,13 +103,20 @@ class MpClient:
 
     def extract_metadata(self, html: str) -> Dict[str, Any]:
         result = {"title": "", "author": "", "published_at": None}
-        title_match = re.search(r'<meta[^>]+property="og:title"[^>]+content="([^"]+)"', html)
+        # Use order-insensitive patterns that match property and content in any order
+        title_match = re.search(r'<meta[^>]*property=["']og:title["'][^>]*content=["']([^"']+)["']', html)
+        if not title_match:
+            title_match = re.search(r'<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:title["']', html)
         if title_match:
             result["title"] = title_match.group(1)
-        author_match = re.search(r'<meta[^>]+property="og:article:author"[^>]+content="([^"]+)"', html)
+        author_match = re.search(r'<meta[^>]*property=["']og:article:author["'][^>]*content=["']([^"']+)["']', html)
+        if not author_match:
+            author_match = re.search(r'<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:article:author["']', html)
         if author_match:
             result["author"] = author_match.group(1)
-        time_match = re.search(r'<meta[^>]+property="og:article:publish_time"[^>]+content="([^"]+)"', html)
+        time_match = re.search(r'<meta[^>]*property=["']og:article:publish_time["'][^>]*content=["']([^"']+)["']', html)
+        if not time_match:
+            time_match = re.search(r'<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:article:publish_time["']', html)
         if time_match:
             try:
                 result["published_at"] = datetime.fromtimestamp(int(time_match.group(1)))

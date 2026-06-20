@@ -27,3 +27,9 @@ export type ApiType = typeof api;
 
 // 重新导出类型，方便消费者直接 import { Hotspot, ... } from "@/api"
 export * from "@/api/types";
+
+export { default as tracksApi } from "./modules/tracks";
+export { default as mpAccountsApi } from "./modules/mpAccounts";
+export { default as credentialsApi } from "./modules/credentials";
+export { default as collectTasksApi } from "./modules/collectTasks";
+export { default as materialsApi } from "./modules/materials";

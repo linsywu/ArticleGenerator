@@ -455,6 +455,20 @@ class MpCredentialUpdate(BaseModel):
     token: Optional[str] = None
     cookie: Optional[str] = None
 
+    @field_validator("token", mode="before")
+    @classmethod
+    def skip_masked_token(cls, v: Optional[str]) -> Optional[str]:
+        if v and "***" in v:
+            return None
+        return v
+
+    @field_validator("cookie", mode="before")
+    @classmethod
+    def skip_masked_cookie(cls, v: Optional[str]) -> Optional[str]:
+        if v and "***" in v:
+            return None
+        return v
+
 class MpCredentialResponse(BaseModel):
     id: int
     name: str
