@@ -14,6 +14,7 @@ from .auth import get_password_hash
 from .api import accounts, hotspot_sources, hotspots, articles, generate, providers, scenario_configs, reference_articles, distill, generation_logs, tasks, tracks, mp_accounts, credentials, collect_tasks, materials, collect_logs
 from .api import auth as auth_api
 from .deps import get_current_user
+from . import tasks as _celery_tasks  # ensures Celery app + collector tasks are registered
 
 app = FastAPI(
     title="ArticleGenerator API",
