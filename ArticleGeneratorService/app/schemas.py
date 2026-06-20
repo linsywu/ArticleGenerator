@@ -154,6 +154,7 @@ class ArticleListResponse(BaseModel):
 # ----- 文章 -----
 class ArticleBase(BaseModel):
     content: str
+    title: Optional[str] = None
     status: str = "pending_review"
 
 
@@ -289,6 +290,8 @@ class ScenarioConfigBase(BaseModel):
     system_prompt_template: Optional[str] = None
     params: Optional[str] = None
     priority: int = 0
+    description: Optional[str] = None
+    sort_order: Optional[int] = None
     enabled: bool = True
 
 class ScenarioConfigCreate(ScenarioConfigBase): pass
@@ -298,6 +301,8 @@ class ScenarioConfigUpdate(BaseModel):
     system_prompt_template: Optional[str] = None
     params: Optional[str] = None
     priority: Optional[int] = None
+    description: Optional[str] = None
+    sort_order: Optional[int] = None
     enabled: Optional[bool] = None
 
 class ScenarioConfigResponse(ScenarioConfigBase):
