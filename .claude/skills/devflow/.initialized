@@ -1,5 +1,5 @@
 {
-  "initialized_at": "2026-06-15T12:40:00Z",
+  "initialized_at": "2026-06-20T13:00:00Z",
   "dependencies": {
     "superpowers": "ok",
     "openspec-propose": "ok",
@@ -10,5 +10,13 @@
     "verify": "ok",
     "visual-design": "skipped"
   },
-  "available_tracks": ["full-flow", "plan-grill-dev", "plan-dev", "quick-fix", "explore-only"]
+  "verifier_skills": ["verifier-unit", "verifier-e2e", "verifier-coverage", "verifier-api-types", "verifier-playwright"],
+  "verify_capabilities": {
+    "playwright": "configured",
+    "unit_tests": {"pytest": "configured", "vitest": "configured"},
+    "e2e_tests": {"api_db": "configured", "playwright": "auth_setup"},
+    "coverage_check": "configured",
+    "api_types_check": "configured"
+  },
+  "available_tracks": ["full-flow","plan-grill-dev","plan-dev","quick-fix","explore-only"]
 }

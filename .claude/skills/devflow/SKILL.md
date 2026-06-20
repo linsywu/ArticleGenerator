@@ -181,6 +181,8 @@ When `verify` stage activates, if `.initialized` has `verifier_skills`:
 ├──────────────────────────────────────┤
 │  ✅ verifier-unit — 36/36 passed     │
 │  ✅ verifier-e2e — 77/77 passed      │
+│  ✅ verifier-coverage — 100% API     │
+│  ⚠️  verifier-api-types — 3 warnings │
 │  ⚠️  verifier-playwright — skipped   │
 │  ✅ verify (browser) — pages render  │
 ├──────────────────────────────────────┤
@@ -193,7 +195,9 @@ When `verify` stage activates, if `.initialized` has `verifier_skills`:
 
 **Gate behavior:** Each verifier skill self-gates (no config → SKIP, not FAIL). The verify stage never FAILs because a verifier skips — only if a verifier runs and finds real failures.
 
-**Writing-plans integration:** The `writing-plans` stage must also produce executable E2E test scripts (not just documentation). These scripts become the input to `verifier-e2e` and `verifier-playwright`. Tests are immutable after writing-plans — verify only executes, never modifies.
+**Code-review → Verify linkage:** After `receiving-code-review` completes, the review findings are captured in `.claude/review-risks.md` (high-risk files, critical changes, areas needing extra scrutiny). The verify stage reads this file and ensures those risk areas receive focused test coverage. If a risk area fails verification, the fix loop prioritizes it.
+
+**Writing-plans integration:** The `writing-plans` stage must also produce executable E2E test scripts (not just documentation). These scripts become the input to `verifier-e2e` and `verifier-playwright`. Tests are immutable after writing-plans — verify only executes, never modifies. Coverage requirement: every new API endpoint and frontend page must have at least one corresponding E2E test.
 
 ## Checkpoint Behavior
 
@@ -246,6 +250,8 @@ Invoke each stage's skill via `Skill(skill="<name>")`. Built-in skills (`verify`
 | verifier-unit | `Skill(skill="verifier-unit")` |
 | verifier-e2e | `Skill(skill="verifier-e2e")` |
 | verifier-playwright | `Skill(skill="verifier-playwright")` |
+| verifier-coverage | `Skill(skill="verifier-coverage")` |
+| verifier-api-types | `Skill(skill="verifier-api-types")` |
 | finish-branch | `Skill(skill="superpowers:finishing-a-development-branch")` |
 | opsx:archive | `Skill(skill="openspec-archive-change")` |
 | capture-knowledge | `Skill(skill="claude-memory:extract-learnings")` |
