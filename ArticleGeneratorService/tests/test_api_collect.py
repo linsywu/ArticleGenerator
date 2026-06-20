@@ -101,8 +101,8 @@ class TestCollectTaskExecute:
         mock_result = MagicMock()
         mock_result.id = "mock-task-id"
 
-        with patch("app.collector.worker.execute_collect_task") as mock_task:
-            mock_task.delay.return_value = mock_result
+        with patch("app.tasks.celery_app.send_task") as mock_send:
+            mock_send.return_value = mock_result
             r = auth_client.post(f"/api/collect-tasks/{task.id}/execute")
 
         assert r.status_code == 200, f"Got {r.status_code}: {r.text}"
@@ -119,7 +119,7 @@ class TestCollectTaskExecute:
         db.query(CollectTask).filter(CollectTask.id == task.id).update({"status": "running"})
         db.commit()
         db.close()
-        with patch("app.collector.worker.execute_collect_task"):
+        with patch("app.tasks.celery_app.send_task"):
             r = auth_client.post(f"/api/collect-tasks/{task.id}/execute")
         assert r.status_code == 400
 
