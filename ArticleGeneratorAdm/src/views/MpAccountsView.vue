@@ -144,20 +144,23 @@
       <template v-if="detailAccount">
         <div class="detail-section">
           <div class="detail-avatar">{{ detailAccount.name?.charAt(0) }}</div>
-          <h2 style="margin: 12px 0 4px;">{{ detailAccount.name }}</h2>
-          <p style="color: #888; margin: 0;">{{ detailAccount.description || '暂无简介' }}</p>
+          <h2 class="detail-name">{{ detailAccount.name }}</h2>
+          <p class="detail-desc">{{ detailAccount.description || '暂无简介' }}</p>
         </div>
         <el-divider />
-        <el-descriptions :column="1" border size="small">
+        <el-descriptions :column="1" size="small" class="detail-descriptions">
           <el-descriptions-item label="ID">{{ detailAccount.id }}</el-descriptions-item>
           <el-descriptions-item label="微信号">{{ detailAccount.alias || '-' }}</el-descriptions-item>
           <el-descriptions-item label="fakeid">{{ detailAccount.fakeid || '未获取' }}</el-descriptions-item>
           <el-descriptions-item label="biz">{{ detailAccount.biz || '未获取' }}</el-descriptions-item>
-          <el-descriptions-item label="头像">{{ detailAccount.avatar || '-' }}</el-descriptions-item>
           <el-descriptions-item label="所属赛道">{{ getTrackNames(detailAccount.track_ids) }}</el-descriptions-item>
           <el-descriptions-item label="文章数">{{ detailAccount.article_count }}</el-descriptions-item>
           <el-descriptions-item label="最后采集时间">{{ detailAccount.last_collect_time ? formatTime(detailAccount.last_collect_time) : '从未采集' }}</el-descriptions-item>
-          <el-descriptions-item label="状态">{{ detailAccount.status === 1 ? '启用' : '禁用' }}</el-descriptions-item>
+          <el-descriptions-item label="状态">
+            <el-tag :type="detailAccount.status === 1 ? 'success' : 'info'" size="small">
+              {{ detailAccount.status === 1 ? '启用' : '禁用' }}
+            </el-tag>
+          </el-descriptions-item>
           <el-descriptions-item label="创建时间">{{ formatTime(detailAccount.created_at) }}</el-descriptions-item>
           <el-descriptions-item label="更新时间">{{ formatTime(detailAccount.updated_at) }}</el-descriptions-item>
         </el-descriptions>
@@ -426,5 +429,9 @@ onMounted(() => {
   flex-wrap: wrap;
 }
 .detail-section { text-align: center; padding: 16px 0; }
-.detail-avatar { width: 64px; height: 64px; border-radius: 50%; background: #409eff; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 700; margin: 0 auto; }
+.detail-avatar { width: 64px; height: 64px; border-radius: 50%; background: var(--amber, #c8843c); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 700; margin: 0 auto; }
+.detail-name { font-size: 20px; font-weight: 700; color: var(--text-on-dark, #e0e0e0); margin: 12px 0 4px; }
+.detail-desc { color: var(--text-muted, #999); margin: 0; font-size: 14px; }
+.detail-descriptions :deep(.el-descriptions__label) { color: var(--text-muted, #999); }
+.detail-descriptions :deep(.el-descriptions__content) { color: var(--text-on-dark, #e0e0e0); }
 </style>
