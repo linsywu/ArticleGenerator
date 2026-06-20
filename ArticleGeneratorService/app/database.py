@@ -46,5 +46,11 @@ def get_db():
 
 
 def init_db():
+    """创建所有表"""
+    Base.metadata.create_all(bind=engine)
+    # Enable SQLite foreign key enforcement
+    with engine.connect() as conn:
+        conn.exec_driver_sql("PRAGMA foreign_keys = ON")
+        conn.commit()
     """初始化数据库表（开发用，生产建议用迁移脚本）"""
     Base.metadata.create_all(bind=engine)
