@@ -285,6 +285,7 @@ class MpMaterial(Base):
     cover_url = Column(String(500))
     summary = Column(Text)
     raw_html = Column(Text)
+    content_html = Column(Text)
     content_markdown = Column(Text)
     content_hash = Column(String(64))
     word_count = Column(Integer, default=0)
