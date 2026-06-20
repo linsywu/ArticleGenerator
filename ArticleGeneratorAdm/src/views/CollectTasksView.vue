@@ -317,6 +317,16 @@ function onAccountToggle(accId: number, checked: boolean) {
     }
   }
 }
+function parseJsonArray(raw: string | undefined | null): number[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 async function loadTrackTree() {
   try {
     const { data: tracks } = await tracksApi.fetchTracks();
@@ -355,6 +365,8 @@ function openCreateDialog() {
 
 function openEditDialog(row: CollectTask) {
   editingTask.value = row;
+  selectedTrackIds.value = parseJsonArray(row.track_ids);
+  selectedAccountIds.value = parseJsonArray(row.account_ids);
   form.value = {
     name: row.name,
     credential_id: row.credential_id,
@@ -386,8 +398,8 @@ async function handleSave() {
       credential_id: form.value.credential_id,
       collect_mode: form.value.collect_mode,
       schedule_type: form.value.schedule_type,
-      track_ids: form.value.track_ids || undefined,
-      account_ids: form.value.account_ids || undefined,
+      track_ids: selectedTrackIds.value.length > 0 ? JSON.stringify(selectedTrackIds.value) : undefined,
+      account_ids: selectedAccountIds.value.length > 0 ? JSON.stringify(selectedAccountIds.value) : undefined,
     };
     if (form.value.date_start) payload.date_start = form.value.date_start;
     if (form.value.date_end) payload.date_end = form.value.date_end;
@@ -413,7 +425,8 @@ async function handleSave() {
 async function handleExecute(id: number) {
   try {
     await collectTasksApi.executeTask(id);
-    ElMessage.info("功能开发中");
+    ElMessage.success("采集任务已提交执行");
+    await fetchCollectTasks();
   } catch (e: any) {
     ElMessage.error(e?.response?.data?.detail || "操作失败");
   }
