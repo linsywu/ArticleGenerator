@@ -49,6 +49,7 @@
           <router-link to="/collect-tasks" class="nav-item" :class="{ active: $route.path === '/collect-tasks' }">
             <span class="nav-icon">📥</span>
             <span class="nav-label">采集任务</span>
+            <el-menu-item index="/materials">⊞ 素材中心</el-menu-item>
           </router-link>
         </div>
 

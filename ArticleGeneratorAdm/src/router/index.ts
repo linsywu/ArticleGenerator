@@ -26,6 +26,7 @@ export const routes: RouteRecordRaw[] = [
       { path: "credentials", name: "Credentials", component: () => import("@/views/CredentialsView.vue"), meta: { title: "采集凭证" } },
       { path: "collect-tasks", name: "CollectTasks", component: () => import("@/views/CollectTasksView.vue"), meta: { title: "采集任务" } },
       { path: "tasks-center", name: "TaskCenter", component: () => import("@/views/TaskCenterView.vue"), meta: { title: "任务中心" } },
+      { path: "materials", name: "Materials", component: () => import("@/views/MaterialsView.vue"), meta: { title: "素材中心" } },
     ],
   },
 ];

@@ -207,3 +207,19 @@ export interface CollectTask {
   created_at: string;
   updated_at: string;
 }
+
+export interface MpMaterial {
+  id: number;
+  account_id: number;
+  title?: string;
+  author?: string;
+  original_url: string;
+  cover_url?: string;
+  summary?: string;
+  word_count: number;
+  is_original: number;
+  published_at?: string;
+  collected_at?: string;
+  created_at: string;
+  account?: { id: number; name: string };
+}
