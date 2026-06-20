@@ -216,9 +216,11 @@ import mpAccountsApi from "@/api/modules/mpAccounts";
 import tracksApi from "@/api/modules/tracks";
 import type { MpAccount, Track } from "@/api/types";
 import PageHeader from "@/components/PageHeader.vue";
+import credentialsApi from "@/api/modules/credentials";
 
 const mpAccounts = ref<MpAccount[]>([]);
 const tracks = ref<Track[]>([]);
+const credentials = ref<any[]>([]);
 const loading = ref(false);
 const saving = ref(false);
 
@@ -347,18 +349,21 @@ async function handleDelete(id: number) {
   }
 }
 
-function openImportDialog() {
+async function openImportDialog() {
   importNames.value = "";
   importUrls.value = "";
   importTab.value = "name";
+  await fetchCredentials();
   importDialogVisible.value = true;
 }
 
 async function handleImportByName() {
   if (!importNames.value.trim()) { ElMessage.warning("请输入公众号名称"); return; }
+  const credId = getActiveCredentialId();
+  if (!credId) { ElMessage.warning("请先添加有效的采集凭证"); return; }
   try {
     const names = importNames.value.split('\n').filter(n => n.trim());
-    const { data } = await mpAccountsApi.importByName({ names, credential_id: 1 });
+    const { data } = await mpAccountsApi.importByName({ names, credential_id: credId });
     const result = data as any;
     ElMessage.success(`导入完成: ${result.success?.length || 0} 成功, ${result.failed?.length || 0} 失败`);
     importDialogVisible.value = false;
@@ -368,9 +373,11 @@ async function handleImportByName() {
 
 async function handleImportByUrl() {
   if (!importUrls.value.trim()) { ElMessage.warning("请输入文章链接"); return; }
+  const credId = getActiveCredentialId();
+  if (!credId) { ElMessage.warning("请先添加有效的采集凭证"); return; }
   try {
     const urls = importUrls.value.split('\n').filter(u => u.trim());
-    const { data } = await mpAccountsApi.importByUrl({ urls, credential_id: 1 });
+    const { data } = await mpAccountsApi.importByUrl({ urls, credential_id: credId });
     const result = data as any;
     ElMessage.success(`导入完成: ${result.success?.length || 0} 成功, ${result.failed?.length || 0} 失败`);
     importDialogVisible.value = false;
@@ -409,9 +416,24 @@ async function fetchTracks() {
   }
 }
 
+async function fetchCredentials() {
+  try {
+    const { data } = await credentialsApi.fetchCredentials();
+    credentials.value = (data as any) || [];
+  } catch {
+    // credentials not required for basic operation
+  }
+}
+
+function getActiveCredentialId(): number | null {
+  const normal = credentials.value.find(c => c.status === "normal");
+  return normal ? normal.id : null;
+}
+
 onMounted(() => {
   fetchMpAccounts();
   fetchTracks();
+  fetchCredentials();
 });
 </script>
 
