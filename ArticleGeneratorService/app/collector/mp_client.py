@@ -132,7 +132,7 @@ class MpClient:
 
     @staticmethod
     def _mode_count(mode: str) -> int:
-        mode_map = {"history_50": 50, "history_100": 100, "history_200": 200, "incremental": 10}
+        mode_map = {"full": 999999, "history_50": 50, "history_100": 100, "history_200": 200, "incremental": 10}
         return mode_map.get(mode, 10)
 
     def check_health(self) -> bool:
