@@ -83,6 +83,7 @@
       </el-table-column>
       <el-table-column label="操作" width="240">
         <template #default="{ row }">
+          <el-button size="small" text @click="openDetail(row)">查看</el-button>
           <el-button size="small" text type="primary" @click="openEditDialog(row)">编辑</el-button>
           <el-button size="small" text @click="toggleStatus(row)">
             {{ row.status === 1 ? '停用' : '启用' }}
@@ -137,7 +138,33 @@
       </template>
     </el-dialog>
 
-    <!-- Import Dialog -->
+    
+    <!-- Detail Drawer -->
+    <el-drawer v-model="detailVisible" title="公众号详情" size="500px">
+      <template v-if="detailAccount">
+        <div class="detail-section">
+          <div class="detail-avatar">{{ detailAccount.name?.charAt(0) }}</div>
+          <h2 style="margin: 12px 0 4px;">{{ detailAccount.name }}</h2>
+          <p style="color: #888; margin: 0;">{{ detailAccount.description || '暂无简介' }}</p>
+        </div>
+        <el-divider />
+        <el-descriptions :column="1" border size="small">
+          <el-descriptions-item label="ID">{{ detailAccount.id }}</el-descriptions-item>
+          <el-descriptions-item label="微信号">{{ detailAccount.alias || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="fakeid">{{ detailAccount.fakeid || '未获取' }}</el-descriptions-item>
+          <el-descriptions-item label="biz">{{ detailAccount.biz || '未获取' }}</el-descriptions-item>
+          <el-descriptions-item label="头像">{{ detailAccount.avatar || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="所属赛道">{{ getTrackNames(detailAccount.track_ids) }}</el-descriptions-item>
+          <el-descriptions-item label="文章数">{{ detailAccount.article_count }}</el-descriptions-item>
+          <el-descriptions-item label="最后采集时间">{{ detailAccount.last_collect_time ? formatTime(detailAccount.last_collect_time) : '从未采集' }}</el-descriptions-item>
+          <el-descriptions-item label="状态">{{ detailAccount.status === 1 ? '启用' : '禁用' }}</el-descriptions-item>
+          <el-descriptions-item label="创建时间">{{ formatTime(detailAccount.created_at) }}</el-descriptions-item>
+          <el-descriptions-item label="更新时间">{{ formatTime(detailAccount.updated_at) }}</el-descriptions-item>
+        </el-descriptions>
+      </template>
+    </el-drawer>
+
+<!-- Import Dialog -->
     <el-dialog v-model="importDialogVisible" title="导入公众号" width="600px">
       <el-tabs v-model="importTab">
         <el-tab-pane label="名称导入" name="name">
@@ -234,6 +261,19 @@ function openCreateDialog() {
   editingAccount.value = null;
   form.value = { name: "", alias: "", fakeid: "", biz: "", avatar: "", description: "", track_ids: "" };
   dialogVisible.value = true;
+}
+
+function openDetail(row: MpAccount) {
+  detailAccount.value = row;
+  detailVisible.value = true;
+}
+
+function getTrackNames(trackIdsStr: string | undefined): string {
+  if (!trackIdsStr) return '未分配';
+  try {
+    const ids = JSON.parse(trackIdsStr);
+    return ids.map((id: number) => getTrackName(id)).join(', ');
+  } catch { return trackIdsStr; }
 }
 
 function openEditDialog(row: MpAccount) {
@@ -365,4 +405,6 @@ onMounted(() => {
   gap: 8px;
   flex-wrap: wrap;
 }
+.detail-section { text-align: center; padding: 16px 0; }
+.detail-avatar { width: 64px; height: 64px; border-radius: 50%; background: #409eff; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 700; margin: 0 auto; }
 </style>

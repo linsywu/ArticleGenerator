@@ -202,8 +202,8 @@ class Track(Base):
     keywords = Column(Text)  # JSON string
     forbidden_keywords = Column(Text)  # JSON string
     status = Column(Integer, default=1)  # 0=禁用 1=启用
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
+    updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 
     sub_tracks = relationship("SubTrack", back_populates="track", cascade="all, delete-orphan")
 
@@ -216,7 +216,7 @@ class SubTrack(Base):
     track_id = Column(Integer, ForeignKey("tracks.id", ondelete="CASCADE"), nullable=False)
     name = Column(String(100), nullable=False)
     description = Column(Text)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
 
     track = relationship("Track", back_populates="sub_tracks")
 
@@ -236,8 +236,8 @@ class MpAccount(Base):
     article_count = Column(Integer, default=0)
     last_collect_time = Column(DateTime)
     status = Column(Integer, default=1)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
+    updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 
 
 class MpCredential(Base):
@@ -250,7 +250,7 @@ class MpCredential(Base):
     cookie = Column(Text, nullable=False)
     status = Column(String(20), default="normal")
     check_time = Column(DateTime)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
 
 
 class CollectTask(Base):
@@ -269,8 +269,8 @@ class CollectTask(Base):
     cron = Column(String(50))
     interval_hours = Column(Integer)
     status = Column(String(20), default="idle")
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
+    updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 
 
 class MpMaterial(Base):
@@ -290,8 +290,8 @@ class MpMaterial(Base):
     word_count = Column(Integer, default=0)
     is_original = Column(Integer, default=0)
     published_at = Column(DateTime)
-    collected_at = Column(DateTime, default=datetime.utcnow)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    collected_at = Column(DateTime(timezone=True), default=_utcnow)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
 
 
 class CollectLog(Base):
@@ -307,4 +307,4 @@ class CollectLog(Base):
     success_count = Column(Integer, default=0)
     fail_count = Column(Integer, default=0)
     error_message = Column(Text)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)

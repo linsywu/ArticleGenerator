@@ -74,7 +74,16 @@ def check_credential(credential_id: int, db: Session = Depends(get_db)):
     try:
         client = MpClient(credential.token, credential.cookie)
         is_healthy = client.check_health()
-        credential.status = "normal" if is_healthy else "expiring_soon"
+        # 状态流转：正常 → 即将失效 → 已失效
+        #   检测通过 → normal
+        #   检测失败 + 之前 normal → expiring_soon（警告但可用）
+        #   检测失败 + 之前 expiring_soon → expired（不可用）
+        if is_healthy:
+            credential.status = "normal"
+        elif credential.status == "expiring_soon":
+            credential.status = "expired"
+        else:
+            credential.status = "expiring_soon"
         credential.check_time = datetime.now(timezone.utc)
         db.commit()
         return {"status": credential.status, "healthy": is_healthy}
