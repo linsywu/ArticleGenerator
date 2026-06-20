@@ -238,6 +238,10 @@ const importTab = ref("name");
 const importNames = ref("");
 const importUrls = ref("");
 
+// Detail drawer
+const detailVisible = ref(false);
+const detailAccount = ref<MpAccount | null>(null);
+
 function parseTrackIds(trackIdsStr?: string): number[] {
   if (!trackIdsStr) return [];
   try {
@@ -342,11 +346,27 @@ function openImportDialog() {
 }
 
 async function handleImportByName() {
-  ElMessage.info("功能开发中 — 导入功能将在采集引擎完成后提供");
+  if (!importNames.value.trim()) { ElMessage.warning("请输入公众号名称"); return; }
+  try {
+    const names = importNames.value.split('\n').filter(n => n.trim());
+    const { data } = await mpAccountsApi.importByName({ names, credential_id: 1 });
+    const result = data as any;
+    ElMessage.success(`导入完成: ${result.success?.length || 0} 成功, ${result.failed?.length || 0} 失败`);
+    importDialogVisible.value = false;
+    await fetchMpAccounts();
+  } catch (e: any) { ElMessage.error(e?.response?.data?.detail || "导入失败"); }
 }
 
 async function handleImportByUrl() {
-  ElMessage.info("功能开发中 — 导入功能将在采集引擎完成后提供");
+  if (!importUrls.value.trim()) { ElMessage.warning("请输入文章链接"); return; }
+  try {
+    const urls = importUrls.value.split('\n').filter(u => u.trim());
+    const { data } = await mpAccountsApi.importByUrl({ urls, credential_id: 1 });
+    const result = data as any;
+    ElMessage.success(`导入完成: ${result.success?.length || 0} 成功, ${result.failed?.length || 0} 失败`);
+    importDialogVisible.value = false;
+    await fetchMpAccounts();
+  } catch (e: any) { ElMessage.error(e?.response?.data?.detail || "导入失败"); }
 }
 
 async function fetchMpAccounts() {
