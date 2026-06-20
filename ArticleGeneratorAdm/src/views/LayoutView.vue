@@ -54,6 +54,10 @@
             <span class="nav-icon">📄</span>
             <span class="nav-label">素材中心</span>
           </router-link>
+          <router-link to="/collect-logs" class="nav-item" :class="{ active: $route.path === '/collect-logs' }">
+            <span class="nav-icon">📋</span>
+            <span class="nav-label">采集日志</span>
+          </router-link>
         </div>
 
         <div class="nav-section">

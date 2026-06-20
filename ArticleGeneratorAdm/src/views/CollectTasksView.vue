@@ -15,6 +15,7 @@
           <el-option label="运行中" value="running" />
           <el-option label="已暂停" value="paused" />
           <el-option label="异常" value="error" />
+          <el-option label="已完成" value="completed" />
         </el-select>
       </div>
       <el-button type="primary" @click="openCreateDialog">+ 新增采集任务</el-button>
@@ -38,9 +39,19 @@
       </el-table-column>
       <el-table-column label="状态" width="100" align="center">
         <template #default="{ row }">
-          <el-tag :type="statusType(row.status)" size="small">
+          <el-tag :type="statusType(row.status)" size="small" :class="{ 'status-running': row.status === 'running' }">
             {{ statusLabel(row.status) }}
           </el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="最近结果" width="150" align="center">
+        <template #default="{ row }">
+          <template v-if="row.last_result">
+            <span style="font-size:12px; color:#333;">成功 {{ row.last_result.success_count }} / 失败 {{ row.last_result.fail_count }}</span>
+            <br>
+            <span style="font-size:11px; color:#999;">{{ row.last_result.executed_at?.replace('T',' ').slice(0,16) || '' }}</span>
+          </template>
+          <span v-else style="color:#ccc; font-size:12px;">暂无</span>
         </template>
       </el-table-column>
       <el-table-column prop="created_at" label="创建时间" width="160">
@@ -72,6 +83,7 @@
             恢复
           </el-button>
           <el-button size="small" text @click="openEditDialog(row)">编辑</el-button>
+          <el-button size="small" text type="info" @click.stop="viewLogs(row)">日志</el-button>
           <el-popconfirm title="确认删除此采集任务？" @confirm="handleDelete(row.id)">
             <template #reference>
               <el-button size="small" text type="danger">删除</el-button>
@@ -189,6 +201,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
+import { useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
 import collectTasksApi from "@/api/modules/collectTasks";
 import credentialsApi from "@/api/modules/credentials";
@@ -197,6 +210,7 @@ import mpAccountsApi from "@/api/modules/mpAccounts";
 import type { CollectTask, MpCredential, Track, MpAccount } from "@/api/types";
 import PageHeader from "@/components/PageHeader.vue";
 
+const router = useRouter();
 const collectTasks = ref<CollectTask[]>([]);
 const credentials = ref<MpCredential[]>([]);
 const loading = ref(false);
@@ -235,6 +249,7 @@ function statusType(status: string): string {
     running: "primary",
     paused: "warning",
     error: "danger",
+    completed: "success",
   };
   return map[status] || "info";
 }
@@ -245,6 +260,7 @@ function statusLabel(status: string): string {
     running: "运行中",
     paused: "已暂停",
     error: "异常",
+    completed: "已完成",
   };
   return map[status] || status;
 }
@@ -452,6 +468,10 @@ async function handleResume(id: number) {
   }
 }
 
+function viewLogs(row: CollectTask) {
+  router.push({ name: "CollectLogs", query: { task_id: row.id } });
+}
+
 async function handleDelete(id: number) {
   try {
     await collectTasksApi.deleteCollectTask(id);
@@ -509,5 +529,12 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+.status-running {
+  animation: pulse 1.2s ease-in-out infinite;
 }
 </style>

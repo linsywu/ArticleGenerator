@@ -33,3 +33,4 @@ export { default as mpAccountsApi } from "./modules/mpAccounts";
 export { default as credentialsApi } from "./modules/credentials";
 export { default as collectTasksApi } from "./modules/collectTasks";
 export { default as materialsApi } from "./modules/materials";
+export { default as collectLogsApi } from "./modules/collectLogs";

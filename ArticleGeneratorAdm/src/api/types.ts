@@ -194,6 +194,21 @@ export interface MpCredential {
   created_at: string;
 }
 
+export interface CollectLog {
+  id: number;
+  task_id: number;
+  task_name?: string;
+  account_id?: number;
+  start_time?: string;
+  end_time?: string;
+  total_count: number;
+  success_count: number;
+  fail_count: number;
+  error_message?: string;
+  created_at?: string;
+  account?: { id: number; name: string };
+}
+
 export interface CollectTask {
   id: number;
   name: string;
@@ -207,6 +222,12 @@ export interface CollectTask {
   cron?: string;
   interval_hours?: number;
   status: string;
+  last_result?: {
+    total_count: number;
+    success_count: number;
+    fail_count: number;
+    executed_at?: string;
+  } | null;
   created_at: string;
   updated_at: string;
 }
