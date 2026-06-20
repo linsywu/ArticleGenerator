@@ -205,11 +205,12 @@ scenarios = [
 for s in scenarios:
     existing = db.query(ScenarioConfig).filter(ScenarioConfig.scenario == s["scenario"]).first()
     if existing:
-        for key, value in s.items():
-            setattr(existing, key, value)
+        # 只更新元数据字段，不覆盖用户已调试好的 prompt/model/params/priority
+        existing.description = s.get("description")
+        existing.sort_order = s.get("sort_order", 0)
         existing.provider_id = provider.id
         existing.enabled = 1
-        print(f"Updated scenario: {s['scenario']}")
+        print(f"Updated scenario (metadata only): {s['scenario']}")
     else:
         db.add(ScenarioConfig(provider_id=provider.id, enabled=1, **s))
         print(f"Created scenario: {s['scenario']}")
