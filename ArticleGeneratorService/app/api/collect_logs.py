@@ -28,10 +28,16 @@ def list_collect_logs(
     total = q.count()
     items = q.offset((page - 1) * page_size).limit(page_size).all()
 
+    # Batch-fetch tasks and accounts to avoid N+1
+    task_ids = {l.task_id for l in items}
+    account_ids = {l.account_id for l in items if l.account_id}
+    tasks_map = {t.id: t for t in db.query(CollectTask).filter(CollectTask.id.in_(task_ids)).all()} if task_ids else {}
+    accounts_map = {a.id: a for a in db.query(MpAccount).filter(MpAccount.id.in_(account_ids)).all()} if account_ids else {}
+
     result = []
     for log in items:
-        task = db.query(CollectTask).filter(CollectTask.id == log.task_id).first()
-        account = db.query(MpAccount).filter(MpAccount.id == log.account_id).first()
+        task = tasks_map.get(log.task_id)
+        account = accounts_map.get(log.account_id) if log.account_id else None
         result.append({
             "id": log.id,
             "task_id": log.task_id,

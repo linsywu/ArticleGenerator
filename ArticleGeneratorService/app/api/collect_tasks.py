@@ -25,57 +25,33 @@ def list_collect_tasks(
         query = query.filter(CollectTask.status == status)
     tasks = query.order_by(CollectTask.id.desc()).all()
 
-    # Batch fetch last_result: subquery gets the latest execution time per task
-    latest_time_subq = (
-        db.query(
-            CollectLog.task_id,
-            func.max(CollectLog.created_at).label("latest_time")
-        )
-        .group_by(CollectLog.task_id)
-        .subquery()
-    )
-
-    # Get all logs that belong to the latest execution batch per task
-    # (logs within 5 seconds of the latest log for that task)
-    latest_logs = (
+    # Batch fetch all logs for these tasks
+    task_ids = [t.id for t in tasks]
+    all_logs = (
         db.query(CollectLog)
-        .join(latest_time_subq, CollectLog.task_id == latest_time_subq.c.task_id)
-        .filter(
-            CollectLog.created_at >= latest_time_subq.c.latest_time
-        )
+        .filter(CollectLog.task_id.in_(task_ids))
+        .order_by(CollectLog.task_id, CollectLog.created_at.desc())
         .all()
     )
 
-    # Group by task_id
+    # Group logs by task_id
     task_logs = defaultdict(list)
-    for log in latest_logs:
+    for log in all_logs:
         task_logs[log.task_id].append(log)
 
     result = []
     for task in tasks:
-        task_dict = {
-            "id": task.id,
-            "name": task.name,
-            "credential_id": task.credential_id,
-            "track_ids": task.track_ids,
-            "account_ids": task.account_ids,
-            "collect_mode": task.collect_mode,
-            "date_start": task.date_start,
-            "date_end": task.date_end,
-            "schedule_type": task.schedule_type,
-            "cron": task.cron,
-            "interval_hours": task.interval_hours,
-            "status": task.status,
-            "created_at": task.created_at,
-            "updated_at": task.updated_at,
-        }
+        task_dict = {c.name: getattr(task, c.name) for c in task.__table__.columns}
         logs = task_logs.get(task.id, [])
         if logs:
+            # Only aggregate the most recent execution batch (within 5 seconds of latest)
+            latest_time = logs[0].created_at
+            recent_logs = [l for l in logs if l.created_at and (latest_time - l.created_at).total_seconds() <= 5]
             task_dict["last_result"] = {
-                "total_count": sum(l.total_count or 0 for l in logs),
-                "success_count": sum(l.success_count or 0 for l in logs),
-                "fail_count": sum(l.fail_count or 0 for l in logs),
-                "executed_at": max(l.created_at for l in logs).isoformat() if logs else None,
+                "total_count": sum(l.total_count or 0 for l in recent_logs),
+                "success_count": sum(l.success_count or 0 for l in recent_logs),
+                "fail_count": sum(l.fail_count or 0 for l in recent_logs),
+                "executed_at": latest_time.isoformat() if latest_time else None,
             }
         else:
             task_dict["last_result"] = None

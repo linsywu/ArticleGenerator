@@ -516,6 +516,12 @@ class CollectTaskUpdate(BaseModel):
     cron: Optional[str] = None
     interval_hours: Optional[int] = None
 
+class CollectTaskLastResult(BaseModel):
+    total_count: int = 0
+    success_count: int = 0
+    fail_count: int = 0
+    executed_at: Optional[str] = None
+
 class CollectTaskResponse(BaseModel):
     id: int
     name: str
@@ -529,7 +535,7 @@ class CollectTaskResponse(BaseModel):
     cron: Optional[str] = None
     interval_hours: Optional[int] = None
     status: str
-    last_result: Optional[dict] = None  # {total_count, success_count, fail_count, executed_at}
+    last_result: Optional[CollectTaskLastResult] = None
     created_at: datetime
     updated_at: datetime
     class Config: from_attributes = True
