@@ -66,8 +66,7 @@ class AccountResponse(AccountBase):
     style_profile_status: Optional[str] = None
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    class Config: from_attributes = True
 
     @field_validator("style_profile_structured", mode="before")
     @classmethod
@@ -108,8 +107,7 @@ class HotspotSourceResponse(HotspotSourceBase):
     id: int
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    class Config: from_attributes = True
 
 
 # ----- 热点 -----
@@ -126,8 +124,7 @@ class HotspotResponse(HotspotBase):
     id: int
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    class Config: from_attributes = True
 
 
 class HotspotListParams(BaseModel):
@@ -170,8 +167,7 @@ class ArticleResponse(ArticleBase):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    class Config: from_attributes = True
 
 
 class ArticleWithRelations(ArticleResponse):
@@ -556,9 +552,9 @@ class MpMaterialResponse(BaseModel):
     published_at: Optional[datetime] = None
     collected_at: Optional[datetime] = None
     created_at: Optional[datetime] = None
+    account: Optional[dict] = None
 
-    class Config:
-        from_attributes = True
+    class Config: from_attributes = True
 
 
 class MpMaterialListItem(BaseModel):
@@ -575,9 +571,9 @@ class MpMaterialListItem(BaseModel):
     collected_at: Optional[datetime] = None
     created_at: Optional[datetime] = None
     account: Optional[dict] = None
+    account: Optional[dict] = None
 
-    class Config:
-        from_attributes = True
+    class Config: from_attributes = True
 
 
 class MpMaterialListResponse(BaseModel):
@@ -599,9 +595,9 @@ class CollectLogResponse(BaseModel):
     fail_count: int = 0
     error_message: Optional[str] = None
     created_at: Optional[datetime] = None
+    account: Optional[dict] = None
 
-    class Config:
-        from_attributes = True
+    class Config: from_attributes = True
 
 
 class CollectLogListResponse(BaseModel):
