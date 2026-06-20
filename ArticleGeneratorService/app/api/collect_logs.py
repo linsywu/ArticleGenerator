@@ -7,7 +7,7 @@ from sqlalchemy import desc
 from typing import Optional
 
 from ..database import get_db
-from ..models import CollectLog, CollectTask
+from ..models import CollectLog, CollectTask, MpAccount
 from ..schemas import CollectLogResponse, CollectLogListResponse
 
 router = APIRouter(prefix="/collect-logs", tags=["采集日志"])
@@ -31,11 +31,13 @@ def list_collect_logs(
     result = []
     for log in items:
         task = db.query(CollectTask).filter(CollectTask.id == log.task_id).first()
+        account = db.query(MpAccount).filter(MpAccount.id == log.account_id).first()
         result.append({
             "id": log.id,
             "task_id": log.task_id,
             "task_name": task.name if task else None,
             "account_id": log.account_id,
+            "account": {"id": account.id, "name": account.name} if account else None,
             "start_time": log.start_time.isoformat() if log.start_time else None,
             "end_time": log.end_time.isoformat() if log.end_time else None,
             "total_count": log.total_count,

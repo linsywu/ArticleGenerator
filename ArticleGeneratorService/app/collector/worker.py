@@ -59,7 +59,7 @@ def execute_collect_task(self, task_id: int):
                 db.commit()
                 _update_account_stats(db, account.id)
 
-        task.status = "idle"
+        task.status = "completed"
         db.commit()
     except Exception as e:
         logger.exception(f"Task {task_id} failed")
