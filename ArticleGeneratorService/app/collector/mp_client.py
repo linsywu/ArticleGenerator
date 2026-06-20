@@ -44,7 +44,10 @@ class MpClient:
         params["token"] = self.token
         params["lang"] = "zh_CN"
         params["f"] = "json"
-        return self.session.get(url, params=params, timeout=30)
+        resp = self.session.get(url, params=params, timeout=30)
+        if resp.status_code != 200:
+            raise Exception(f"MP API returned {resp.status_code}: {resp.text[:200]}")
+        return resp
 
     def search_account(self, name: str) -> Optional[Dict[str, Any]]:
         resp = self._get("/cgi-bin/searchbiz", {
@@ -103,20 +106,13 @@ class MpClient:
 
     def extract_metadata(self, html: str) -> Dict[str, Any]:
         result = {"title": "", "author": "", "published_at": None}
-        # Use order-insensitive patterns that match property and content in any order
-        title_match = re.search(r'<meta[^>]*property=["']og:title["'][^>]*content=["']([^"']+)["']', html)
-        if not title_match:
-            title_match = re.search(r'<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:title["']', html)
+        title_match = re.search(r'<meta\b[^>]*property=["\']og:title["\'][^>]*content=["\']([^"\']+)["\']', html)
         if title_match:
             result["title"] = title_match.group(1)
-        author_match = re.search(r'<meta[^>]*property=["']og:article:author["'][^>]*content=["']([^"']+)["']', html)
-        if not author_match:
-            author_match = re.search(r'<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:article:author["']', html)
+        author_match = re.search(r'<meta\b[^>]*property=["\']og:article:author["\'][^>]*content=["\']([^"\']+)["\']', html)
         if author_match:
             result["author"] = author_match.group(1)
-        time_match = re.search(r'<meta[^>]*property=["']og:article:publish_time["'][^>]*content=["']([^"']+)["']', html)
-        if not time_match:
-            time_match = re.search(r'<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:article:publish_time["']', html)
+        time_match = re.search(r'<meta\b[^>]*property=["\']og:article:publish_time["\'][^>]*content=["\'](\d+)["\']', html)
         if time_match:
             try:
                 result["published_at"] = datetime.fromtimestamp(int(time_match.group(1)))
@@ -130,8 +126,8 @@ class MpClient:
 
     @staticmethod
     def estimate_word_count(html: str) -> int:
-        text = re.sub(r'<[^>]+>', '', html)
-        text = re.sub(r'\s+', '', text)
+        text = re.sub(r"<[^>]+>", "", html)
+        text = re.sub(r"\s+", "", text)
         return len(text)
 
     @staticmethod
