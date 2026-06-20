@@ -43,7 +43,7 @@ def update_credential(credential_id: int, data: MpCredentialUpdate, db: Session 
     credential = db.query(MpCredential).filter(MpCredential.id == credential_id).first()
     if not credential:
         raise HTTPException(status_code=404, detail="凭证不存在")
-    for k, v in data.model_dump(exclude_unset=True).items():
+    for k, v in data.model_dump(exclude_none=True).items():
         setattr(credential, k, v)
     db.commit()
     db.refresh(credential)
