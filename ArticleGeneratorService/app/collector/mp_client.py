@@ -125,6 +125,23 @@ class MpClient:
         return hashlib.sha256(html.encode("utf-8")).hexdigest()
 
     @staticmethod
+    def extract_article_content(html: str) -> str:
+        """Extract article body from WeChat MP page HTML"""
+        if not html:
+            return ""
+        # Try to extract js_content div (primary WeChat article container)
+        match = re.search(r'<div[^>]*id="js_content"[^>]*>(.*?)</div>', html, re.DOTALL)
+        if match:
+            content = match.group(1)
+            # Remove inline scripts
+            content = re.sub(r'<script[^>]*>.*?</script>', '', content, flags=re.DOTALL | re.IGNORECASE)
+            return content.strip()
+        # Fallback: strip scripts and styles, return cleaned HTML
+        cleaned = re.sub(r'<script[^>]*>.*?</script>', '', html, flags=re.DOTALL | re.IGNORECASE)
+        cleaned = re.sub(r'<style[^>]*>.*?</style>', '', cleaned, flags=re.DOTALL | re.IGNORECASE)
+        return cleaned
+
+    @staticmethod
     def estimate_word_count(html: str) -> int:
         text = re.sub(r"<[^>]+>", "", html)
         text = re.sub(r"\s+", "", text)

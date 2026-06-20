@@ -137,6 +137,7 @@ def _collect_from_account(db, client: MpClient, account: MpAccount, task: Collec
                 continue
 
             meta = client.extract_metadata(html)
+            content_html = MpClient.extract_article_content(html)
             word_count = MpClient.estimate_word_count(html)
 
             material = MpMaterial(
@@ -147,6 +148,7 @@ def _collect_from_account(db, client: MpClient, account: MpAccount, task: Collec
                 cover_url=art["cover"],
                 summary=art.get("digest", ""),
                 raw_html=html,
+                content_html=content_html,
                 content_hash=content_hash,
                 word_count=word_count,
                 published_at=meta["published_at"],
