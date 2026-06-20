@@ -146,11 +146,37 @@
           </el-col>
         </el-row>
 
-        <el-form-item label="赛道 ID (JSON 数组)">
-          <el-input v-model="form.track_ids" placeholder='[1, 2, 3]' />
-        </el-form-item>
-        <el-form-item label="公众号 ID (JSON 数组)">
-          <el-input v-model="form.account_ids" placeholder='[1, 2, 3]' />
+        <el-form-item label="采集范围（赛道 → 公众号）">
+          <div class="tree-selector">
+            <div v-for="track in trackTree" :key="'t'+track.id" class="tree-track">
+              <el-checkbox
+                :model-value="isTrackChecked(track.id)"
+                :indeterminate="isTrackIndeterminate(track.id)"
+                @change="onTrackToggle(track.id, $event)"
+              >
+                <strong>{{ track.name }}</strong>
+                <span style="color: #999; font-size: 12px; margin-left: 4px;">({{ track.accounts?.length || 0 }}个公众号)</span>
+              </el-checkbox>
+              <div v-if="isTrackExpanded(track.id)" class="tree-accounts">
+                <el-checkbox
+                  v-for="acc in track.accounts"
+                  :key="'a'+acc.id"
+                  :model-value="selectedAccountIds.includes(acc.id)"
+                  @change="onAccountToggle(acc.id, $event)"
+                  style="margin-left: 28px; display: block; padding: 2px 0;"
+                >
+                  {{ acc.name }}
+                  <span v-if="acc.alias" style="color: #bbb; font-size: 11px;">({{ acc.alias }})</span>
+                </el-checkbox>
+              </div>
+              <div v-if="!track.accounts?.length" style="margin-left: 28px; color: #999; font-size: 12px; padding: 4px 0;">
+                暂无公众号
+              </div>
+            </div>
+            <div v-if="!trackTree.length" style="color: #999; font-size: 13px; padding: 8px 0;">
+              暂无赛道数据，请先在「赛道管理」中添加赛道
+            </div>
+          </div>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -166,7 +192,9 @@ import { ref, onMounted } from "vue";
 import { ElMessage } from "element-plus";
 import collectTasksApi from "@/api/modules/collectTasks";
 import credentialsApi from "@/api/modules/credentials";
-import type { CollectTask, MpCredential } from "@/api/types";
+import tracksApi from "@/api/modules/tracks";
+import mpAccountsApi from "@/api/modules/mpAccounts";
+import type { CollectTask, MpCredential, Track, MpAccount } from "@/api/types";
 import PageHeader from "@/components/PageHeader.vue";
 
 const collectTasks = ref<CollectTask[]>([]);
@@ -178,6 +206,16 @@ const filterStatus = ref<string | undefined>(undefined);
 
 const dialogVisible = ref(false);
 const editingTask = ref<CollectTask | null>(null);
+
+// Tree selector state
+interface TreeTrack extends Track {
+  accounts: MpAccount[];
+}
+const trackTree = ref<TreeTrack[]>([]);
+const selectedTrackIds = ref<number[]>([]);
+const selectedAccountIds = ref<number[]>([]);
+const allAccounts = ref<MpAccount[]>([]);
+
 const form = ref({
   name: "",
   credential_id: null as number | null,
@@ -239,8 +277,67 @@ function onScheduleTypeChange() {
   if (form.value.schedule_type !== "interval") form.value.interval_hours = null;
 }
 
+// ── Tree selector: Track → Account multi-level ──
+function isTrackChecked(trackId: number): boolean {
+  return selectedTrackIds.value.includes(trackId);
+}
+function isTrackIndeterminate(trackId: number): boolean {
+  const track = trackTree.value.find(t => t.id === trackId);
+  if (!track || !track.accounts?.length) return false;
+  const checkedCount = track.accounts.filter(a => selectedAccountIds.value.includes(a.id)).length;
+  return checkedCount > 0 && checkedCount < track.accounts.length;
+}
+function isTrackExpanded(trackId: number): boolean {
+  return selectedTrackIds.value.includes(trackId) || isTrackIndeterminate(trackId);
+}
+function onTrackToggle(trackId: number, checked: boolean) {
+  const track = trackTree.value.find(t => t.id === trackId);
+  if (!track) return;
+  if (checked) {
+    if (!selectedTrackIds.value.includes(trackId)) selectedTrackIds.value.push(trackId);
+    for (const acc of track.accounts || []) {
+      if (!selectedAccountIds.value.includes(acc.id)) selectedAccountIds.value.push(acc.id);
+    }
+  } else {
+    selectedTrackIds.value = selectedTrackIds.value.filter(id => id !== trackId);
+    const accIds = (track.accounts || []).map(a => a.id);
+    selectedAccountIds.value = selectedAccountIds.value.filter(id => !accIds.includes(id));
+  }
+}
+function onAccountToggle(accId: number, checked: boolean) {
+  if (checked) {
+    if (!selectedAccountIds.value.includes(accId)) selectedAccountIds.value.push(accId);
+  } else {
+    selectedAccountIds.value = selectedAccountIds.value.filter(id => id !== accId);
+    for (const track of trackTree.value) {
+      const accIds = (track.accounts || []).map(a => a.id);
+      if (!accIds.some(id => selectedAccountIds.value.includes(id))) {
+        selectedTrackIds.value = selectedTrackIds.value.filter(id => id !== track.id);
+      }
+    }
+  }
+}
+async function loadTrackTree() {
+  try {
+    const { data: tracks } = await tracksApi.fetchTracks();
+    const { data: accounts } = await mpAccountsApi.fetchMpAccounts();
+    allAccounts.value = (accounts as any) || [];
+    trackTree.value = ((tracks as any) || []).map((t: Track) => ({
+      ...t,
+      accounts: allAccounts.value.filter((a: MpAccount) => {
+        if (!a.track_ids) return false;
+        try { const ids: number[] = JSON.parse(a.track_ids); return ids.includes(t.id); }
+        catch { return false; }
+      }),
+    }));
+  } catch (_) {}
+}
+
+
 function openCreateDialog() {
   editingTask.value = null;
+  selectedTrackIds.value = [];
+  selectedAccountIds.value = [];
   form.value = {
     name: "",
     credential_id: null,
@@ -378,6 +475,7 @@ async function fetchCredentials() {
 onMounted(() => {
   fetchCollectTasks();
   fetchCredentials();
+  loadTrackTree();
 });
 </script>
 

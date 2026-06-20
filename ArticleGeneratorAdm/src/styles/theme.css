@@ -271,5 +271,3 @@ a:hover { color: var(--amber); }
   border-radius: var(--radius-lg) !important;
   overflow: hidden;
 }
-.el-descriptions__label { color: var(--text-paper-sub) !important; font-weight: 500 !important; }
-.el-descriptions__content { color: var(--text-on-paper) !important; }

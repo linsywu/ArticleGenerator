@@ -128,8 +128,10 @@
         <el-form-item label="描述">
           <el-input v-model="form.description" type="textarea" :rows="3" placeholder="公众号简介..." />
         </el-form-item>
-        <el-form-item label="赛道 (JSON 数组, track_id)">
-          <el-input v-model="form.track_ids" placeholder='[1, 2, 3]' />
+        <el-form-item label="所属赛道">
+          <el-select v-model="selectedTrackIds" multiple placeholder="选择赛道" style="width: 100%;">
+            <el-option v-for="t in tracks" :key="t.id" :label="t.name" :value="t.id" />
+          </el-select>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -140,7 +142,7 @@
 
     
     <!-- Detail Drawer -->
-    <el-drawer v-model="detailVisible" title="公众号详情" size="500px">
+    <el-drawer v-model="detailVisible" title="公众号详情" size="600px">
       <template v-if="detailAccount">
         <div class="detail-section">
           <div class="detail-avatar">{{ detailAccount.name?.charAt(0) }}</div>
@@ -149,20 +151,20 @@
         </div>
         <el-divider />
         <el-descriptions :column="1" size="small" class="detail-descriptions">
-          <el-descriptions-item label="ID">{{ detailAccount.id }}</el-descriptions-item>
-          <el-descriptions-item label="微信号">{{ detailAccount.alias || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="fakeid">{{ detailAccount.fakeid || '未获取' }}</el-descriptions-item>
-          <el-descriptions-item label="biz">{{ detailAccount.biz || '未获取' }}</el-descriptions-item>
-          <el-descriptions-item label="所属赛道">{{ getTrackNames(detailAccount.track_ids) }}</el-descriptions-item>
-          <el-descriptions-item label="文章数">{{ detailAccount.article_count }}</el-descriptions-item>
-          <el-descriptions-item label="最后采集时间">{{ detailAccount.last_collect_time ? formatTime(detailAccount.last_collect_time) : '从未采集' }}</el-descriptions-item>
-          <el-descriptions-item label="状态">
+          <el-descriptions-item label-width="80px" label="ID">{{ detailAccount.id }}</el-descriptions-item>
+          <el-descriptions-item label-width="80px" label="微信号">{{ detailAccount.alias || '-' }}</el-descriptions-item>
+          <el-descriptions-item label-width="80px" label="fakeid">{{ detailAccount.fakeid || '未获取' }}</el-descriptions-item>
+          <el-descriptions-item label-width="80px" label="biz">{{ detailAccount.biz || '未获取' }}</el-descriptions-item>
+          <el-descriptions-item label-width="80px" label="所属赛道">{{ getTrackNames(detailAccount.track_ids) }}</el-descriptions-item>
+          <el-descriptions-item label-width="80px" label="文章数">{{ detailAccount.article_count }}</el-descriptions-item>
+          <el-descriptions-item label-width="80px" label="最后采集时间">{{ detailAccount.last_collect_time ? formatTime(detailAccount.last_collect_time) : '从未采集' }}</el-descriptions-item>
+          <el-descriptions-item label-width="80px" label="状态">
             <el-tag :type="detailAccount.status === 1 ? 'success' : 'info'" size="small">
               {{ detailAccount.status === 1 ? '启用' : '禁用' }}
             </el-tag>
           </el-descriptions-item>
-          <el-descriptions-item label="创建时间">{{ formatTime(detailAccount.created_at) }}</el-descriptions-item>
-          <el-descriptions-item label="更新时间">{{ formatTime(detailAccount.updated_at) }}</el-descriptions-item>
+          <el-descriptions-item label-width="80px" label="创建时间">{{ formatTime(detailAccount.created_at) }}</el-descriptions-item>
+          <el-descriptions-item label-width="80px" label="更新时间">{{ formatTime(detailAccount.updated_at) }}</el-descriptions-item>
         </el-descriptions>
       </template>
     </el-drawer>
@@ -226,6 +228,7 @@ const searchText = ref("");
 
 const dialogVisible = ref(false);
 const editingAccount = ref<MpAccount | null>(null);
+const selectedTrackIds = ref<number[]>([]);
 const form = ref({
   name: "",
   alias: "",
@@ -266,6 +269,7 @@ function formatTime(iso: string): string {
 
 function openCreateDialog() {
   editingAccount.value = null;
+  selectedTrackIds.value = [];
   form.value = { name: "", alias: "", fakeid: "", biz: "", avatar: "", description: "", track_ids: "" };
   dialogVisible.value = true;
 }
@@ -285,6 +289,7 @@ function getTrackNames(trackIdsStr: string | undefined): string {
 
 function openEditDialog(row: MpAccount) {
   editingAccount.value = row;
+  selectedTrackIds.value = parseTrackIds(row.track_ids);
   form.value = {
     name: row.name,
     alias: row.alias || "",
@@ -304,11 +309,12 @@ async function handleSave() {
   }
   saving.value = true;
   try {
+    const payload = { ...form.value, track_ids: JSON.stringify(selectedTrackIds.value) };
     if (editingAccount.value) {
-      await mpAccountsApi.updateMpAccount(editingAccount.value.id, form.value);
+      await mpAccountsApi.updateMpAccount(editingAccount.value.id, payload);
       ElMessage.success("公众号已更新");
     } else {
-      await mpAccountsApi.createMpAccount(form.value);
+      await mpAccountsApi.createMpAccount(payload);
       ElMessage.success("公众号已创建");
     }
     dialogVisible.value = false;
