@@ -103,7 +103,7 @@ async function fetchMaterials() {
 
 async function fetchAccounts() {
   try {
-    const { data } = await mpAccountsApi.fetchAccounts();
+    const { data } = await mpAccountsApi.fetchMpAccounts();
     accounts.value = data as any;
   } catch (_) {}
 }
