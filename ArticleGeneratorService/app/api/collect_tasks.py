@@ -76,8 +76,8 @@ def execute_collect_task(task_id: int, db: Session = Depends(get_db)):
     if task.status == "running":
         raise HTTPException(status_code=400, detail="任务正在执行中")
 
-    from ..collector.worker import execute_collect_task as celery_execute
-    celery_task = celery_execute.delay(task_id)
+    from ..tasks import celery_app
+    celery_task = celery_app.send_task("app.collector.worker.execute_collect_task", args=[task_id])
     return {"message": "采集任务已提交", "celery_task_id": celery_task.id}
 
 
