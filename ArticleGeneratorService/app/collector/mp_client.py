@@ -126,20 +126,46 @@ class MpClient:
 
     @staticmethod
     def extract_article_content(html: str) -> str:
-        """Extract article body from WeChat MP page HTML"""
+        """Extract article body from WeChat MP page HTML using div-depth counter
+        to correctly handle nested <div> elements inside #js_content."""
         if not html:
             return ""
-        # Try to extract js_content div (primary WeChat article container)
-        match = re.search(r'<div[^>]*id="js_content"[^>]*>(.*?)</div>', html, re.DOTALL)
-        if match:
-            content = match.group(1)
-            # Remove inline scripts
-            content = re.sub(r'<script[^>]*>.*?</script>', '', content, flags=re.DOTALL | re.IGNORECASE)
-            return content.strip()
-        # Fallback: strip scripts and styles, return cleaned HTML
-        cleaned = re.sub(r'<script[^>]*>.*?</script>', '', html, flags=re.DOTALL | re.IGNORECASE)
-        cleaned = re.sub(r'<style[^>]*>.*?</style>', '', cleaned, flags=re.DOTALL | re.IGNORECASE)
-        return cleaned
+
+        # Find js_content opening tag
+        match = re.search(r'<div[^>]*id="js_content"[^>]*>', html, re.DOTALL)
+        if not match:
+            # Fallback: strip scripts and styles, return cleaned HTML
+            cleaned = re.sub(r'<script[^>]*>.*?</script>', '', html, flags=re.DOTALL | re.IGNORECASE)
+            cleaned = re.sub(r'<style[^>]*>.*?</style>', '', cleaned, flags=re.DOTALL | re.IGNORECASE)
+            return cleaned
+
+        start = match.end()
+        depth = 1
+        pos = start
+        while depth > 0 and pos < len(html):
+            open_tag = html.find('<div', pos)
+            close_tag = html.find('</div>', pos)
+            if close_tag == -1:
+                break
+            if open_tag != -1 and open_tag < close_tag:
+                depth += 1
+                pos = open_tag + 4
+            else:
+                depth -= 1
+                if depth == 0:
+                    pos = close_tag + 6
+                    break
+                pos = close_tag + 6
+
+        if depth == 0:
+            content = html[start:pos - 6]
+        else:
+            content = html[start:]
+
+        # Remove inline scripts and styles
+        content = re.sub(r'<script[^>]*>.*?</script>', '', content, flags=re.DOTALL | re.IGNORECASE)
+        content = re.sub(r'<style[^>]*>.*?</style>', '', content, flags=re.DOTALL | re.IGNORECASE)
+        return content.strip()
 
     @staticmethod
     def estimate_word_count(html: str) -> int:
