@@ -21,6 +21,7 @@ Run once after installing devflow. Scans dependencies once, writes result to `.c
 | `openspec-explore` | `.claude/skills/openspec-explore/SKILL.md` exists |
 | `grill-with-docs` | `.claude/skills/grill-with-docs/SKILL.md` exists |
 | `claude-memory:extract-learnings` | Available skill list in system prompt |
+| `verifier-*` skills | Scan `.claude/skills/` for skills matching `verifier-*` |
 | `verify` | Built-in, always available |
 | `visual-design` (Pencil MCP) | Optional, skip if not configured |
 
@@ -63,6 +64,7 @@ Run once after installing devflow. Scans dependencies once, writes result to `.c
     "verify": "ok",
     "visual-design": "skipped"
   },
+  "verifier_skills": ["verifier-unit", "verifier-e2e"],
   "available_tracks": ["full-flow","plan-grill-dev","plan-dev","quick-fix","explore-only"]
 }
 ```
@@ -163,6 +165,36 @@ Use **AskUserQuestion** to present:
 
 **Guardrails**: Read-only. Never write code. If user asks to implement → "Exit explore mode and pick a different track via `/devflow`."
 
+## Verify Stage Enhancement
+
+When `verify` stage activates, if `.initialized` has `verifier_skills`:
+
+1. For each verifier-* skill in `verifier_skills` (ordered):
+   - Invoke `Skill(skill="verifier-<name>")`
+   - Collect result: PASS / FAIL / SKIP + details
+2. Invoke built-in `verify` for browser/manual verification
+3. Show summary:
+
+```
+┌──────────────────────────────────────┐
+│        Verification Results          │
+├──────────────────────────────────────┤
+│  ✅ verifier-unit — 36/36 passed     │
+│  ✅ verifier-e2e — 77/77 passed      │
+│  ⚠️  verifier-playwright — skipped   │
+│  ✅ verify (browser) — pages render  │
+├──────────────────────────────────────┤
+│  Status: VERIFIED ✓                  │
+└──────────────────────────────────────┘
+```
+
+4. If any FAIL: loop fix → re-run failed verifier → repeat until all PASS
+5. If all PASS or SKIP: advance to next stage
+
+**Gate behavior:** Each verifier skill self-gates (no config → SKIP, not FAIL). The verify stage never FAILs because a verifier skips — only if a verifier runs and finds real failures.
+
+**Writing-plans integration:** The `writing-plans` stage must also produce executable E2E test scripts (not just documentation). These scripts become the input to `verifier-e2e` and `verifier-playwright`. Tests are immutable after writing-plans — verify only executes, never modifies.
+
 ## Checkpoint Behavior
 
 After EACH stage, show progress and ask:
@@ -211,6 +243,9 @@ Invoke each stage's skill via `Skill(skill="<name>")`. Built-in skills (`verify`
 | receiving-code-review | `Skill(skill="superpowers:receiving-code-review")` |
 | tdd | `Skill(skill="superpowers:test-driven-development")` |
 | verify | `Skill(skill="verify")` |
+| verifier-unit | `Skill(skill="verifier-unit")` |
+| verifier-e2e | `Skill(skill="verifier-e2e")` |
+| verifier-playwright | `Skill(skill="verifier-playwright")` |
 | finish-branch | `Skill(skill="superpowers:finishing-a-development-branch")` |
 | opsx:archive | `Skill(skill="openspec-archive-change")` |
 | capture-knowledge | `Skill(skill="claude-memory:extract-learnings")` |
@@ -225,6 +260,8 @@ Invoke each stage's skill via `Skill(skill="<name>")`. Built-in skills (`verify`
 | "visual-design is required" | Always optional. Ask, skip if no UI. |
 | "Run Full Flow for a typo fix" | Menu descriptions guide correct track. |
 | "code-review stages can run back-to-back" | Requesting always pauses for human review. |
+| "verify passed because tests weren't run" | All verifier-* skills must be invoked. No test = no pass. |
+| "E2E tests can be modified to pass" | Tests written during writing-plans are immutable. Fix code, not tests. |
 
 ## Red Flags — STOP and Re-read This Skill
 
