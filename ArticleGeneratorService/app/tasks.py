@@ -355,6 +355,7 @@ def trigger_distill(self, account_id: int, articles_content: list, num_articles:
                             "articles_content": combined_articles,
                             "dimension": dim_label,
                             "dimension_prompt": dim_prompt,
+                            "user_prompt": f"请只分析「{dim_label}」这一个维度：{dim_prompt}",
                         },
                     })
                     resp.raise_for_status()
