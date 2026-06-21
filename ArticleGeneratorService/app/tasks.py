@@ -355,6 +355,7 @@ def trigger_distill(self, account_id: int, articles_content: list, num_articles:
                             "articles_content": combined_articles,
                             "dimension": dim_label,
                             "dimension_prompt": dim_prompt,
+                            "user_prompt": f"请只分析「{dim_label}」这一个维度：{dim_prompt}",
                         },
                     })
                     resp.raise_for_status()
@@ -489,6 +490,55 @@ def trigger_direction_generation(self, account_id: int, idea: str, word_count: s
                         directions = parsed["directions"]
                 except json.JSONDecodeError:
                     pass
+
+        # Fallback: parse numbered/bulleted text lines into directions
+        if not directions:
+            text_lines = []
+            for line in content.strip().split("\n"):
+                line = line.strip()
+                if not line:
+                    continue
+                # Match "1. title" / "1) title" / "- title" / "• title"
+                m = re.match(r'^(?:\d+[\.\)]\s*|[-•]\s+)(.+)', line)
+                if m:
+                    title = re.sub(r'\*+$', '', m.group(1)).strip()
+                    if title:
+                        text_lines.append(title)
+                        continue
+                # Match "方向一：title" / "角度1：title"
+                m = re.match(r'^(?:方向|角度)\s*[一二三四五六七八九十\d]+\s*[：:]\s*(.+)', line)
+                if m:
+                    title = m.group(1).strip()
+                    if title:
+                        text_lines.append(title)
+                        continue
+                # Match "**A. title**" / "A) title" / "A. title"
+                m = re.match(r'^(?:\*\*)?([A-E])[\.\)]\s*(.+?)(?:\*\*)?$', line)
+                if m:
+                    title = m.group(2).rstrip("*").strip()
+                    if title:
+                        text_lines.append(title)
+                        continue
+            if text_lines:
+                labels = []
+                for i, t in enumerate(text_lines[:5]):
+                    labels.append({"id": chr(65 + i), "title": t})
+                directions = labels
+
+        # Final fallback: 所有解析器失败时，若 ≥3 个候选行才兜底，否则抛错
+        if not directions and content.strip():
+            candidates = [
+                l.strip() for l in content.strip().split("\n")
+                if l.strip() and 2 < len(l.strip()) < 200
+            ]
+            if len(candidates) >= 3:
+                directions = [
+                    {"id": chr(65 + i), "title": candidates[i]}
+                    for i in range(min(len(candidates), 5))
+                ]
+
+        if not directions:
+            raise ValueError(f"方向生成返回内容无法解析: {content[:200]}")
 
         return {"account_id": account_id, "directions": directions}
     finally:
