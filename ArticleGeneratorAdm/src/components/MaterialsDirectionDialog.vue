@@ -52,6 +52,7 @@
 import { ref, computed } from "vue";
 import { useRouter } from "vue-router";
 import { api } from "@/api/client";
+import materialsApi from "@/api/modules/materials";
 import type { DirectionItem, MpMaterial } from "@/api/types";
 
 const props = defineProps<{
@@ -69,7 +70,14 @@ const directions = ref<DirectionItem[]>([]);
 const selectedDirection = ref<DirectionItem | null>(null);
 const loading = ref(false);
 const errorMsg = ref("");
+const contentIdea = ref("");
 let generationCancelled = false;
+
+/** Strip HTML tags from a string, keeping text content only */
+function stripHtml(html: string): string {
+  if (!html) return "";
+  return html.replace(/<[^>]+>/g, "").replace(/&[a-z]+;/g, " ").trim();
+}
 
 const dialogTitle = computed(() => {
   return props.material?.title
@@ -77,9 +85,41 @@ const dialogTitle = computed(() => {
     : "创作方向";
 });
 
-function onOpen() {
-  if (props.material?.title) {
-    startGeneration();
+async function onOpen() {
+  if (!props.material) return;
+
+  loading.value = true;
+  errorMsg.value = "";
+
+  try {
+    // Fetch material detail to get summary/content for richer idea context
+    const { data: detail } = await materialsApi.getMaterial(props.material.id);
+    const title = (detail as any).title || props.material.title || "";
+    const summary = (detail as any).summary || "";
+    const markdown = (detail as any).content_markdown || "";
+    const html = (detail as any).content_html || "";
+
+    // Build the idea from title + summary/content
+    if (
+      summary &&
+      summary !== "———" &&
+      summary.trim().length > 5
+    ) {
+      contentIdea.value = `标题：${title}\n\n摘要：${summary}`;
+    } else if (markdown && markdown.trim().length > 10) {
+      const excerpt = markdown.slice(0, 2000);
+      contentIdea.value = `标题：${title}\n\n文章内容（节选）：\n${excerpt}`;
+    } else if (html && stripHtml(html).length > 10) {
+      const excerpt = stripHtml(html).slice(0, 2000);
+      contentIdea.value = `标题：${title}\n\n文章内容（节选）：\n${excerpt}`;
+    } else {
+      contentIdea.value = title || "";
+    }
+
+    await startGeneration();
+  } catch (e: any) {
+    errorMsg.value = "加载素材详情失败";
+    loading.value = false;
   }
 }
 
@@ -88,12 +128,13 @@ function onClose() {
   directions.value = [];
   selectedDirection.value = null;
   errorMsg.value = "";
+  contentIdea.value = "";
   loading.value = false;
 }
 
 async function startGeneration() {
-  if (!props.material?.title) {
-    errorMsg.value = "素材信息不完整（缺少标题）";
+  if (!contentIdea.value) {
+    errorMsg.value = "素材信息不完整";
     return;
   }
 
@@ -106,7 +147,7 @@ async function startGeneration() {
   try {
     const { data } = await api.generateDirections(
       0,
-      props.material.title
+      contentIdea.value
     );
     const taskId = (data as any).task_id;
     if (!taskId) throw new Error("未获取到任务 ID");
@@ -144,10 +185,10 @@ async function startGeneration() {
 }
 
 function goCreate() {
-  if (!selectedDirection.value || !props.material) return;
+  if (!selectedDirection.value) return;
 
   const query: Record<string, string> = {
-    idea: props.material.title || "",
+    idea: contentIdea.value || "",
   };
 
   emit("update:modelValue", false);
