@@ -345,6 +345,7 @@ class DistillRequest(BaseModel):
 class DirectionsRequest(BaseModel):
     account_id: Optional[int] = 0
     idea: str
+    word_count: Optional[str] = None
 
 class DirectionItem(BaseModel):
     id: str
