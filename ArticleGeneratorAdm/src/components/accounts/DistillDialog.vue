@@ -222,7 +222,7 @@ async function onOpen() {
 async function checkStatus() {
   if (!props.account?.id) return;
   try {
-    const data = await api.getDistillStatus(props.account.id);
+    const { data } = await api.getDistillStatus(props.account.id);
     if (data.status === "running") {
       status.value = "running";
       if (data.progress) progress.value = data.progress;
@@ -232,7 +232,7 @@ async function checkStatus() {
       stopPolling();
     } else if (data.status === "failed") {
       status.value = "failed";
-      errorMessage.value = (data as any).error || "未知错误";
+      errorMessage.value = data.error || "未知错误";
       stopPolling();
     } else {
       status.value = "idle";

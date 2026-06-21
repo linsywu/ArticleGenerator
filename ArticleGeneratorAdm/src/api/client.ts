@@ -127,7 +127,7 @@ export const api = {
   getAccounts: () => get<Account[]>("/accounts"),
   createAccount: (data: { platform: string; account_name: string; lora_path?: string }) =>
     post<Account>("/accounts", data),
-  updateAccount: (id: number, data: { platform?: string; account_name?: string; lora_path?: string }) =>
+  updateAccount: (id: number, data: { platform?: string; account_name?: string; lora_path?: string; word_count_options?: string | null; word_count?: number | null }) =>
     put<Account>(`/accounts/${id}`, data),
   deleteAccount: (id: number) => del(`/accounts/${id}`),
 
