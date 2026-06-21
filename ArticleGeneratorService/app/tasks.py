@@ -2,6 +2,7 @@
 Celery 异步任务：文章生成与微调
 """
 import json
+import logging
 import re
 from datetime import datetime, timezone
 
@@ -28,6 +29,8 @@ celery_app = Celery(
     broker=settings.redis_url,
     backend=settings.redis_url,
 )
+
+logger = logging.getLogger(__name__)
 celery_app.conf.task_serializer = "json"
 celery_app.conf.result_serializer = "json"
 celery_app.conf.accept_content = ["json"]
@@ -360,6 +363,10 @@ def trigger_distill(self, account_id: int, articles_content: list, num_articles:
 
                     if content:
                         structured[dim_key] = content
+                    else:
+                        # LLM returned empty content for this dimension — save a placeholder
+                        structured[dim_key] = f"[{dim_label}] 未返回有效内容"
+                        logger.warning(f"Distill dimension '{dim_label}' returned empty content for account {account_id}")
 
                 except Exception as dim_err:
                     account = db.query(Account).filter(Account.id == account_id).first()

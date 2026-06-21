@@ -117,7 +117,7 @@
           >
             {{ account?.style_profile_structured ? '🔄 重新蒸馏' : '🔥 开始蒸馏' }}
           </el-button>
-          <el-button v-if="status === 'failed' || status === 'timeout'" type="primary" @click="retryDistill">
+          <el-button v-if="status === 'failed' || status === 'timeout'" type="primary" :loading="distillLoading" @click="retryDistill">
             🔄 重试蒸馏
           </el-button>
         </div>
@@ -159,8 +159,8 @@ const styleDimensions = [
 ];
 
 const visible = ref(props.modelValue);
-watch(() => props.modelValue, (v) => { visible.value = v; if (v) onOpen(); });
-watch(visible, (v) => { emit("update:modelValue", v); if (!v) stopPolling(); });
+watch(() => props.modelValue, (v) => { visible.value = v; if (v) { dialogOpen = true; onOpen(); } });
+watch(visible, (v) => { emit("update:modelValue", v); if (!v) { dialogOpen = false; stopPolling(); } });
 
 const articles = ref<ReferenceArticle[]>([]);
 const status = ref<"idle" | "running" | "completed" | "failed" | "timeout">("idle");
@@ -171,6 +171,8 @@ const showDetail = ref(false);
 
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 let startTime = 0;
+let pollErrorCount = 0;
+let dialogOpen = false;  // guard against async onOpen race
 
 const isRunning = computed(() => status.value === "running");
 const progressPercent = computed(() => {
@@ -215,7 +217,9 @@ async function loadArticles() {
 
 async function onOpen() {
   await loadArticles();
+  if (!dialogOpen) return;  // dialog was closed during loadArticles
   await checkStatus();
+  if (!dialogOpen) return;  // dialog was closed during checkStatus
   if (status.value === "running") startPolling();
 }
 
@@ -223,6 +227,7 @@ async function checkStatus() {
   if (!props.account?.id) return;
   try {
     const { data } = await api.getDistillStatus(props.account.id);
+    pollErrorCount = 0;  // reset error count on success
     if (data.status === "running") {
       status.value = "running";
       if (data.progress) progress.value = data.progress;
@@ -235,10 +240,19 @@ async function checkStatus() {
       errorMessage.value = data.error || "未知错误";
       stopPolling();
     } else {
-      status.value = "idle";
+      // Treat unknown status as idle (don't kill polling if already running)
+      if (status.value !== "running") {
+        status.value = "idle";
+      }
     }
   } catch {
-    status.value = "idle";
+    pollErrorCount++;
+    // Only kill polling after 3 consecutive network errors
+    if (pollErrorCount >= 3) {
+      status.value = "idle";
+      stopPolling();
+      ElMessage.error("无法获取蒸馏状态，请检查网络后重试");
+    }
   }
 }
 
@@ -310,6 +324,7 @@ async function saveArticle() {
     }
     ElMessage.success(editingArticleId.value ? "已保存" : "已添加");
     articleFormVisible.value = false;
+    articleFormRef.value?.reset();
     await loadArticles();
   } catch (e: any) {
     ElMessage.error(e?.response?.data?.detail || "操作失败");
