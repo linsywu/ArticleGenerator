@@ -55,6 +55,8 @@ class AccountUpdate(BaseModel):
     account_name: Optional[str] = None
     lora_path: Optional[str] = None
     sample_articles: Optional[str] = None
+    word_count_options: Optional[str] = None  # JSON string
+    word_count: Optional[int] = None
 
 
 class AccountResponse(AccountBase):
@@ -64,6 +66,8 @@ class AccountResponse(AccountBase):
     style_profile_structured: Optional[Any] = None
     style_profile_version: Optional[int] = None
     style_profile_status: Optional[str] = None
+    word_count_options: Optional[str] = None
+    word_count: Optional[int] = None
     created_at: datetime
 
     class Config: from_attributes = True

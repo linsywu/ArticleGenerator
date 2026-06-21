@@ -62,7 +62,9 @@ class Account(Base):
     style_profile_updated_at = Column(DateTime)
     style_profile_structured = Column(Text)  # JSON: 7维度结构化画像
     style_profile_version = Column(Integer, default=1)
-    style_profile_status = Column(String(20), default="none")  # none/pending/ready/outdated
+    style_profile_status = Column(String(20), default="none")  # idle/running/ready/failed
+    word_count_options = Column(Text)  # JSON: ["800", "1500", "3000"]
+    word_count = Column(Integer, nullable=True)  # default word count
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

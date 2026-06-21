@@ -127,7 +127,7 @@ export const api = {
   getAccounts: () => get<Account[]>("/accounts"),
   createAccount: (data: { platform: string; account_name: string; lora_path?: string }) =>
     post<Account>("/accounts", data),
-  updateAccount: (id: number, data: { platform?: string; account_name?: string; lora_path?: string }) =>
+  updateAccount: (id: number, data: { platform?: string; account_name?: string; lora_path?: string; word_count_options?: string | null; word_count?: number | null }) =>
     put<Account>(`/accounts/${id}`, data),
   deleteAccount: (id: number) => del(`/accounts/${id}`),
 
@@ -206,6 +206,9 @@ export const api = {
   // 蒸馏
   triggerDistill: (accountId: number) =>
     post(`/accounts/${accountId}/distill`),
+  // 蒸馏状态
+  getDistillStatus: (accountId: number) =>
+    get<{ status: string; progress?: { completed: number; total: number; current_dimension: string }; style_profile_version?: number; error?: string }>(`/accounts/${accountId}/distill/status`),
 
   // 生成日志
   getGenerationLogs: (params?: { scenario?: string; page?: number; page_size?: number }) =>
