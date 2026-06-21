@@ -197,6 +197,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { api } from '@/api/client'
 import type { DirectionItem, OutlinePoint } from '@/api/client'
@@ -366,9 +367,26 @@ async function startGenerate() {
 }
 
 onMounted(async () => {
+  const route = useRoute()
+
   try {
     await accountsStore.fetch()
-    if (accounts.value.length) selectedAccountId.value = accounts.value[0].id
+
+    // Pre-fill from query params (from MaterialsView direction dialog)
+    if (route.query.account_id) {
+      const qAccountId = Number(route.query.account_id)
+      if (!isNaN(qAccountId) && accounts.value.find(a => a.id === qAccountId)) {
+        selectedAccountId.value = qAccountId
+      }
+    }
+    if (!selectedAccountId.value && accounts.value.length) {
+      selectedAccountId.value = accounts.value[0].id
+    }
+
+    // Pre-fill idea from query param (does NOT auto-generate directions)
+    if (route.query.idea) {
+      idea.value = String(route.query.idea)
+    }
   } catch (e) { console.error('加载账号失败', e) }
 })
 </script>

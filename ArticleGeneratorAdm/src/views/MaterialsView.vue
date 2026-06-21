@@ -68,6 +68,11 @@
         </el-tabs>
       </template>
     </el-drawer>
+
+    <MaterialsDirectionDialog
+      v-model="directionDialogVisible"
+      :material="directionMaterial"
+    />
   </div>
 </template>
 
@@ -78,6 +83,7 @@ import materialsApi from "@/api/modules/materials";
 import mpAccountsApi from "@/api/modules/mpAccounts";
 import type { MpMaterial, MpAccount } from "@/api/types";
 import PageHeader from "@/components/PageHeader.vue";
+import MaterialsDirectionDialog from "@/components/MaterialsDirectionDialog.vue";
 
 const materials = ref<MpMaterial[]>([]);
 const accounts = ref<MpAccount[]>([]);
@@ -93,6 +99,9 @@ const currentMaterial = ref<any>(null);
 const activeTab = ref("html");
 const markdownContent = ref("");
 const markdownLoading = ref(false);
+
+const directionDialogVisible = ref(false);
+const directionMaterial = ref<MpMaterial | null>(null);
 
 let searchTimer: any = null;
 
@@ -143,7 +152,8 @@ async function loadMarkdown() {
 }
 
 function onCreateDirection(row: MpMaterial) {
-  ElMessage.info("创作方向功能将在后续版本中开放");
+  directionMaterial.value = row;
+  directionDialogVisible.value = true;
 }
 
 watch(searchText, () => {
