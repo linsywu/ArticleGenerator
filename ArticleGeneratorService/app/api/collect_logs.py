@@ -53,3 +53,63 @@ def list_collect_logs(
             "created_at": _local_iso(log.created_at),
         })
     return {"data": result, "total": total}
+
+
+@router.get("/{log_id}", response_model=CollectLogResponse)
+def get_collect_log(log_id: int, db: Session = Depends(get_db)):
+    """获取单条采集日志详情（含进度时间线）"""
+    log = db.query(CollectLog).filter(CollectLog.id == log_id).first()
+    if not log:
+        raise HTTPException(status_code=404, detail="日志不存在")
+
+    task = db.query(CollectTask).filter(CollectTask.id == log.task_id).first()
+    account = db.query(MpAccount).filter(MpAccount.id == log.account_id).first() if log.account_id else None
+
+    # Get sibling logs from same execution batch (within 10s window)
+    siblings = []
+    if log.start_time:
+        from datetime import timedelta
+        window_start = log.start_time - timedelta(seconds=10)
+        window_end = log.start_time + timedelta(seconds=10)
+        sibling_rows = db.query(CollectLog).filter(
+            CollectLog.task_id == log.task_id,
+            CollectLog.id != log.id,
+            CollectLog.start_time >= window_start,
+            CollectLog.start_time <= window_end
+        ).all()
+        sibling_account_ids = {s.account_id for s in sibling_rows if s.account_id}
+        sib_accounts_map = {a.id: a for a in db.query(MpAccount).filter(MpAccount.id.in_(sibling_account_ids)).all()} if sibling_account_ids else {}
+        for s in sibling_rows:
+            sib_account = sib_accounts_map.get(s.account_id) if s.account_id else None
+            siblings.append({
+                "id": s.id,
+                "account": {"id": sib_account.id, "name": sib_account.name} if sib_account else None,
+                "success_count": s.success_count,
+                "fail_count": s.fail_count,
+            })
+
+    # Parse progress JSON
+    progress = []
+    if log.progress:
+        import json
+        try:
+            progress = json.loads(log.progress)
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+    return {
+        "id": log.id,
+        "task_id": log.task_id,
+        "task_name": task.name if task else None,
+        "account_id": log.account_id,
+        "account": {"id": account.id, "name": account.name} if account else None,
+        "start_time": _local_iso(log.start_time),
+        "end_time": _local_iso(log.end_time),
+        "total_count": log.total_count,
+        "success_count": log.success_count,
+        "fail_count": log.fail_count,
+        "error_message": log.error_message,
+        "created_at": _local_iso(log.created_at),
+        "progress": progress,
+        "siblings": siblings,
+    }

@@ -604,6 +604,8 @@ class CollectLogResponse(BaseModel):
     error_message: Optional[str] = None
     created_at: Optional[datetime] = None
     account: Optional[dict] = None
+    progress: Optional[list] = None
+    siblings: Optional[list] = None
 
     class Config: from_attributes = True
 

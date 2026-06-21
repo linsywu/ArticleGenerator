@@ -4,6 +4,7 @@
 import json
 import logging
 from datetime import datetime, timezone
+from typing import Optional
 from celery import shared_task
 from ..database import SessionLocal
 from ..models import MpCredential, MpAccount, CollectTask, MpMaterial, CollectLog
@@ -26,18 +27,33 @@ def execute_collect_task(self, task_id: int):
             logger.error(f"Task {task_id} not found")
             return
 
+        # Create log entry early for progress tracking
+        log_entry = _create_log(db, task.id)
+        _log_progress(db, log_entry, "task_started", "开始执行采集任务")
+
         credential = db.query(MpCredential).filter(MpCredential.id == task.credential_id).first()
         if not credential:
+            _log_progress(db, log_entry, "credential_check", "凭证不存在")
+            log_entry.end_time = _utcnow()
+            log_entry.error_message = "凭证不存在"
             _fail_task(db, task, "凭证不存在")
             return
         if credential.status in ("expired", "error"):
+            _log_progress(db, log_entry, "credential_check", f"凭证状态异常: {credential.status}")
+            log_entry.end_time = _utcnow()
+            log_entry.error_message = f"凭证状态异常: {credential.status}"
             _fail_task(db, task, f"凭证状态异常: {credential.status}")
             return
+        _log_progress(db, log_entry, "credential_check", f"凭证可用: {credential.name}")
 
         accounts = _resolve_accounts(db, task)
         if not accounts:
+            _log_progress(db, log_entry, "accounts_resolved", "匹配到 0 个公众号")
+            log_entry.end_time = _utcnow()
+            log_entry.error_message = "没有匹配的公众号"
             _fail_task(db, task, "没有匹配的公众号")
             return
+        _log_progress(db, log_entry, "accounts_resolved", f"匹配到 {len(accounts)} 个公众号")
 
         task.status = "running"
         db.commit()
@@ -45,21 +61,21 @@ def execute_collect_task(self, task_id: int):
         client = MpClient(credential.token, credential.cookie)
 
         for account in accounts:
-            log_entry = _create_log(db, task.id, account.id)
             try:
-                success, fail = _collect_from_account(db, client, account, task)
-                log_entry.success_count = success
-                log_entry.fail_count = fail
-                log_entry.total_count = success + fail
+                success, fail = _collect_from_account(db, client, account, task, log_entry)
+                log_entry.success_count = (log_entry.success_count or 0) + success
+                log_entry.fail_count = (log_entry.fail_count or 0) + fail
+                log_entry.total_count = (log_entry.total_count or 0) + success + fail
             except Exception as e:
                 logger.exception(f"Collection failed for {account.name}")
                 log_entry.error_message = str(e)
             finally:
-                log_entry.end_time = _utcnow()
                 db.commit()
                 _update_account_stats(db, account.id)
 
+        _log_progress(db, log_entry, "task_complete", f"采集任务完成，共 {len(accounts)} 个账号")
         task.status = "completed"
+        log_entry.end_time = _utcnow()
         db.commit()
     except Exception as e:
         logger.exception(f"Task {task_id} failed")
@@ -105,7 +121,7 @@ def _account_in_tracks(account, track_ids: list) -> bool:
         return False
 
 
-def _collect_from_account(db, client: MpClient, account: MpAccount, task: CollectTask) -> tuple:
+def _collect_from_account(db, client: MpClient, account: MpAccount, task: CollectTask, log_entry: CollectLog) -> tuple:
     if not account.fakeid:
         info = client.search_account(account.name)
         if info:
@@ -119,11 +135,16 @@ def _collect_from_account(db, client: MpClient, account: MpAccount, task: Collec
         logger.warning(f"Cannot collect from {account.name}: no fakeid")
         return 0, 0
 
+    _log_progress(db, log_entry, "fetch_list_start", f"开始获取 {account.name} 的文章列表")
     articles = client.fetch_article_list(account.fakeid, task.collect_mode)
+    _log_progress(db, log_entry, "list_complete", f"文章列表获取完毕，共 {len(articles)} 篇")
 
     success = 0
     fail = 0
-    for art in articles:
+    total = len(articles)
+    _log_progress(db, log_entry, "parse_start", "开始解析正文")
+
+    for i, art in enumerate(articles):
         try:
             existing = db.query(MpMaterial).filter(MpMaterial.original_url == art["link"]).first()
             if existing:
@@ -140,6 +161,14 @@ def _collect_from_account(db, client: MpClient, account: MpAccount, task: Collec
             content_html = MpClient.extract_article_content(html)
             word_count = MpClient.estimate_word_count(html)
 
+            # Use API create_time (Unix timestamp) as primary published_at source
+            published_at = None
+            if art.get("create_time"):
+                try:
+                    published_at = datetime.fromtimestamp(art["create_time"], tz=timezone.utc)
+                except (ValueError, TypeError, OSError):
+                    pass
+
             material = MpMaterial(
                 account_id=account.id,
                 title=art["title"] or meta["title"],
@@ -151,7 +180,7 @@ def _collect_from_account(db, client: MpClient, account: MpAccount, task: Collec
                 content_html=content_html,
                 content_hash=content_hash,
                 word_count=word_count,
-                published_at=meta["published_at"],
+                published_at=published_at or meta["published_at"],
                 collected_at=_utcnow(),
             )
             db.add(material)
@@ -160,16 +189,38 @@ def _collect_from_account(db, client: MpClient, account: MpAccount, task: Collec
             logger.exception(f"Failed to collect article: {art.get('link')}")
             fail += 1
 
+        # Log parsing progress every 5 articles
+        if (i + 1) % 5 == 0:
+            _log_progress(db, log_entry, "parse_progress", f"解析进度 {i + 1}/{total}")
+
+    _log_progress(db, log_entry, "parse_complete", f"正文解析完成，成功 {success} / 失败 {fail}")
     db.commit()
     return success, fail
 
 
-def _create_log(db, task_id: int, account_id: int) -> CollectLog:
+def _create_log(db, task_id: int, account_id: Optional[int] = None) -> CollectLog:
     log = CollectLog(task_id=task_id, account_id=account_id, start_time=_utcnow())
     db.add(log)
     db.commit()
     db.refresh(log)
     return log
+
+
+def _log_progress(db, log_entry: CollectLog, step: str, detail: str = ""):
+    """Append a progress step to the collect log"""
+    progress = []
+    if log_entry.progress:
+        try:
+            progress = json.loads(log_entry.progress)
+        except (json.JSONDecodeError, TypeError):
+            progress = []
+    progress.append({
+        "step": step,
+        "time": _utcnow().isoformat(),
+        "detail": detail,
+    })
+    log_entry.progress = json.dumps(progress, ensure_ascii=False)
+    db.commit()
 
 
 def _update_account_stats(db, account_id: int):

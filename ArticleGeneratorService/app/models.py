@@ -319,4 +319,5 @@ class CollectLog(Base):
     success_count = Column(Integer, default=0)
     fail_count = Column(Integer, default=0)
     error_message = Column(Text)
+    progress = Column(Text)  # JSON array: [{step, time, detail}, ...]
     created_at = Column(DateTime(timezone=True), default=_utcnow)
