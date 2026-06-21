@@ -9,7 +9,7 @@ from typing import List, Optional
 import json
 
 from ..database import get_db
-from ..models import GenerationTask, RefineTask, Article, Hotspot, Account
+from ..models import GenerationTask, RefineTask, Article, Hotspot, Account, _local_iso
 from celery.result import AsyncResult
 from ..tasks import celery_app as _celery_app
 
@@ -151,8 +151,8 @@ def query_unified_tasks(
             "account_name": account_name,
             "extra_info": extra_info,
             "error_message": row.error_message,
-            "created_at": _as_utc(row.created_at).isoformat() if row.created_at else None,
-            "updated_at": _as_utc(row.updated_at).isoformat() if row.updated_at else None,
+            "created_at": _local_iso(row.created_at),
+            "updated_at": _local_iso(row.updated_at),
         }
         tasks.append(task_item)
 

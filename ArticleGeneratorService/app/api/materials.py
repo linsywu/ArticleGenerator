@@ -8,7 +8,7 @@ from sqlalchemy import desc
 from typing import Optional
 
 from ..database import get_db
-from ..models import MpMaterial, MpAccount
+from ..models import MpMaterial, MpAccount, _local_iso
 from ..schemas import MpMaterialResponse, MpMaterialListResponse
 
 router = APIRouter(prefix="/materials", tags=["素材中心"])
@@ -45,9 +45,9 @@ def list_materials(
             "summary": m.summary,
             "word_count": m.word_count,
             "is_original": m.is_original,
-            "published_at": m.published_at.isoformat() if m.published_at else None,
-            "collected_at": m.collected_at.isoformat() if m.collected_at else None,
-            "created_at": m.created_at.isoformat() if m.created_at else None,
+            "published_at": _local_iso(m.published_at),
+            "collected_at": _local_iso(m.collected_at),
+            "created_at": _local_iso(m.created_at),
             "account": {"id": account.id, "name": account.name} if account else None,
         })
     return {"data": result, "total": total}
@@ -73,9 +73,9 @@ def get_material(material_id: int, db: Session = Depends(get_db)):
         "content_markdown": material.content_markdown,
         "word_count": material.word_count,
         "is_original": material.is_original,
-        "published_at": material.published_at.isoformat() if material.published_at else None,
-        "collected_at": material.collected_at.isoformat() if material.collected_at else None,
-        "created_at": material.created_at.isoformat() if material.created_at else None,
+        "published_at": _local_iso(material.published_at),
+        "collected_at": _local_iso(material.collected_at),
+        "created_at": _local_iso(material.created_at),
         "account": {"id": account.id, "name": account.name} if account else None,
     }
 

@@ -89,7 +89,7 @@ def get_collect_task(task_id: int, db: Session = Depends(get_db)):
             "total_count": sum(l.total_count or 0 for l in recent_logs),
             "success_count": sum(l.success_count or 0 for l in recent_logs),
             "fail_count": sum(l.fail_count or 0 for l in recent_logs),
-            "executed_at": latest_time.isoformat() if latest_time else None,
+            "executed_at": _local_iso(latest_time) if latest_time else None,
         }
     else:
         task_dict["last_result"] = None
