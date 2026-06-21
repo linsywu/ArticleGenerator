@@ -160,7 +160,7 @@
     <el-dialog
       v-model="articleDialogVisible"
       :title="editingArticleId ? '编辑参考文章' : '添加参考文章'"
-      width="520px"
+      width="820px"
       append-to-body
     >
       <el-form :model="articleForm" label-width="80px">
@@ -327,7 +327,10 @@ function openEditArticle(row: ReferenceArticle) {
 }
 
 async function saveArticle() {
-  if (!editingAccount.value?.id) return;
+  if (!editingAccount.value?.id) {
+    ElMessage.warning("请先创建并保存账号基本信息，再添加参考文章");
+    return;
+  }
   savingArticle.value = true;
   try {
     if (editingArticleId.value) {
