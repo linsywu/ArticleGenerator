@@ -17,6 +17,12 @@
         <template #default="{ row }">{{ row.account?.name || '-' }}</template>
       </el-table-column>
       <el-table-column prop="word_count" label="字数" width="80" align="center" />
+      <el-table-column label="原创" width="70" align="center">
+        <template #default="{ row }">
+          <el-tag v-if="row.is_original" type="success" size="small">原创</el-tag>
+          <el-tag v-else size="small" type="info">转载</el-tag>
+        </template>
+      </el-table-column>
       <el-table-column label="发布时间" width="110">
         <template #default="{ row }">{{ row.published_at?.slice(0, 10) || '-' }}</template>
       </el-table-column>
@@ -33,11 +39,13 @@
 
     <el-pagination
       v-model:current-page="page"
-      :page-size="pageSize"
+      v-model:page-size="pageSize"
+      :page-sizes="[10, 20, 50]"
       :total="total"
-      layout="prev, pager, next"
+      layout="total, sizes, prev, pager, next"
       style="margin-top: 16px; justify-content: center;"
       @current-change="fetchMaterials"
+      @size-change="fetchMaterials"
     />
 
     <!-- Detail Drawer -->

@@ -196,18 +196,42 @@
         <el-button type="primary" :loading="saving" @click="handleSave">保存</el-button>
       </template>
     </el-dialog>
+
+    <!-- Lifecycle Drawer -->
+    <el-drawer v-model="logDrawerVisible" title="任务执行日志" size="50%" @close="stopLogPolling">
+      <template v-if="logTaskId">
+        <h4 style="margin-bottom:12px;">{{ logTaskName }}</h4>
+        <div v-loading="logLoading">
+          <el-timeline v-if="allLogProgress.length > 0">
+            <el-timeline-item
+              v-for="(item, idx) in allLogProgress"
+              :key="idx"
+              :timestamp="item.time?.replace('T',' ').slice(0,19) || ''"
+              :type="item.step === 'task_complete' ? 'success' : item.step.includes('error') || item.step.includes('fail') ? 'danger' : 'primary'"
+              size="small"
+            >
+              {{ item.detail || item.step }}
+            </el-timeline-item>
+          </el-timeline>
+          <div v-else-if="!logLoading" style="text-align:center;padding:40px;color:#999;">
+            暂无执行记录
+          </div>
+        </div>
+      </template>
+    </el-drawer>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { ref, onMounted, onUnmounted } from "vue";
 import { useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
 import collectTasksApi from "@/api/modules/collectTasks";
 import credentialsApi from "@/api/modules/credentials";
 import tracksApi from "@/api/modules/tracks";
 import mpAccountsApi from "@/api/modules/mpAccounts";
-import type { CollectTask, MpCredential, Track, MpAccount } from "@/api/types";
+import type { CollectTask, MpCredential, Track, MpAccount, CollectLog } from "@/api/types";
+import collectLogsApi from "@/api/modules/collectLogs";
 import PageHeader from "@/components/PageHeader.vue";
 
 const router = useRouter();
@@ -438,11 +462,32 @@ async function handleSave() {
   }
 }
 
+// Polling infrastructure
+const pollingTimers = new Map<number, ReturnType<typeof setInterval>>();
+
+async function pollTask(taskId: number) {
+  if (pollingTimers.has(taskId)) clearInterval(pollingTimers.get(taskId));
+  const timer = setInterval(async () => {
+    try {
+      const { data } = await collectTasksApi.getCollectTask(taskId);
+      const idx = collectTasks.value.findIndex(t => t.id === taskId);
+      if (idx !== -1) collectTasks.value[idx] = data;
+      if (data.status !== "running") {
+        clearInterval(timer);
+        pollingTimers.delete(taskId);
+        await fetchCollectTasks();
+      }
+    } catch { /* ignore poll errors */ }
+  }, 2000);
+  pollingTimers.set(taskId, timer);
+}
+
 async function handleExecute(id: number) {
   try {
     await collectTasksApi.executeTask(id);
     ElMessage.success("采集任务已提交执行");
     await fetchCollectTasks();
+    pollTask(id);
   } catch (e: any) {
     ElMessage.error(e?.response?.data?.detail || "操作失败");
   }
@@ -468,8 +513,52 @@ async function handleResume(id: number) {
   }
 }
 
+const logDrawerVisible = ref(false);
+const logTaskId = ref<number | null>(null);
+const logTaskName = ref("");
+const logLoading = ref(false);
+const allLogProgress = ref<any[]>([]);
+let logPollTimer: ReturnType<typeof setInterval> | null = null;
+
 function viewLogs(row: CollectTask) {
-  router.push({ name: "CollectLogs", query: { task_id: row.id } });
+  logTaskId.value = row.id;
+  logTaskName.value = row.name;
+  logDrawerVisible.value = true;
+  fetchLogEntriesWithProgress();
+  startLogPolling();
+}
+
+async function fetchLogEntriesWithProgress() {
+  if (!logTaskId.value) return;
+  logLoading.value = true;
+  try {
+    const { data } = await collectLogsApi.fetchCollectLogs({ task_id: logTaskId.value, page_size: 50 });
+    // Merge all progress arrays from all log entries, sorted by time
+    const allSteps: any[] = [];
+    for (const log of (data.data || [])) {
+      if ((log as any).progress) {
+        for (const step of (log as any).progress) {
+          allSteps.push({ ...step, account: (log as any).account?.name });
+        }
+      }
+    }
+    allSteps.sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+    allLogProgress.value = allSteps;
+  } finally {
+    logLoading.value = false;
+  }
+}
+
+function startLogPolling() {
+  if (logPollTimer) clearInterval(logPollTimer);
+  logPollTimer = setInterval(async () => {
+    if (!logDrawerVisible.value) { stopLogPolling(); return; }
+    await fetchLogEntriesWithProgress();
+  }, 2000);
+}
+
+function stopLogPolling() {
+  if (logPollTimer) { clearInterval(logPollTimer); logPollTimer = null; }
 }
 
 async function handleDelete(id: number) {
@@ -510,6 +599,8 @@ onMounted(() => {
   fetchCredentials();
   loadTrackTree();
 });
+
+onUnmounted(() => { pollingTimers.forEach(t => clearInterval(t)); });
 </script>
 
 <style scoped>

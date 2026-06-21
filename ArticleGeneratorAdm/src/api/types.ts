@@ -207,6 +207,8 @@ export interface CollectLog {
   error_message?: string;
   created_at?: string;
   account?: { id: number; name: string };
+  progress?: { step: string; time: string; detail: string }[];
+  siblings?: { id: number; account?: { id: number; name: string }; success_count: number; fail_count: number }[];
 }
 
 export interface CollectTask {
