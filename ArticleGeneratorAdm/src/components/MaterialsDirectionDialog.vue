@@ -69,6 +69,7 @@ const directions = ref<DirectionItem[]>([]);
 const selectedDirection = ref<DirectionItem | null>(null);
 const loading = ref(false);
 const errorMsg = ref("");
+let generationCancelled = false;
 
 const dialogTitle = computed(() => {
   return props.material?.title
@@ -83,6 +84,7 @@ function onOpen() {
 }
 
 function onClose() {
+  generationCancelled = true;
   directions.value = [];
   selectedDirection.value = null;
   errorMsg.value = "";
@@ -95,6 +97,7 @@ async function startGeneration() {
     return;
   }
 
+  generationCancelled = false;
   loading.value = true;
   errorMsg.value = "";
   directions.value = [];
@@ -113,7 +116,9 @@ async function startGeneration() {
     const maxAttempts = 30;
     while (attempts < maxAttempts) {
       await new Promise((r) => setTimeout(r, 2000));
+      if (generationCancelled) return;
       const { data: taskData } = await api.getTaskResult(taskId);
+      if (generationCancelled) return;
       if (taskData.status === "success") {
         const result = (taskData as any).result;
         directions.value = result?.directions || [];

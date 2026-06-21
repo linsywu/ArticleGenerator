@@ -204,6 +204,7 @@ import type { DirectionItem, OutlinePoint } from '@/api/client'
 import { useAccountsStore } from "@/store/accounts"
 
 const accountsStore = useAccountsStore()
+const route = useRoute()
 
 const steps = ['选择账号', '输入想法', '写作方向', '确认大纲', '生成标题', '生成全文']
 const currentStep = ref(0)
@@ -367,8 +368,6 @@ async function startGenerate() {
 }
 
 onMounted(async () => {
-  const route = useRoute()
-
   try {
     await accountsStore.fetch()
 
