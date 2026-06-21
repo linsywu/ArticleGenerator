@@ -476,6 +476,23 @@ def trigger_direction_generation(self, account_id: int, idea: str, word_count: s
                 except json.JSONDecodeError:
                     pass
 
+        # Fallback: parse numbered/bulleted text lines into directions
+        if not directions:
+            text_lines = []
+            for line in content.strip().split("\n"):
+                line = line.strip()
+                # Match "1. title" or "1. **title**: description" or "- title" or "• title"
+                m = re.match(r'^(?:\d+[\.\)]\s*(?:\*\*)?|[-•]\s+)(.+)', line)
+                if m:
+                    title = m.group(1).rstrip("*").strip()
+                    if title:
+                        text_lines.append(title)
+            if text_lines:
+                labels = []
+                for i, t in enumerate(text_lines):
+                    labels.append({"id": chr(65 + i), "title": t})
+                directions = labels
+
         return {"account_id": account_id, "directions": directions}
     finally:
         db.close()
