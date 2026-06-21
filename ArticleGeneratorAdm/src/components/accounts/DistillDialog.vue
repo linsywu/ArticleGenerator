@@ -15,7 +15,7 @@
         </div>
         <div v-if="articles.length" class="distill-article-list" :class="{ readonly: isRunning }">
           <div v-for="a in articles" :key="a.id" class="distill-article-item">
-            <div>
+            <div class="distill-article-item-content">
               <div class="distill-article-title">{{ a.title }}</div>
               <div class="distill-article-meta">
                 {{ a.content ? a.content.length : 0 }} 字
@@ -43,15 +43,15 @@
         <!-- Idle / Empty -->
         <div v-if="status === 'idle'" class="distill-center">
           <p v-if="!articles.length" class="empty-hint">请先在左侧添加参考文章</p>
-          <div v-else>
-            <p v-if="!account?.style_profile_structured" class="empty-hint">点击下方按钮开始蒸馏</p>
-            <div v-else class="profile-mini-grid">
-              <div v-for="dim in styleDimensions" :key="dim.key" class="dim-mini-card done">
+          <div v-else-if="account?.style_profile_structured" class="profile-content-area">
+            <div v-for="dim in styleDimensions" :key="dim.key" class="dim-content-card">
+              <div class="dim-content-header">
                 <span>{{ dim.icon }} {{ dim.label }}</span>
-                <span class="check">✓</span>
               </div>
+              <p class="dim-content-text">{{ getDimContent(dim.key) || '未定义' }}</p>
             </div>
           </div>
+          <p v-else class="empty-hint">点击下方按钮开始蒸馏</p>
         </div>
 
         <!-- Running progress -->
@@ -78,10 +78,12 @@
 
         <!-- Completed -->
         <div v-else-if="status === 'completed'" class="distill-center">
-          <div class="profile-mini-grid">
-            <div v-for="dim in styleDimensions" :key="dim.key" class="dim-mini-card done">
-              <span>{{ dim.icon }} {{ dim.label }}</span>
-              <span class="check">✓</span>
+          <div class="profile-content-area">
+            <div v-for="dim in styleDimensions" :key="dim.key" class="dim-content-card">
+              <div class="dim-content-header">
+                <span>{{ dim.icon }} {{ dim.label }}</span>
+              </div>
+              <p class="dim-content-text">{{ getDimContent(dim.key) || '未定义' }}</p>
             </div>
           </div>
         </div>
@@ -157,6 +159,12 @@ const styleDimensions = [
   { key: "taboos", label: "禁忌清单", icon: "🚫" },
   { key: "blank_leaving", label: "留白程度", icon: "💭" },
 ];
+
+function getDimContent(key: string): string {
+  const profile = props.account?.style_profile_structured;
+  if (!profile || typeof profile !== "object") return "";
+  return (profile as Record<string, string>)[key] || "";
+}
 
 const visible = ref(props.modelValue);
 watch(() => props.modelValue, (v) => { visible.value = v; if (v) { dialogOpen = true; onOpen(); } });
@@ -358,9 +366,28 @@ onUnmounted(() => stopPolling());
   padding: 10px 12px; margin-bottom: 6px;
   background: var(--ink-surface); border-radius: 6px;
 }
+.distill-article-item>.distill-article-item-content{flex:1;}
+.distill-article-item>.distill-article-actions{width: 120px;}
 .distill-article-title { font-size: 13px; font-weight: 500; color: var(--text-on-dark); }
 .distill-article-meta { font-size: 11px; color: var(--text-dim); }
 .distill-center { flex: 1; display: flex; align-items: center; justify-content: center; }
+.profile-content-area {
+  width: 100%; max-height: 420px; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.dim-content-card {
+  background: var(--ink-surface); border-left: 2px solid var(--amber);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  padding: 12px 14px;
+}
+.dim-content-header {
+  font-size: 13px; font-weight: 600; color: var(--amber-light);
+  margin-bottom: 6px;
+}
+.dim-content-text {
+  font-size: 12px; line-height: 1.7; color: var(--text-dim);
+  white-space: pre-wrap; margin: 0;
+}
 .distill-action-bar { text-align: center; padding-top: 16px; border-top: 1px solid var(--ink-border); }
 .progress-bar { width: 100%; height: 8px; background: var(--ink-border); border-radius: 8px; overflow: hidden; margin: 16px 0; }
 .progress-fill { height: 100%; background: #409eff; border-radius: 8px; transition: width 0.3s; }
