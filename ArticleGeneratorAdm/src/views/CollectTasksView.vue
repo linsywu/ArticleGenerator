@@ -59,7 +59,7 @@
           {{ formatTime(row.created_at) }}
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="320">
+      <el-table-column label="任务执行" width="200">
         <template #default="{ row }">
           <el-button size="small" text type="primary" @click="handleExecute(row.id)" :disabled="row.status === 'running'">
             执行
@@ -82,6 +82,11 @@
           >
             恢复
           </el-button>
+          
+        </template>
+      </el-table-column>
+      <el-table-column label="操作" width="200">
+        <template #default="{ row }">
           <el-button size="small" text @click="openEditDialog(row)">编辑</el-button>
           <el-button size="small" text type="info" @click.stop="viewLogs(row)">日志</el-button>
           <el-popconfirm title="确认删除此采集任务？" @confirm="handleDelete(row.id)">

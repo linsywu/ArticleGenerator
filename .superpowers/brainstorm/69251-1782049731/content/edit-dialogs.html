@@ -1,0 +1,152 @@
+<h2>编辑模式 — 基本信息弹窗 & 字数配置弹窗</h2>
+
+<div class="section">
+  <h3>弹窗 1：基本信息编辑</h3>
+  <div class="mockup">
+    <div class="mockup-body" style="padding: 24px;">
+      <div style="display: flex; gap: 16px;">
+        <div style="flex: 1;">
+          <div class="label">平台</div>
+          <input class="mock-input" value="微信公众号" style="width: 100%;">
+        </div>
+        <div style="flex: 1;">
+          <div class="label">账号名称</div>
+          <input class="mock-input" value="陆拾一" style="width: 100%;">
+        </div>
+      </div>
+      <div style="text-align: right; margin-top: 24px;">
+        <button class="mock-button">取消</button>
+        <button class="mock-button" style="background: var(--primary); color: #fff; margin-left: 8px;">保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>弹窗 2：字数配置</h3>
+  <div class="mockup">
+    <div class="mockup-body" style="padding: 24px;">
+      <div style="margin-bottom: 16px;">
+        <div class="label">字数选项</div>
+        <div style="display: flex; gap: 8px; align-items: center; margin-top: 8px;">
+          <input class="mock-input" value="800" style="width: 80px;">
+          <span style="color: var(--muted); font-size: 12px;">字</span>
+          <button class="mock-button" style="color: #cf1322; font-size: 12px;">✕</button>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center; margin-top: 8px;">
+          <input class="mock-input" value="1500" style="width: 80px;">
+          <span style="color: var(--muted); font-size: 12px;">字</span>
+          <button class="mock-button" style="color: #cf1322; font-size: 12px;">✕</button>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center; margin-top: 8px;">
+          <input class="mock-input" value="3000" style="width: 80px;">
+          <span style="color: var(--muted); font-size: 12px;">字</span>
+          <button class="mock-button" style="color: #cf1322; font-size: 12px;">✕</button>
+        </div>
+        <button class="mock-button" style="margin-top: 8px; font-size: 12px;">+ 添加字数</button>
+      </div>
+      <div style="margin-bottom: 16px;">
+        <div class="label">默认字数</div>
+        <select class="mock-input" style="width: 120px; margin-top: 8px;">
+          <option>800</option>
+          <option>1500</option>
+          <option selected>3000</option>
+        </select>
+      </div>
+      <div style="text-align: right; margin-top: 24px;">
+        <button class="mock-button">取消</button>
+        <button class="mock-button" style="background: var(--primary); color: #fff; margin-left: 8px;">保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<hr style="margin: 40px 0; border-color: var(--border-color);">
+
+<h2>账号卡片 — 交互入口重构</h2>
+<p class="subtitle">当前点击卡片打开一个巨型弹窗。改为卡片上有独立操作入口。</p>
+
+<div class="section">
+  <h3>卡片设计（hover 展开操作）</h3>
+  <div class="mockup">
+    <div class="mockup-body" style="padding: 24px;">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+        <!-- Card 1: with profile -->
+        <div style="border: 2px solid var(--border-color); border-radius: 12px; padding: 20px; position: relative;">
+          <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+            <div style="width: 44px; height: 44px; border-radius: 10px; background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 700;">陆</div>
+            <div>
+              <div style="font-weight: 700; font-size: 16px;">陆拾一</div>
+              <div style="font-size: 12px; color: var(--muted);">微信公众号</div>
+            </div>
+          </div>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <span style="background: #e6f7e6; color: #389e0d; padding: 2px 8px; border-radius: 4px; font-size: 11px;">画像就绪 v2</span>
+            <span style="font-size: 11px; color: var(--muted);">更新于 06-20</span>
+          </div>
+          <!-- Action buttons -->
+          <div style="display: flex; gap: 6px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border-color);">
+            <button class="mock-button" style="font-size: 11px; padding: 4px 10px;">✏️ 基本信息</button>
+            <button class="mock-button" style="font-size: 11px; padding: 4px 10px; background: var(--primary); color: #fff;">🎨 风格蒸馏</button>
+            <button class="mock-button" style="font-size: 11px; padding: 4px 10px;">📝 字数配置</button>
+          </div>
+        </div>
+        <!-- Card 2: no profile yet -->
+        <div style="border: 2px solid var(--border-color); border-radius: 12px; padding: 20px; position: relative;">
+          <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+            <div style="width: 44px; height: 44px; border-radius: 10px; background: #8c8c8c; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 700;">半</div>
+            <div>
+              <div style="font-weight: 700; font-size: 16px;">半佛仙人</div>
+              <div style="font-size: 12px; color: var(--muted);">B站</div>
+            </div>
+          </div>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <span style="background: #fff7e6; color: #d46b08; padding: 2px 8px; border-radius: 4px; font-size: 11px;">待蒸馏</span>
+            <span style="font-size: 11px; color: var(--muted);">创建于 06-21</span>
+          </div>
+          <div style="display: flex; gap: 6px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border-color);">
+            <button class="mock-button" style="font-size: 11px; padding: 4px 10px;">✏️ 基本信息</button>
+            <button class="mock-button" style="font-size: 11px; padding: 4px 10px; background: var(--primary); color: #fff;">🎨 风格蒸馏</button>
+            <button class="mock-button" style="font-size: 11px; padding: 4px 10px;">📝 字数配置</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>交互流程总结</h3>
+  <table style="width: 100%; font-size: 14px; border-collapse: collapse;">
+    <tr style="border-bottom: 1px solid var(--border-color);">
+      <th style="text-align: left; padding: 8px 12px;">操作</th>
+      <th style="text-align: left; padding: 8px 12px;">触发</th>
+      <th style="text-align: left; padding: 8px 12px;">行为</th>
+    </tr>
+    <tr style="border-bottom: 1px solid var(--border-color);">
+      <td style="padding: 8px 12px;">新增账号</td>
+      <td style="padding: 8px 12px;">页面右上角"新增账号"按钮</td>
+      <td style="padding: 8px 12px;">打开三步向导</td>
+    </tr>
+    <tr style="border-bottom: 1px solid var(--border-color);">
+      <td style="padding: 8px 12px;">编辑基本信息</td>
+      <td style="padding: 8px 12px;">卡片上"基本信息"按钮</td>
+      <td style="padding: 8px 12px;">打开基本信息弹窗</td>
+    </tr>
+    <tr style="border-bottom: 1px solid var(--border-color);">
+      <td style="padding: 8px 12px;">风格蒸馏</td>
+      <td style="padding: 8px 12px;">卡片上"风格蒸馏"按钮</td>
+      <td style="padding: 8px 12px;">打开蒸馏弹窗（左右分栏）</td>
+    </tr>
+    <tr style="border-bottom: 1px solid var(--border-color);">
+      <td style="padding: 8px 12px;">字数配置</td>
+      <td style="padding: 8px 12px;">卡片上"字数配置"按钮</td>
+      <td style="padding: 8px 12px;">打开字数配置弹窗</td>
+    </tr>
+    <tr>
+      <td style="padding: 8px 12px;">删除账号</td>
+      <td style="padding: 8px 12px;">卡片右上角更多菜单</td>
+      <td style="padding: 8px 12px;">确认后删除</td>
+    </tr>
+  </table>
+</div>

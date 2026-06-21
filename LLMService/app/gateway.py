@@ -16,8 +16,12 @@ class Gateway:
 
     def _fetch_config(self, scenario: str) -> Dict[str, Any]:
         """从后端 API 获取 scenario_config（含 provider 信息）"""
+        headers = {"X-API-Key": settings.crawler_api_key}
         with httpx.Client(timeout=10.0) as client:
-            resp = client.get(f"{self.backend_api_url}/api/scenario-configs/by-scenario/{scenario}")
+            resp = client.get(
+                f"{self.backend_api_url}/api/scenario-configs/by-scenario/{scenario}",
+                headers=headers,
+            )
             if resp.status_code == 404:
                 return {}
             resp.raise_for_status()
@@ -25,8 +29,12 @@ class Gateway:
 
     def _fetch_account(self, account_id: int) -> Dict[str, Any]:
         """获取账号信息（含 style_profile）"""
+        headers = {"X-API-Key": settings.crawler_api_key}
         with httpx.Client(timeout=10.0) as client:
-            resp = client.get(f"{self.backend_api_url}/api/accounts/{account_id}")
+            resp = client.get(
+                f"{self.backend_api_url}/api/accounts/{account_id}",
+                headers=headers,
+            )
             resp.raise_for_status()
             return resp.json()
 

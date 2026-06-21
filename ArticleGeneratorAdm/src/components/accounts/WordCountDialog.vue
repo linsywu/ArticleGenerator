@@ -9,9 +9,8 @@
         <el-button size="small" @click="options.push('')">＋ 添加选项</el-button>
       </el-form-item>
       <el-form-item label="默认字数">
-        <el-select v-model="defaultWordCount" placeholder="选择默认字数" style="width:200px">
-          <el-option v-for="opt in options.filter(Boolean)" :key="opt" :label="opt" :value="Number(opt)" />
-        </el-select>
+        <el-input v-model="defaultWordCount" placeholder="例如：1500-3000字左右" />
+        <span style="font-size:11px;color:var(--text-dim);margin-top:4px;">字数描述由模型参考，不强制严格数字</span>
       </el-form-item>
     </el-form>
     <template #footer>
@@ -36,13 +35,13 @@ watch(visible, (v) => { emit("update:modelValue", v); });
 
 const saving = ref(false);
 const options = ref<string[]>([]);
-const defaultWordCount = ref<number | null>(null);
+const defaultWordCount = ref<string>("");
 
 watch(() => props.account, (acc) => {
   if (!acc) return;
   try { options.value = acc.word_count_options ? JSON.parse(acc.word_count_options) : []; }
   catch { options.value = []; }
-  defaultWordCount.value = acc.word_count || null;
+  defaultWordCount.value = acc.word_count || "";
 }, { immediate: true });
 
 async function handleSave() {

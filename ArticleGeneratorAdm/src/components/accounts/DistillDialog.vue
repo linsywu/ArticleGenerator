@@ -372,7 +372,7 @@ onUnmounted(() => stopPolling());
 .distill-article-meta { font-size: 11px; color: var(--text-dim); }
 .distill-center { flex: 1; display: flex; align-items: center; justify-content: center; }
 .profile-content-area {
-  width: 100%; max-height: 420px; overflow-y: auto;
+  width: 100%;
   display: flex; flex-direction: column; gap: 10px;
 }
 .dim-content-card {

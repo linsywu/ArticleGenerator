@@ -1,0 +1,41 @@
+<h2>新建账号 — 分步向导流程</h2>
+<p class="subtitle">按什么步骤引导用户完成账号创建？</p>
+
+<div class="options">
+  <div class="option" data-choice="wizard-a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>三步：基本信息 → 参考文章 → 确认并蒸馏</h3>
+      <p>Step 1: 填写平台、账号名<br>Step 2: 添加至少一篇参考文章<br>Step 3: 确认信息，点击"开始蒸馏"，提交后跳转到账号列表并显示蒸馏进度</p>
+    </div>
+  </div>
+  <div class="option" data-choice="wizard-b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>两步：基本信息+参考文章 → 确认</h3>
+      <p>Step 1: 填写基本信息 + 添加参考文章（同一页上下排列）<br>Step 2: 确认信息，提交创建并自动触发蒸馏</p>
+    </div>
+  </div>
+</div>
+
+<hr style="margin: 40px 0; border-color: var(--border-color);">
+
+<h2>编辑账号 — 蒸馏弹窗布局</h2>
+<p class="subtitle">参考文章和风格画像合并到一个弹窗中，如何布局？</p>
+
+<div class="options">
+  <div class="option" data-choice="layout-a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>左右分栏</h3>
+      <p>左侧：参考文章列表（可增删改）<br>右侧：风格画像展示 + 蒸馏按钮 + 进度<br>视觉上直观展示"输入→输出"的关系</p>
+    </div>
+  </div>
+  <div class="option" data-choice="layout-b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>上下排列</h3>
+      <p>上方：参考文章列表（紧凑展示）<br>下方：风格画像 + 蒸馏进度<br>适合窄屏，纵向滚动自然</p>
+    </div>
+  </div>
+</div>

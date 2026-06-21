@@ -175,5 +175,5 @@ onMounted(() => {
 .filters { display: flex; gap: 12px; }
 .html-preview { max-height: 70vh; overflow-y: auto; font-size: 14px; line-height: 1.7; }
 .html-preview :deep(img) { max-width: 100%; }
-.markdown-preview { white-space: pre-wrap; font-size: 14px; line-height: 1.8; max-height: 70vh; overflow-y: auto; background: #f9f9f9; padding: 20px; border-radius: 8px; }
+.markdown-preview { white-space: pre-wrap; font-size: 14px; line-height: 1.8; max-height: 70vh; overflow-y: auto; background: var(--background-color-secondary); padding: 20px; border-radius: 8px; }
 </style>

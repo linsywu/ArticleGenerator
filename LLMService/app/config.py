@@ -10,6 +10,9 @@ class Settings(BaseSettings):
     # 后端 API 地址（用于回查 providers / scenario_configs）
     backend_api_url: str = "http://localhost:8000"
 
+    # 爬虫共享密钥（用于调用后端受保护 API）
+    crawler_api_key: str = "crawler-dev-key"
+
     port: int = 8001
 
     class Config:

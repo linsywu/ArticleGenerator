@@ -35,7 +35,7 @@ export interface Account {
   style_profile_version?: number;
   style_profile_status?: string;
   word_count_options?: string;
-  word_count?: number | null;
+  word_count?: string | null;  // "1500-3000字"
   created_at: string;
 }
 

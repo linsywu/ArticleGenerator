@@ -1,0 +1,147 @@
+<h2>编辑模式 — 蒸馏弹窗（左右分栏）</h2>
+<p class="subtitle">点击账号卡片上的"蒸馏"操作 → 打开独立弹窗，左右分栏展示</p>
+
+<div class="section">
+  <h3>布局：左侧参考文章 | 右侧风格画像 + 蒸馏进度</h3>
+  <div class="mockup">
+    <div class="mockup-body" style="padding: 0; display: flex; min-height: 480px;">
+      <!-- Left: Reference Articles -->
+      <div style="flex: 1; border-right: 1px solid var(--border-color); padding: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <h4 style="margin: 0;">📄 参考文章</h4>
+          <button class="mock-button" style="font-size: 12px; padding: 4px 10px;">+ 添加</button>
+        </div>
+        <div style="border: 1px solid var(--border-color); border-radius: 8px;">
+          <div style="padding: 10px 14px; border-bottom: 1px solid var(--border-color); cursor: pointer; background: var(--bg-secondary);">
+            <div style="font-weight: 600; font-size: 13px;">当代女性的情感困局</div>
+            <div style="font-size: 11px; color: var(--muted);">2,340 字 · 代表篇</div>
+          </div>
+          <div style="padding: 10px 14px; border-bottom: 1px solid var(--border-color); cursor: pointer;">
+            <div style="font-weight: 600; font-size: 13px;">为什么我们不擅长告别</div>
+            <div style="font-size: 11px; color: var(--muted);">1,890 字</div>
+          </div>
+          <div style="padding: 10px 14px; cursor: pointer;">
+            <div style="font-weight: 600; font-size: 13px;">成年人最大的自律是...</div>
+            <div style="font-size: 11px; color: var(--muted);">3,120 字</div>
+          </div>
+        </div>
+        <p style="font-size: 11px; color: var(--muted); margin-top: 10px;">点击文章可查看/编辑/删除。建议 3~5 篇代表性文章。</p>
+      </div>
+      <!-- Right: Style Profile + Progress -->
+      <div style="flex: 1; padding: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <h4 style="margin: 0;">🎨 风格画像</h4>
+          <span style="font-size: 11px; background: #e6f7e6; color: #389e0d; padding: 2px 8px; border-radius: 4px;">画像就绪 v2</span>
+        </div>
+
+        <!-- Before distill: empty or showing existing profile -->
+        <div style="margin-bottom: 16px;">
+          <div class="label">已蒸馏维度（7/7）</div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px;">
+            <div style="background: var(--bg-secondary); padding: 8px 10px; border-radius: 6px; font-size: 12px;">
+              <span style="font-weight: 600;">🧠 思维模式</span>
+              <span style="color: var(--muted); float: right;">✓</span>
+            </div>
+            <div style="background: var(--bg-secondary); padding: 8px 10px; border-radius: 6px; font-size: 12px;">
+              <span style="font-weight: 600;">🏗️ 结构模式</span>
+              <span style="color: var(--muted); float: right;">✓</span>
+            </div>
+            <div style="background: var(--bg-secondary); padding: 8px 10px; border-radius: 6px; font-size: 12px;">
+              <span style="font-weight: 600;">✍️ 句式特征</span>
+              <span style="color: var(--muted); float: right;">✓</span>
+            </div>
+            <div style="background: var(--bg-secondary); padding: 8px 10px; border-radius: 6px; font-size: 12px;">
+              <span style="font-weight: 600;">📝 词汇偏好</span>
+              <span style="color: var(--muted); float: right;">✓</span>
+            </div>
+            <div style="background: var(--bg-secondary); padding: 8px 10px; border-radius: 6px; font-size: 12px;">
+              <span style="font-weight: 600;">📊 论据类型</span>
+              <span style="color: var(--muted); float: right;">✓</span>
+            </div>
+            <div style="background: var(--bg-secondary); padding: 8px 10px; border-radius: 6px; font-size: 12px;">
+              <span style="font-weight: 600;">🚫 写作禁忌</span>
+              <span style="color: var(--muted); float: right;">✓</span>
+            </div>
+            <div style="background: var(--bg-secondary); padding: 8px 10px; border-radius: 6px; font-size: 12px;">
+              <span style="font-weight: 600;">🔲 留白习惯</span>
+              <span style="color: var(--muted); float: right;">✓</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Distill button area -->
+        <div style="border-top: 1px solid var(--border-color); padding-top: 16px; text-align: center;">
+          <p style="font-size: 12px; color: var(--muted); margin-bottom: 12px;">文章有修改或新增？重新蒸馏以更新画像</p>
+          <button class="mock-button" style="background: var(--primary); color: #fff;">🔄 重新蒸馏</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>蒸馏进行中 — 进度展示状态</h3>
+  <div class="mockup">
+    <div class="mockup-body" style="padding: 0; display: flex; min-height: 480px;">
+      <!-- Left: unchanged -->
+      <div style="flex: 1; border-right: 1px solid var(--border-color); padding: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <h4 style="margin: 0;">📄 参考文章</h4>
+          <span style="font-size: 11px; color: var(--muted);">蒸馏中，暂不可编辑</span>
+        </div>
+        <div style="border: 1px solid var(--border-color); border-radius: 8px; opacity: 0.6;">
+          <div style="padding: 10px 14px; border-bottom: 1px solid var(--border-color);"><div style="font-weight: 600; font-size: 13px;">当代女性的情感困局</div><div style="font-size: 11px; color: var(--muted);">2,340 字</div></div>
+          <div style="padding: 10px 14px; border-bottom: 1px solid var(--border-color);"><div style="font-weight: 600; font-size: 13px;">为什么我们不擅长告别</div><div style="font-size: 11px; color: var(--muted);">1,890 字</div></div>
+          <div style="padding: 10px 14px;"><div style="font-weight: 600; font-size: 13px;">成年人最大的自律是...</div><div style="font-size: 11px; color: var(--muted);">3,120 字</div></div>
+        </div>
+      </div>
+      <!-- Right: progress -->
+      <div style="flex: 1; padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+        <div style="width: 100%; text-align: center;">
+          <div style="font-size: 32px; margin-bottom: 12px;">⏳</div>
+          <h4 style="margin-bottom: 16px;">正在蒸馏风格...</h4>
+          <!-- Progress bar -->
+          <div style="background: var(--border-color); border-radius: 8px; height: 8px; width: 100%; margin-bottom: 12px;">
+            <div style="background: var(--primary); border-radius: 8px; height: 8px; width: 57%; transition: width 0.3s;"></div>
+          </div>
+          <p style="font-size: 13px; color: var(--muted); margin-bottom: 4px;">正在分析：句式特征</p>
+          <p style="font-size: 11px; color: var(--muted);">已完成 4/7 维度 · 预计还需 25 秒</p>
+          <!-- Dimension mini status -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-top: 16px; text-align: left; font-size: 11px;">
+            <div>🧠 思维模式 <span style="color: #389e0d;">✓</span></div>
+            <div>🏗️ 结构模式 <span style="color: #389e0d;">✓</span></div>
+            <div>✍️ 句式特征 <span style="color: var(--primary); font-weight: 600;">● 分析中</span></div>
+            <div>📝 词汇偏好 <span style="color: var(--muted);">○ 等待</span></div>
+            <div>📊 论据类型 <span style="color: var(--muted);">○ 等待</span></div>
+            <div>🚫 写作禁忌 <span style="color: var(--muted);">○ 等待</span></div>
+            <div>🔲 留白习惯 <span style="color: var(--muted);">○ 等待</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>蒸馏失败 — 错误状态</h3>
+  <div class="mockup">
+    <div class="mockup-body" style="padding: 0; display: flex; min-height: 480px;">
+      <div style="flex: 1; border-right: 1px solid var(--border-color); padding: 20px;">
+        <h4 style="margin: 0; margin-bottom: 16px;">📄 参考文章</h4>
+        <div style="border: 1px solid var(--border-color); border-radius: 8px;">
+          <div style="padding: 10px 14px; border-bottom: 1px solid var(--border-color);"><div style="font-weight: 600; font-size: 13px;">当代女性的情感困局</div></div>
+          <div style="padding: 10px 14px;"><div style="font-weight: 600; font-size: 13px;">为什么我们不擅长告别</div></div>
+        </div>
+      </div>
+      <div style="flex: 1; padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
+        <div style="font-size: 32px; margin-bottom: 12px;">❌</div>
+        <h4 style="color: #cf1322; margin-bottom: 8px;">蒸馏失败</h4>
+        <p style="font-size: 13px; color: var(--muted); margin-bottom: 16px;">LLM 返回格式异常，无法解析风格维度<br><code style="font-size: 11px;">JSONDecodeError: Expecting ',' delimiter at line 42</code></p>
+        <div style="display: flex; gap: 10px;">
+          <button class="mock-button">查看详情</button>
+          <button class="mock-button" style="background: var(--primary); color: #fff;">🔄 重试蒸馏</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

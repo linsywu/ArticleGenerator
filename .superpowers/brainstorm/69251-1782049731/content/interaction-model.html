@@ -1,0 +1,33 @@
+<h2>替代"弹窗+Tab"的交互模式</h2>
+<p class="subtitle">当前：点击账号卡片 → 弹窗（含 4 个 Tab）。哪种替代方案更合理？</p>
+
+<div class="options" data-multiselect>
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>独立详情页</h3>
+      <p>点击账号卡片 → 跳转到 <code>/accounts/:id</code> 独立页面。参考文章和风格画像在同一页面中上下排列，蒸馏进度实时可见。适合内容较多的场景。</p>
+    </div>
+  </div>
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>卡片内展开（Inline Expand）</h3>
+      <p>点击账号卡片直接在卡片下方展开详情区域，不弹窗不跳转。紧凑轻量，但内容多时可能显得拥挤。</p>
+    </div>
+  </div>
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>侧边抽屉（Drawer）</h3>
+      <p>从右侧滑出抽屉面板，纵向滚动展示所有内容。保留当前页面上下文，同时有足够空间展示参考文章+风格画像+蒸馏进度。</p>
+    </div>
+  </div>
+  <div class="option" data-choice="d" onclick="toggleSelect(this)">
+    <div class="letter">D</div>
+    <div class="content">
+      <h3>分步向导（Wizard / Stepper）</h3>
+      <p>按流程分步：① 填写基本信息 → ② 添加参考文章 → ③ 蒸馏风格 → ④ 查看画像。每步有明确的"上一步/下一步"，引导用户完成完整流程。</p>
+    </div>
+  </div>
+</div>

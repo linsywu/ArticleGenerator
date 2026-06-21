@@ -1,0 +1,74 @@
+<h2>新建账号 — 三步向导详细设计</h2>
+<p class="subtitle">点击"新增账号"按钮 → 打开向导弹窗（el-dialog 或独立页面），按步骤引导</p>
+
+<div class="section">
+  <h3>Step 1：基本信息</h3>
+  <div class="mockup">
+    <div class="mockup-body" style="padding: 24px;">
+      <div style="display: flex; gap: 16px; margin-bottom: 16px;">
+        <div style="flex: 1;">
+          <div class="label">平台</div>
+          <input class="mock-input" value="微信公众号" style="width: 100%;">
+        </div>
+        <div style="flex: 1;">
+          <div class="label">账号名称</div>
+          <input class="mock-input" value="陆拾一" style="width: 100%;">
+        </div>
+      </div>
+      <p style="color: var(--muted); font-size: 13px; margin-top: 12px;">填写你要分析的写作账号的平台和名称</p>
+      <div style="text-align: right; margin-top: 24px;">
+        <button class="mock-button" style="background: var(--primary); color: #fff;">下一步：添加参考文章 →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Step 2：添加参考文章</h3>
+  <div class="mockup">
+    <div class="mockup-body" style="padding: 24px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <span style="font-weight: 600;">已添加 3 篇文章</span>
+        <button class="mock-button">+ 添加文章</button>
+      </div>
+      <div style="border: 1px solid var(--border-color); border-radius: 8px;">
+        <div style="padding: 12px 16px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+          <div><strong>当代女性的情感困局</strong> <span style="color: var(--muted); font-size: 12px;">2,340 字</span></div>
+          <span style="background: var(--primary); color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 11px;">代表篇</span>
+        </div>
+        <div style="padding: 12px 16px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+          <div><strong>为什么我们不擅长告别</strong> <span style="color: var(--muted); font-size: 12px;">1,890 字</span></div>
+        </div>
+        <div style="padding: 12px 16px; display: flex; justify-content: space-between; align-items: center;">
+          <div><strong>成年人最大的自律是...</strong> <span style="color: var(--muted); font-size: 12px;">3,120 字</span></div>
+        </div>
+      </div>
+      <p style="color: var(--muted); font-size: 13px; margin-top: 12px;">建议添加 3~5 篇最能代表该账号风格的文章。标注"代表篇"用于蒸馏质量校验。</p>
+      <div style="text-align: right; margin-top: 24px; display: flex; justify-content: space-between;">
+        <button class="mock-button">← 上一步</button>
+        <button class="mock-button" style="background: var(--primary); color: #fff;">下一步：确认并蒸馏 →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Step 3：确认并蒸馏</h3>
+  <div class="mockup">
+    <div class="mockup-body" style="padding: 24px;">
+      <div style="background: var(--bg-secondary); padding: 16px; border-radius: 8px; margin-bottom: 20px;">
+        <div class="label">确认信息</div>
+        <table style="width: 100%; margin-top: 8px; font-size: 14px;">
+          <tr><td style="padding: 4px 0; color: var(--muted);">平台</td><td>微信公众号</td></tr>
+          <tr><td style="padding: 4px 0; color: var(--muted);">账号</td><td>陆拾一</td></tr>
+          <tr><td style="padding: 4px 0; color: var(--muted);">参考文章</td><td>3 篇</td></tr>
+        </table>
+      </div>
+      <p style="font-size: 14px; margin-bottom: 24px;">点击"开始蒸馏"后，系统将分析参考文章，提取 7 个维度的写作风格特征。预计耗时 30~60 秒。</p>
+      <div style="text-align: right; display: flex; justify-content: space-between;">
+        <button class="mock-button">← 上一步</button>
+        <button class="mock-button" style="background: var(--primary); color: #fff; font-size: 15px; padding: 10px 28px;">🔥 开始蒸馏</button>
+      </div>
+    </div>
+  </div>
+</div>

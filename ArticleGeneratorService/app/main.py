@@ -13,7 +13,7 @@ from .models import User
 from .auth import get_password_hash
 from .api import accounts, hotspot_sources, hotspots, articles, generate, providers, scenario_configs, reference_articles, distill, generation_logs, tasks, tracks, mp_accounts, credentials, collect_tasks, materials, collect_logs
 from .api import auth as auth_api
-from .deps import get_current_user
+from .deps import get_current_user, verify_any_auth
 from . import tasks as _celery_tasks  # ensures Celery app + collector tasks are registered
 
 app = FastAPI(
@@ -57,7 +57,7 @@ app.include_router(accounts.router, prefix="/api", dependencies=[Depends(get_cur
 app.include_router(articles.router, prefix="/api", dependencies=[Depends(get_current_user)])
 app.include_router(generate.router, prefix="/api", dependencies=[Depends(get_current_user)])
 app.include_router(providers.router, prefix="/api", dependencies=[Depends(get_current_user)])
-app.include_router(scenario_configs.router, prefix="/api", dependencies=[Depends(get_current_user)])
+app.include_router(scenario_configs.router, prefix="/api", dependencies=[Depends(verify_any_auth)])
 app.include_router(reference_articles.router, prefix="/api", dependencies=[Depends(get_current_user)])
 app.include_router(distill.router, prefix="/api", dependencies=[Depends(get_current_user)])
 app.include_router(generation_logs.router, prefix="/api", dependencies=[Depends(get_current_user)])
