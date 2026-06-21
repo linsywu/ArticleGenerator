@@ -305,10 +305,10 @@ def trigger_refine(self, article_id: int, keywords: str):
 
 @celery_app.task(bind=True)
 def trigger_distill(self, account_id: int, articles_content: list, num_articles: int):
-    """异步蒸馏：参考文章 → 结构化风格画像"""
+    """异步蒸馏：逐维度调用 LLM，实时更新进度"""
     db = SessionLocal()
     try:
-        # 截断过长的单篇文章（每篇最多 800 字符，防止超出 LLM 上下文窗口）
+        # Truncate articles
         max_per_article = 800
         truncated = []
         for a in articles_content:
@@ -316,105 +316,112 @@ def trigger_distill(self, account_id: int, articles_content: list, num_articles:
                 truncated.append(a[:max_per_article] + "\n\n[... 后续内容已截断 ...]")
             else:
                 truncated.append(a)
+        combined_articles = "\n\n---\n\n".join(truncated)
+
+        # Mark as running
+        account = db.query(Account).filter(Account.id == account_id).first()
+        if account:
+            account.style_profile_status = "running"
+            account.style_profile_structured = json.dumps({
+                "_progress": {"completed": 0, "total": 7, "current_dimension": "准备中"}
+            })
+            db.commit()
+
+        # Define 7 dimensions
+        dimensions = [
+            ("thinking_pattern", "思维模式", "分析作者的核心思维模式：是理性分析型、情感共鸣型、还是批判质疑型？描述其推理逻辑和论证方式。"),
+            ("structure_pattern", "结构模式", "分析文章的结构特点：开篇方式、段落组织、过渡手法、结尾风格。"),
+            ("sentence_pattern", "句式特征", "分析句式特点：长短句比例、修辞手法、句式多样性、节奏感。"),
+            ("vocabulary_pattern", "词汇偏好", "分析词汇使用习惯：高频词汇、专业术语、口语化程度、用词偏好。"),
+            ("evidence_type", "论据类型", "分析论据使用方式：数据引用、案例引用、个人经验、权威引用等。"),
+            ("taboos", "写作禁忌", "识别写作中应避免的内容：敏感话题、表达方式禁忌、价值观红线。"),
+            ("blank_leaving", "留白习惯", "分析留白手法：结尾方式、悬念设置、读者参与空间、余韵处理。"),
+        ]
 
         llm_url = settings.llm_service_url.rstrip("/")
-        with httpx.Client(timeout=300.0) as client:
-            resp = client.post(f"{llm_url}/chat", json={
-                "scenario": "distill",
-                "account_id": account_id,
-                "variables": {
-                    "num_articles": str(num_articles),
-                    "articles_content": "\n\n---\n\n".join(truncated),
-                },
-            })
-            resp.raise_for_status()
-            data = resp.json()
+        structured = {}
 
-        content = data.get("content", "")
-        if not content:
-            raise ValueError("蒸馏返回内容为空")
-
-        # 解析 LLM 返回的结构化 JSON（多层容错）
-        structured = None
-
-        def try_parse_json(text: str):
-            """尝试多种策略从 LLM 输出中提取 JSON"""
-            if not text or not text.strip():
-                return None
-
-            # 策略 0: 清洗控制字符
-            cleaned = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]', '', text)
-
-            # 策略 1: 直接解析清洗后的内容
-            try:
-                return json.loads(cleaned)
-            except json.JSONDecodeError:
-                pass
-
-            # 策略 2: 提取第一个 JSON 对象 {...}
-            obj_match = re.search(r'\{.*\}', cleaned, re.DOTALL)
-            if obj_match:
+        with httpx.Client(timeout=120.0) as client:
+            for i, (dim_key, dim_label, dim_prompt) in enumerate(dimensions):
                 try:
-                    return json.loads(obj_match.group(0))
-                except json.JSONDecodeError:
-                    pass
+                    resp = client.post(f"{llm_url}/chat", json={
+                        "scenario": "distill",
+                        "account_id": account_id,
+                        "variables": {
+                            "num_articles": str(num_articles),
+                            "articles_content": combined_articles,
+                            "dimension": dim_label,
+                            "dimension_prompt": dim_prompt,
+                        },
+                    })
+                    resp.raise_for_status()
+                    data = resp.json()
+                    content = data.get("content", "").strip()
 
-            # 策略 3: 提取 markdown 代码块中的 JSON
-            code_match = re.search(r'```(?:json)?\s*\n?(.*?)\n?```', cleaned, re.DOTALL)
-            if code_match:
-                try:
-                    return json.loads(code_match.group(1))
-                except json.JSONDecodeError:
-                    pass
+                    if content:
+                        structured[dim_key] = content
 
-            # 策略 4: 尝试 ast.literal_eval（处理 Python dict 格式）
-            try:
-                import ast
-                return ast.literal_eval(cleaned.strip())
-            except (ValueError, SyntaxError):
-                pass
+                except Exception as dim_err:
+                    account = db.query(Account).filter(Account.id == account_id).first()
+                    if account:
+                        account.style_profile_status = "failed"
+                        account.style_profile = f"维度 [{dim_label}] 蒸馏失败: {str(dim_err)}"
+                        db.commit()
+                    db.close()
+                    return {"account_id": account_id, "status": "failed", "error": str(dim_err)}
 
-            return None
+                # Update progress after each dimension
+                completed = i + 1
+                structured["_progress"] = {
+                    "completed": completed,
+                    "total": 7,
+                    "current_dimension": dim_label if completed < 7 else "完成"
+                }
 
-        structured = try_parse_json(content)
+                account = db.query(Account).filter(Account.id == account_id).first()
+                if account:
+                    account.style_profile_structured = json.dumps(structured, ensure_ascii=False)
+                    db.commit()
 
-        # 生成兼容旧版的摘要文本
-        summary_text = content  # 回退：使用原始返回内容
-        if structured:
-            parts = []
-            dim_labels = {
-                "thinking_pattern": "思维特征",
-                "structure_pattern": "结构模式",
-                "sentence_pattern": "句式特征",
-                "vocabulary_pattern": "词汇偏好",
-                "evidence_type": "论据类型",
-                "taboos": "禁忌清单",
-                "blank_leaving": "留白程度",
-            }
-            for key, label in dim_labels.items():
-                if structured.get(key):
-                    parts.append(f"【{label}】\n{structured[key]}")
-            summary_text = "\n\n".join(parts)
+        # All 7 dimensions complete
+        structured.pop("_progress", None)
+
+        # Generate legacy summary text
+        dim_labels = {
+            "thinking_pattern": "思维特征",
+            "structure_pattern": "结构模式",
+            "sentence_pattern": "句式特征",
+            "vocabulary_pattern": "词汇偏好",
+            "evidence_type": "论据类型",
+            "taboos": "禁忌清单",
+            "blank_leaving": "留白程度",
+        }
+        parts = []
+        for key, label in dim_labels.items():
+            if structured.get(key):
+                parts.append(f"【{label}】\n{structured[key]}")
+        summary_text = "\n\n".join(parts)
 
         account = db.query(Account).filter(Account.id == account_id).first()
         if account:
-            account.style_profile = summary_text  # 兼容旧版文本画像
-            account.style_profile_structured = json.dumps(structured, ensure_ascii=False) if structured else None
-            account.style_profile_status = "ready" if structured else "failed"
+            account.style_profile = summary_text
+            account.style_profile_structured = json.dumps(structured, ensure_ascii=False)
+            account.style_profile_status = "ready"
             account.style_profile_version = (account.style_profile_version or 0) + 1
             account.style_profile_updated_at = datetime.now(timezone.utc)
             db.commit()
 
-        return {"account_id": account_id, "status": account.style_profile_status if account else "error"}
+        db.close()
+        return {"account_id": account_id, "status": "ready"}
+
     except Exception as e:
-        # 标记失败
         account = db.query(Account).filter(Account.id == account_id).first()
         if account:
             account.style_profile_status = "failed"
+            account.style_profile = str(e)
             db.commit()
-        raise
-    finally:
         db.close()
+        raise
 
 
 @celery_app.task(bind=True)
