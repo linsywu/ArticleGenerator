@@ -206,6 +206,9 @@ export const api = {
   // 蒸馏
   triggerDistill: (accountId: number) =>
     post(`/accounts/${accountId}/distill`),
+  // 蒸馏状态
+  getDistillStatus: (accountId: number) =>
+    get<{ status: string; progress?: { completed: number; total: number; current_dimension: string }; style_profile_version?: number; error?: string }>(`/accounts/${accountId}/distill/status`),
 
   // 生成日志
   getGenerationLogs: (params?: { scenario?: string; page?: number; page_size?: number }) =>

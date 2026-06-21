@@ -34,6 +34,8 @@ export interface Account {
   style_profile_structured?: StyleProfile | null;
   style_profile_version?: number;
   style_profile_status?: string;
+  word_count_options?: string;
+  word_count?: number | null;
   created_at: string;
 }
 
