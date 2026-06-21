@@ -78,7 +78,7 @@ const dialogTitle = computed(() => {
 });
 
 function onOpen() {
-  if (props.material?.title && props.material?.account_id) {
+  if (props.material?.title) {
     startGeneration();
   }
 }
@@ -92,8 +92,8 @@ function onClose() {
 }
 
 async function startGeneration() {
-  if (!props.material?.title || !props.material?.account_id) {
-    errorMsg.value = "素材信息不完整";
+  if (!props.material?.title) {
+    errorMsg.value = "素材信息不完整（缺少标题）";
     return;
   }
 
@@ -105,7 +105,7 @@ async function startGeneration() {
 
   try {
     const { data } = await api.generateDirections(
-      props.material.account_id,
+      0,
       props.material.title
     );
     const taskId = (data as any).task_id;
@@ -149,9 +149,6 @@ function goCreate() {
   const query: Record<string, string> = {
     idea: props.material.title || "",
   };
-  if (props.material.account_id) {
-    query.account_id = String(props.material.account_id);
-  }
 
   emit("update:modelValue", false);
   router.push({ path: "/create", query });

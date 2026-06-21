@@ -141,14 +141,11 @@ def cancel_generation_task(task_id: str, db: Session = Depends(get_db)):
 
 @router.post("/directions")
 def generate_directions(data: DirectionsRequest, db: Session = Depends(get_db)):
-    """生成写作方向：根据想法和账号风格，生成 3-5 个不同的切入角度"""
-    account = db.query(Account).filter(Account.id == data.account_id).first()
-    if not account:
-        raise HTTPException(status_code=404, detail="账号不存在")
+    """生成写作方向：根据想法和可选的账号风格，生成 3-5 个不同的切入角度"""
     if not data.idea.strip():
         raise HTTPException(status_code=400, detail="想法不能为空")
 
-    task = trigger_direction_generation.delay(data.account_id, data.idea.strip(), data.word_count)
+    task = trigger_direction_generation.delay(data.account_id or 0, data.idea.strip(), data.word_count)
     return {"task_id": task.id, "status": "pending", "message": "方向生成已提交"}
 
 

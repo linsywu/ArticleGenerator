@@ -197,7 +197,7 @@ class RefineRequest(BaseModel):
 
 class DirectionsRequest(BaseModel):
     """方向生成请求"""
-    account_id: int
+    account_id: Optional[int] = 0
     idea: str
     word_count: Optional[str] = None
 
@@ -343,7 +343,7 @@ class DistillRequest(BaseModel):
 
 # ── 方向生成 ──
 class DirectionsRequest(BaseModel):
-    account_id: int
+    account_id: Optional[int] = 0
     idea: str
 
 class DirectionItem(BaseModel):
