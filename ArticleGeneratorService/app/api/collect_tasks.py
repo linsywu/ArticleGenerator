@@ -8,7 +8,7 @@ from typing import List, Optional
 from collections import defaultdict
 
 from ..database import get_db
-from ..models import CollectTask, CollectLog
+from ..models import CollectTask, CollectLog, _local_iso
 from ..schemas import CollectTaskCreate, CollectTaskUpdate, CollectTaskResponse
 
 router = APIRouter(prefix="/collect-tasks", tags=["采集任务管理"])
@@ -51,7 +51,7 @@ def list_collect_tasks(
                 "total_count": sum(l.total_count or 0 for l in recent_logs),
                 "success_count": sum(l.success_count or 0 for l in recent_logs),
                 "fail_count": sum(l.fail_count or 0 for l in recent_logs),
-                "executed_at": latest_time.isoformat() if latest_time else None,
+                "executed_at": _local_iso(latest_time) if latest_time else None,
             }
         else:
             task_dict["last_result"] = None

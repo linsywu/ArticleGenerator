@@ -1,14 +1,25 @@
 """
 数据模型定义
 """
-from datetime import datetime, timezone, date
+from datetime import datetime, timezone, timedelta, date
 from sqlalchemy import Column, Integer, String, Text, DateTime, Date, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
 from .database import Base
 
+CST = timezone(timedelta(hours=8))  # Asia/Shanghai
+
 
 def _utcnow():
     return datetime.now(timezone.utc)
+
+
+def _local_iso(dt: datetime | None) -> str | None:
+    """Convert UTC datetime to Asia/Shanghai ISO string for frontend display"""
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(CST).isoformat()
 
 
 class User(Base):
