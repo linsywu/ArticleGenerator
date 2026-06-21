@@ -73,11 +73,12 @@ class MpClient:
                            ) -> List[Dict[str, Any]]:
         articles = []
         count = self._mode_count(mode)
+        page_size = 5  # WeChat MP API max per page
         begin = 0
         while begin < count:
             params = {
                 "action": "list_ex", "type": "9", "query": "",
-                "fakeid": fakeid, "begin": str(begin), "count": "10",
+                "fakeid": fakeid, "begin": str(begin), "count": str(page_size),
             }
             resp = self._get("/cgi-bin/appmsg", params)
             data = resp.json()
@@ -93,9 +94,9 @@ class MpClient:
                     "cover": msg.get("cover", ""),
                     "digest": msg.get("digest", ""),
                 })
-            if len(app_msg_list) < 10:
+            if len(app_msg_list) < page_size:
                 break
-            begin += 10
+            begin += page_size
         return articles
 
     def fetch_article_html(self, url: str) -> str:
@@ -175,7 +176,7 @@ class MpClient:
 
     @staticmethod
     def _mode_count(mode: str) -> int:
-        mode_map = {"full": 999999, "history_50": 50, "history_100": 100, "history_200": 200, "incremental": 10}
+        mode_map = {"full": 999999, "history_50": 50, "history_100": 100, "history_200": 200, "incremental": 5}
         return mode_map.get(mode, 10)
 
     def check_health(self) -> bool:
