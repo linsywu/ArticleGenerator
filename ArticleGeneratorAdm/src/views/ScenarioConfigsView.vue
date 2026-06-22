@@ -114,6 +114,7 @@ const form = reactive({
 });
 
 const scenarioOptions = [
+  { value: "material-summary", label: "⓪ 素材摘要" },
   { value: "distill", label: "① 蒸馏" },
   { value: "direction", label: "② 方向生成" },
   { value: "outline", label: "③ 大纲生成" },
@@ -165,7 +166,13 @@ const scenarioVariables: Record<string, { name: string; description: string }[]>
     { name: 'article_content', description: '待微调的文章全文' },
     { name: 'keywords', description: '用户输入的修改关键词' },
   ],
-  distill: [],
+  distill: [
+    { name: 'articles_content', description: '多篇参考文章合并后的全文（含序号分隔）' },
+  ],
+  "material-summary": [
+    { name: 'title', description: '素材文章标题' },
+    { name: 'content', description: '素材文章全文内容' },
+  ],
 };
 
 function varLabel(name: string) { return `{{${name}}}`; }
@@ -184,7 +191,7 @@ function insertVar(varName: string) {
 
 function scenarioLabel(s: string) { return scenarioMap[s] || s; }
 function scenarioTag(s: string): string {
-  const t: Record<string, string> = { distill: "warning", generate: "", quality_review: "success", compliance_review: "danger", refine: "info" };
+  const t: Record<string, string> = { "material-summary": "info", distill: "warning", generate: "", quality_review: "success", compliance_review: "danger", refine: "info" };
   return t[s] || "";
 }
 
