@@ -47,7 +47,7 @@ def get_db_session():
         db.close()
 
 
-def resolve_article_title(content: str, hotspot_title: str | None) -> str | None:
+def resolve_article_title(content: str, topic: str | None) -> str | None:
     """
     解析文章最终标题。
 
@@ -58,8 +58,8 @@ def resolve_article_title(content: str, hotspot_title: str | None) -> str | None
     输出内容自动提取的标题。
     """
     # 优先使用传入的标题（非空即用）
-    if hotspot_title and hotspot_title.strip():
-        return hotspot_title.strip()[:200]
+    if topic and topic.strip():
+        return topic.strip()[:200]
 
     # 回退：从 LLM 输出内容中提取标题
     if not content:
@@ -81,7 +81,7 @@ def resolve_article_title(content: str, hotspot_title: str | None) -> str | None
 
 
 @celery_app.task(bind=True)
-def trigger_generate(self, hotspot_title: str, account_id: int, hotspot_id: int = None, outline: list = None, word_count: str = None):
+def trigger_generate(self, topic: str, account_id: int, hotspot_id: int = None, outline: list = None, word_count: str = None):
     """
     异步生成文章：调用 LLM 服务，写入数据库
     """
@@ -134,7 +134,7 @@ def trigger_generate(self, hotspot_title: str, account_id: int, hotspot_id: int 
             word_count_instruction = f"字数{account.word_count}。"
 
         user_prompt = (
-            f'以"{hotspot_title}"为题，写一篇文章。\n\n'
+            f'以"{topic}"为题，写一篇文章。\n\n'
             f'{style_instructions}\n'
             f'{outline_text}\n'
             f'{word_count_instruction}'
@@ -143,7 +143,7 @@ def trigger_generate(self, hotspot_title: str, account_id: int, hotspot_id: int 
         # 调用 LLM 服务
         llm_url = settings.llm_service_url.rstrip("/")
         payload = {
-            "hotspot_title": hotspot_title,
+            "topic": topic,
             "account_id": account_id,
             "user_prompt": user_prompt,
         }
@@ -159,7 +159,7 @@ def trigger_generate(self, hotspot_title: str, account_id: int, hotspot_id: int 
             raise ValueError("LLM 返回内容为空")
 
         # 使用统一的标题解析逻辑（优先用户选择 → 回退自动提取）
-        title = resolve_article_title(content, hotspot_title)
+        title = resolve_article_title(content, topic)
 
         # 写入文章表
         article = Article(
