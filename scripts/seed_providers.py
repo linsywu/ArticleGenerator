@@ -116,14 +116,24 @@ scenarios = [
         "scenario": "generate",
         "model": "claude-sonnet-4-20250514",
         "system_prompt_template": (
-            "你是一个专业的内容创作者。根据热点标题和风格要求，创作一篇高质量的文章。"
-            "文章需要有吸引人的标题、清晰的结构、充实的内容。\n\n"
-            "风格要求：{{style_profile}}\n\n"
-            "热点标题：{{hotspot_title}}"
+            "你是一个专业的内容创作者。\n\n"
+            "## 任务\n"
+            "根据以下信息创作一篇高质量的文章。\n\n"
+            "## 文章主题\n"
+            "{{topic}}\n\n"
+            "## 风格画像\n"
+            "{{style_profile}}\n\n"
+            "{{style_instructions}}"
+            "{{outline_section}}"
+            "{{word_count_instruction}}\n\n"
+            "## 要求\n"
+            "- 文章需要有吸引人的标题（包含在正文开头）\n"
+            "- 清晰的结构、充实的内容\n"
+            "- 语言自然，避免AI写作痕迹"
         ),
         "params": '{"max_tokens": 4096, "temperature": 0.8}',
         "priority": 10,
-        "description": "⑤ 文章生成：根据热点/想法 + 风格画像 + 大纲生成全文",
+        "description": "⑤ 文章生成：根据主题 + 风格画像 + 大纲生成全文（提示词统一在模板中）",
         "sort_order": 5,
     },
     # ── ⑥ 去AI味 ────────────────────────────────────────────────────────────
@@ -132,17 +142,19 @@ scenarios = [
         "model": "claude-sonnet-4-20250514",
         "system_prompt_template": (
             "你是一个资深编辑，擅长让AI生成的文章读起来像真人写的。\n\n"
+            "{{outline_section}}"
             "请对以下文章进行「去AI味」处理：\n"
             "1. 打破过于工整的对称结构\n"
             "2. 加入自然的语气变化和口语化表达\n"
             "3. 减少「首先/其次/最后/总而言之」等套路连接词\n"
             "4. 适当加入个人化的观点和感受\n"
-            "5. 段落长短错落，避免每段都是3-4句\n\n"
+            "5. 段落长短错落，避免每段都是3-4句\n"
+            "6. 如果原文有大纲结构要求，重写时保持段落结构不变\n\n"
             "文章内容：\n{{article_content}}"
         ),
         "params": '{"max_tokens": 4096, "temperature": 0.7}',
         "priority": 5,
-        "description": "⑥ 去AI味：重写文章，消除AI写作痕迹，增加人味儿",
+        "description": "⑥ 去AI味：重写文章，消除AI写作痕迹，增加人味儿（感知大纲结构）",
         "sort_order": 6,
     },
     # ── ⑦ 质量评审 ──────────────────────────────────────────────────────────
