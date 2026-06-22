@@ -94,8 +94,11 @@
           </div>
           <div class="card-actions">
             <el-button size="large" @click="currentStep = 1">返回上一步</el-button>
+            <el-button size="large" :disabled="!selectedDirection" @click="skipToTitles">
+              跳过大纲 · 直接生成标题
+            </el-button>
             <el-button size="large" type="primary" :disabled="!selectedDirection" :loading="loadingOutline" @click="generateOutline">
-              下一步 · 生成大纲
+              生成大纲预览
             </el-button>
           </div>
         </div>
@@ -119,8 +122,9 @@
           <el-button size="small" @click="outline.push({ order: outline.length + 1, point: '' })" style="margin-top:12px">＋ 添加要点</el-button>
           <div class="card-actions">
             <el-button size="large" @click="currentStep = 2">返回上一步</el-button>
+            <el-button size="large" @click="skipToTitles">不使用大纲 · 直接生成标题</el-button>
             <el-button size="large" type="primary" :disabled="!outline.length || !outline.every(o => o.point.trim())" @click="generateTitles">
-              下一步 · 生成标题
+              使用大纲 · 生成标题
             </el-button>
           </div>
         </div>
@@ -289,11 +293,16 @@ async function generateOutline() {
   finally { loadingOutline.value = false }
 }
 
+function skipToTitles() {
+  outline.value = []  // 清空大纲
+  currentStep.value = 4  // 直接跳到标题生成步骤（step index 4）
+}
+
 async function generateTitles() {
-  if (!selectedAccountId.value || !selectedDirection.value || !outline.value.length) return
+  if (!selectedAccountId.value || !selectedDirection.value) return
   loadingTitles.value = true
   try {
-    const points = outline.value.map(o => o.point)
+    const points = outline.value.length ? outline.value.map(o => o.point) : undefined
     const { data } = await api.generateTitles(selectedAccountId.value, idea.value.trim(), selectedDirection.value.title, points)
     const taskId = data.task_id
     if (!taskId) throw new Error('未获取到任务 ID')
@@ -332,7 +341,7 @@ async function startGenerate() {
   generatingStatusText.value = '正在生成文章...'
 
   try {
-    const points = outline.value.map(o => o.point)
+    const points = outline.value.length ? outline.value.map(o => o.point) : undefined
     const topicWithTitle = editedTitle.value
       ? `${editedTitle.value}\n\n${idea.value.trim()}`
       : idea.value.trim()
