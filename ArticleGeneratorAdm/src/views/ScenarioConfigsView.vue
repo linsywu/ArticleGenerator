@@ -60,7 +60,7 @@
                 type="info"
                 class="var-tag"
                 @click="insertVar(v.name)"
-              >{{ '{{' + v.name + '}}' }}</el-tag>
+              >{{ varLabel(v.name) }}</el-tag>
             </el-tooltip>
           </div>
           <el-input v-model="form.system_prompt_template" type="textarea" :rows="9" placeholder="支持 {{变量}} 占位" />
@@ -167,6 +167,8 @@ const scenarioVariables: Record<string, { name: string; description: string }[]>
   ],
   distill: [],
 };
+
+function varLabel(name: string) { return `{{${name}}}`; }
 
 const currentScenarioVars = computed(() => scenarioVariables[form.scenario] || []);
 
