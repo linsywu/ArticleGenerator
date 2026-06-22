@@ -19,14 +19,17 @@ export default {
 
   triggerGenerateWithOutline: (
     accountId: number,
-    customTopic: string,
-    outline: string[],
+    topic: string,
+    outline?: string[],
   ) => post("/generate/trigger", {
     hotspot_ids: [],
     account_id: accountId,
-    custom_topic: customTopic,
-    outline,
+    custom_topic: topic,
+    outline: outline || [],
   }),
+
+  generateTitles: (accountId: number, idea: string, direction: string, outline?: string[]) =>
+    post<{ task_id: string; status: string; message: string }>("/generate/titles", { account_id: accountId, idea, direction, outline: outline || [] }),
 
   triggerRefine: (articleId: number, keywords: string) =>
     post(`/generate/refine/${articleId}`, { keywords }),
