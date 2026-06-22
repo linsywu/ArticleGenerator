@@ -41,7 +41,8 @@ def chat(req: ChatRequest):
 
 
 class GenerateLegacyRequest(BaseModel):
-    hotspot_title: str
+    hotspot_title: Optional[str] = None
+    topic: Optional[str] = None
     account_id: int
     lora_path: Optional[str] = None
     user_prompt: Optional[str] = None
@@ -56,7 +57,9 @@ class RefineLegacyRequest(BaseModel):
 # 保留旧端点兼容（标记废弃），内部转发到 /chat
 @app.post("/generate")
 def generate_legacy(req: GenerateLegacyRequest):
-    variables = {"hotspot_title": req.hotspot_title}
+    # 兼容新旧调用方：优先 topic，回退 hotspot_title
+    resolved_topic = req.topic or req.hotspot_title or ""
+    variables = {"topic": resolved_topic}
     if req.user_prompt:
         variables["user_prompt"] = req.user_prompt
     return gateway.chat(
