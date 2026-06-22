@@ -47,7 +47,7 @@ def get_db_session():
         db.close()
 
 
-def resolve_article_title(content: str, topic: str | None) -> str | None:
+def resolve_article_title(content: str, topic: str | None = None, hotspot_title: str | None = None) -> str | None:
     """
     解析文章最终标题。
 
@@ -56,10 +56,13 @@ def resolve_article_title(content: str, topic: str | None) -> str | None:
 
     这修复了一个 bug：用户选择标题后，文章列表展示的却是 LLM
     输出内容自动提取的标题。
+
+    兼容旧参数名 hotspot_title（已废弃，优先使用 topic）。
     """
-    # 优先使用传入的标题（非空即用）
-    if topic and topic.strip():
-        return topic.strip()[:200]
+    # 兼容：优先 topic，回退 hotspot_title
+    resolved = topic or hotspot_title
+    if resolved and resolved.strip():
+        return resolved.strip()[:200]
 
     # 回退：从 LLM 输出内容中提取标题
     if not content:
