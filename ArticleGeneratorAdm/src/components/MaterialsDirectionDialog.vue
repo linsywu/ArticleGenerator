@@ -3,35 +3,68 @@
     :model-value="modelValue"
     @update:model-value="$emit('update:modelValue', $event)"
     :title="dialogTitle"
-    width="600px"
+    width="650px"
     :close-on-click-modal="false"
     @open="onOpen"
     @close="onClose"
   >
-    <!-- Loading state -->
-    <div v-if="loading" class="direction-loading">
-      <div class="direction-spinner"></div>
-      <p>正在生成创作方向...</p>
+    <!-- 状态 1: 加载素材内容 -->
+    <div v-if="loadingContent" class="state-box">
+      <div class="spinner"></div>
+      <p>加载素材内容...</p>
     </div>
 
-    <!-- Error state -->
-    <div v-else-if="errorMsg" class="direction-error">
-      <p>{{ errorMsg }}</p>
-      <el-button type="primary" @click="startGeneration">重试</el-button>
+    <!-- 状态 2: 正在生成摘要 -->
+    <div v-else-if="generatingSummary" class="state-box">
+      <div class="spinner"></div>
+      <p>正在生成摘要...</p>
     </div>
 
-    <!-- Directions grid -->
-    <div v-else-if="directions.length" class="directions-grid">
-      <div
-        v-for="d in directions"
-        :key="d.id"
-        class="direction-card"
-        :class="{ selected: selectedDirection?.id === d.id }"
-        @click="selectedDirection = d"
-      >
-        <span class="direction-id">{{ d.id }}</span>
-        <span class="direction-title">{{ d.title }}</span>
-        <span v-if="selectedDirection?.id === d.id" class="direction-check">✓</span>
+    <!-- 状态 3: 就绪 — 摘要 + 账号选择 -->
+    <div v-else class="ready-layout">
+      <!-- 摘要区域 -->
+      <div class="section">
+        <div class="section-header">
+          <label class="section-label">AI 摘要</label>
+          <el-button
+            size="small"
+            text
+            :loading="generatingSummary"
+            @click="startSummaryGeneration()"
+          >
+            🔄 重新生成
+          </el-button>
+        </div>
+        <el-input
+          v-model="summary"
+          type="textarea"
+          :rows="4"
+          placeholder="摘要内容..."
+        />
+        <p v-if="summaryError" class="error-text">{{ summaryError }}</p>
+      </div>
+
+      <!-- 账号选择区域 -->
+      <div class="section">
+        <label class="section-label">选择写作账号</label>
+        <div
+          v-for="acc in accounts"
+          :key="acc.id"
+          class="account-option"
+          :class="{ selected: selectedAccountId === acc.id }"
+          @click="selectedAccountId = acc.id"
+        >
+          <div class="account-avatar">{{ acc.account_name.charAt(0) }}</div>
+          <div class="account-info">
+            <span class="account-name">{{ acc.account_name }}</span>
+            <span class="account-platform">{{ acc.platform }}</span>
+          </div>
+          <span class="account-badge" :class="{ ready: acc.style_profile_status === 'ready' }">
+            {{ acc.style_profile_status === 'ready' ? '画像就绪' : '待蒸馏' }}
+          </span>
+          <span v-if="selectedAccountId === acc.id" class="account-check">✓</span>
+        </div>
+        <p v-if="!accounts.length && !loadingContent" class="no-data">暂无可用账号</p>
       </div>
     </div>
 
@@ -39,10 +72,10 @@
       <el-button @click="$emit('update:modelValue', false)">取消</el-button>
       <el-button
         type="primary"
-        :disabled="!selectedDirection"
+        :disabled="!selectedAccountId || !summary.trim() || generatingSummary || loadingContent"
         @click="goCreate"
       >
-        去创作
+        确认 · 去创作
       </el-button>
     </template>
   </el-dialog>
@@ -51,9 +84,10 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 import { useRouter } from "vue-router";
-import { api } from "@/api/client";
 import materialsApi from "@/api/modules/materials";
-import type { DirectionItem, MpMaterial } from "@/api/types";
+import { api } from "@/api/client";
+import { useAccountsStore } from "@/store/accounts";
+import type { MpMaterial } from "@/api/types";
 
 const props = defineProps<{
   modelValue: boolean;
@@ -65,15 +99,16 @@ const emit = defineEmits<{
 }>();
 
 const router = useRouter();
+const accountsStore = useAccountsStore();
 
-const directions = ref<DirectionItem[]>([]);
-const selectedDirection = ref<DirectionItem | null>(null);
-const loading = ref(false);
-const errorMsg = ref("");
-const contentIdea = ref("");
+const accounts = computed(() => accountsStore.accounts);
+const selectedAccountId = ref<number | null>(null);
+const summary = ref("");
+const summaryError = ref("");
+const loadingContent = ref(false);
+const generatingSummary = ref(false);
 let generationCancelled = false;
 
-/** Strip HTML tags from a string, keeping text content only */
 function stripHtml(html: string): string {
   if (!html) return "";
   return html.replace(/<[^>]+>/g, "").replace(/&[a-z]+;/g, " ").trim();
@@ -88,126 +123,116 @@ const dialogTitle = computed(() => {
 async function onOpen() {
   if (!props.material) return;
 
-  loading.value = true;
-  errorMsg.value = "";
+  loadingContent.value = true;
+  summary.value = "";
+  summaryError.value = "";
+  selectedAccountId.value = null;
 
   try {
-    // Fetch material detail to get summary/content for richer idea context
+    await accountsStore.fetch();
+
+    // 获取素材详情
     const { data: detail } = await materialsApi.getMaterial(props.material.id);
-    const title = (detail as any).title || props.material.title || "";
-    const summary = (detail as any).summary || "";
-    const markdown = (detail as any).content_markdown || "";
-    const html = (detail as any).content_html || "";
 
-    // Build the idea from title + summary/content
-    if (
-      summary &&
-      summary !== "———" &&
-      summary.trim().length > 5
-    ) {
-      contentIdea.value = `标题：${title}\n\n摘要：${summary}`;
-    } else if (markdown && markdown.trim().length > 10) {
-      const excerpt = markdown.slice(0, 2000);
-      contentIdea.value = `标题：${title}\n\n文章内容（节选）：\n${excerpt}`;
-    } else if (html && stripHtml(html).length > 10) {
-      const excerpt = stripHtml(html).slice(0, 2000);
-      contentIdea.value = `标题：${title}\n\n文章内容（节选）：\n${excerpt}`;
+    // 如果已有摘要，直接展示；否则自动生成
+    if (detail.summary && detail.summary !== "———" && detail.summary.trim().length > 5) {
+      summary.value = detail.summary;
     } else {
-      contentIdea.value = title || "";
+      await startSummaryGeneration(detail);
     }
-
-    await startGeneration();
   } catch (e: any) {
-    errorMsg.value = "加载素材详情失败";
-    loading.value = false;
+    summaryError.value = "加载素材详情失败";
+  } finally {
+    loadingContent.value = false;
   }
 }
 
 function onClose() {
   generationCancelled = true;
-  directions.value = [];
-  selectedDirection.value = null;
-  errorMsg.value = "";
-  contentIdea.value = "";
-  loading.value = false;
+  summary.value = "";
+  summaryError.value = "";
+  selectedAccountId.value = null;
+  loadingContent.value = false;
+  generatingSummary.value = false;
 }
 
-async function startGeneration() {
-  if (!contentIdea.value) {
-    errorMsg.value = "素材信息不完整";
+async function startSummaryGeneration(detail?: any) {
+  if (!props.material) return;
+
+  let materialDetail = detail;
+  if (!materialDetail) {
+    const { data } = await materialsApi.getMaterial(props.material.id);
+    materialDetail = data;
+  }
+
+  const title = materialDetail.title || props.material.title || "";
+  const markdown = materialDetail.content_markdown || "";
+  const html = materialDetail.content_html || "";
+  const content = markdown || stripHtml(html) || "";
+
+  if (!content && !title) {
+    summaryError.value = "素材内容为空，无法生成摘要";
     return;
   }
 
   generationCancelled = false;
-  loading.value = true;
-  errorMsg.value = "";
-  directions.value = [];
-  selectedDirection.value = null;
+  generatingSummary.value = true;
+  summaryError.value = "";
 
   try {
-    const { data } = await api.generateDirections(
-      0,
-      contentIdea.value
+    const { data } = await materialsApi.generateSummary(
+      props.material.id, title, content
     );
     const taskId = (data as any).task_id;
     if (!taskId) throw new Error("未获取到任务 ID");
 
-    // Poll for result (same pattern as CreateView)
+    // 轮询
     let attempts = 0;
-    const maxAttempts = 30;
-    while (attempts < maxAttempts) {
+    while (attempts < 30) {
       await new Promise((r) => setTimeout(r, 2000));
       if (generationCancelled) return;
       const { data: taskData } = await api.getTaskResult(taskId);
       if (generationCancelled) return;
       if (taskData.status === "success") {
-        const result = (taskData as any).result;
-        directions.value = result?.directions || [];
-        if (directions.value.length) {
-          selectedDirection.value = directions.value[0];
-        }
+        summary.value = (taskData as any).result?.summary || "";
         return;
       }
       if (taskData.status === "failed") {
-        throw new Error(
-          (taskData as any).error_message || "方向生成失败"
-        );
+        throw new Error((taskData as any).error_message || "摘要生成失败");
       }
       attempts++;
     }
-    throw new Error("方向生成超时，请重试");
+    throw new Error("摘要生成超时，请重试");
   } catch (e: any) {
-    errorMsg.value =
-      e?.response?.data?.detail || e?.message || "方向生成失败";
+    summaryError.value = e?.response?.data?.detail || e?.message || "摘要生成失败";
   } finally {
-    loading.value = false;
+    generatingSummary.value = false;
   }
 }
 
 function goCreate() {
-  if (!selectedDirection.value) return;
-
-  const query: Record<string, string> = {
-    idea: contentIdea.value || "",
-  };
+  if (!selectedAccountId.value || !summary.value.trim()) return;
 
   emit("update:modelValue", false);
-  router.push({ path: "/create", query });
+  router.push({
+    path: "/create",
+    query: {
+      idea: summary.value.trim(),
+      account_id: String(selectedAccountId.value),
+    },
+  });
 }
 </script>
 
 <style scoped>
-.direction-loading {
+.state-box {
   text-align: center;
   padding: 40px;
   color: var(--text-muted);
 }
-.direction-loading p {
-  margin-top: 16px;
-  font-size: 14px;
-}
+.state-box p { margin-top: 16px; font-size: 14px; }
 
-.direction-spinner {
+.spinner {
   width: 40px;
   height: 40px;
   border: 3px solid var(--ink-border, #e0e0e0);
@@ -216,60 +241,87 @@ function goCreate() {
   animation: spin 0.8s linear infinite;
   margin: 0 auto;
 }
-@keyframes spin {
-  to { transform: rotate(360deg); }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.ready-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
-.direction-error {
-  text-align: center;
-  padding: 40px;
-}
-.direction-error p {
-  color: var(--text-muted);
-  margin-bottom: 16px;
-}
-
-.directions-grid {
+.section {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.section-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-on-dark, #333);
+}
 
-.direction-card {
+.error-text {
+  color: #e53935;
+  font-size: 13px;
+}
+
+.account-option {
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 14px 18px;
+  padding: 12px 16px;
   background: var(--ink-surface, #f5f5f5);
   border: 1px solid var(--ink-border, #e0e0e0);
   border-radius: 8px;
   cursor: pointer;
   transition: border-color 0.2s, background-color 0.2s;
+  position: relative;
 }
-.direction-card:hover {
-  border-color: var(--text-dim, #999);
-}
-.direction-card.selected {
+.account-option:hover { border-color: var(--text-dim, #999); }
+.account-option.selected {
   border-color: var(--amber, #c8843c);
   background: rgba(200, 132, 60, 0.06);
 }
 
-.direction-id {
-  font-size: 20px;
+.account-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--amber, #c8843c);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
   font-weight: 700;
-  color: var(--amber, #c8843c);
-  width: 32px;
   flex-shrink: 0;
 }
+.account-info { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.account-name { font-size: 15px; font-weight: 600; color: var(--text-on-dark, #333); }
+.account-platform { font-size: 12px; color: var(--text-muted, #999); }
 
-.direction-title {
-  flex: 1;
-  font-size: 15px;
-  color: var(--text-on-dark, #333);
+.account-badge {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--ink-border, #e0e0e0);
+  color: var(--text-muted, #999);
 }
+.account-badge.ready { background: rgba(76, 175, 80, 0.12); color: #388e3c; }
 
-.direction-check {
+.account-check {
+  position: absolute;
+  top: 8px;
+  right: 12px;
   color: var(--amber, #c8843c);
   font-weight: 700;
+  font-size: 18px;
 }
+
+.no-data { text-align: center; color: var(--text-muted); padding: 20px; }
 </style>

@@ -36,12 +36,12 @@ def test_post_empty_idea_rejected(auth_client):
     assert "不能为空" in resp.json()["detail"]
 
 
-def test_post_nonexistent_account_rejected(auth_client):
-    """不存在的账号返回 404"""
+def test_post_account_id_zero_accepted(auth_client):
+    """素材中心路径 account_id=0 正常接受"""
     resp = auth_client.post("/api/generate/directions", json={
         "account_id": 0, "idea": "测试"
     })
-    assert resp.status_code == 404
+    assert resp.status_code == 200
 
 
 def test_task_result_structure(auth_client):

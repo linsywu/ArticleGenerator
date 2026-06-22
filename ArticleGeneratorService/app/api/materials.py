@@ -10,6 +10,7 @@ from typing import Optional
 from ..database import get_db
 from ..models import MpMaterial, MpAccount, _local_iso
 from ..schemas import MpMaterialResponse, MpMaterialListResponse
+from ..tasks import trigger_material_summary
 
 router = APIRouter(prefix="/materials", tags=["素材中心"])
 
@@ -102,3 +103,22 @@ def parse_material(material_id: int, db: Session = Depends(get_db)):
     material.content_markdown = md
     db.commit()
     return {"content_markdown": md, "cached": False}
+
+
+@router.post("/{material_id}/generate-summary")
+def generate_material_summary(material_id: int, db: Session = Depends(get_db)):
+    """为素材生成 AI 摘要"""
+    material = db.query(MpMaterial).filter(MpMaterial.id == material_id).first()
+    if not material:
+        raise HTTPException(status_code=404, detail="素材不存在")
+
+    # 取内容：优先 markdown，其次 HTML
+    content = material.content_markdown or ""
+    if not content and material.content_html:
+        content = re.sub(r'<[^>]+>', '', material.content_html)
+    content = content[:3000]  # 限长
+
+    task = trigger_material_summary.delay(
+        material.id, material.title or "", content
+    )
+    return {"task_id": task.id, "status": "pending", "message": "摘要生成已提交"}

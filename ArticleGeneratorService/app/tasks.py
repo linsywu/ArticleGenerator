@@ -20,6 +20,7 @@ from .models import (
     RefineTask,
     ReferenceArticle,
     GenerationLog,
+    MpMaterial,
 )
 from app.collector.worker import execute_collect_task, check_credentials_health
 
@@ -430,6 +431,41 @@ def trigger_distill(self, account_id: int, articles_content: list, num_articles:
             db.commit()
         db.close()
         raise
+
+
+@celery_app.task(bind=True)
+def trigger_material_summary(self, material_id: int, title: str, content: str):
+    """生成素材摘要：标题+内容 → 150-300字摘要，落库"""
+    db = SessionLocal()
+    try:
+        material = db.query(MpMaterial).filter(MpMaterial.id == material_id).first()
+        if not material:
+            raise ValueError(f"素材不存在: {material_id}")
+
+        llm_url = settings.llm_service_url.rstrip("/")
+        with httpx.Client(timeout=120.0) as client:
+            resp = client.post(f"{llm_url}/chat", json={
+                "scenario": "material-summary",
+                "account_id": 0,
+                "variables": {
+                    "title": title or "",
+                    "content": content or "",
+                },
+            })
+            resp.raise_for_status()
+            data = resp.json()
+
+        summary = (data.get("content") or "").strip()
+        if not summary:
+            raise ValueError("摘要生成返回内容为空")
+
+        # 保存到数据库
+        material.summary = summary
+        db.commit()
+
+        return {"material_id": material_id, "summary": summary}
+    finally:
+        db.close()
 
 
 @celery_app.task(bind=True)

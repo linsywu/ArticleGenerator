@@ -59,6 +59,21 @@ scenarios = [
         "description": "① 风格蒸馏：分析参考文章，提取7维度结构化风格画像",
         "sort_order": 1,
     },
+    # ── ⓪ 素材摘要 ──────────────────────────────────────────────────────────
+    {
+        "scenario": "material-summary",
+        "model": "claude-sonnet-4-20250514",
+        "system_prompt_template": (
+            "你是一个专业的内容编辑。请将以下文章内容总结为简洁的摘要，"
+            "保留核心观点和关键信息，150-300字。\n\n"
+            "标题：{{title}}\n\n"
+            "文章内容：\n{{content}}"
+        ),
+        "params": '{"max_tokens": 1024, "temperature": 0.5}',
+        "priority": 10,
+        "description": "⓪ 素材摘要：根据素材内容生成简洁摘要",
+        "sort_order": 0,
+    },
     # ── ② 方向生成 ──────────────────────────────────────────────────────────
     {
         "scenario": "direction",

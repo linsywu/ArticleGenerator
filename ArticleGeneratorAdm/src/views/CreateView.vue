@@ -386,6 +386,11 @@ onMounted(async () => {
     if (route.query.idea) {
       idea.value = String(route.query.idea)
     }
+
+    // Auto-advance to step 1 when account is pre-filled from query (e.g., from materials center)
+    if (route.query.account_id && selectedAccountId.value) {
+      currentStep.value = 1
+    }
   } catch (e) { console.error('加载账号失败', e) }
 })
 </script>

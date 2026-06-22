@@ -11,4 +11,10 @@ export default {
   getMaterial: (id: number) => get<any>(`/materials/${id}`),
 
   parseMaterial: (id: number) => post<{ content_markdown: string; cached: boolean }>(`/materials/${id}/parse`),
+
+  generateSummary: (materialId: number, title: string, content: string) =>
+    post<{ task_id: string; status: string; message: string }>(
+      `/materials/${materialId}/generate-summary`,
+      { title, content }
+    ),
 };
