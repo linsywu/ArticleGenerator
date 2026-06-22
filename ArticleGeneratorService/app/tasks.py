@@ -108,11 +108,15 @@ def trigger_generate(self, topic: str, account_id: int, hotspot_id: int = None, 
             except (json.JSONDecodeError, TypeError):
                 pass
 
-        # 构建增强的 user_prompt
-        outline_text = ""
+        # 构建大纲 section（整段，含标题和约束语；无大纲时为空字符串）
+        outline_section = ""
         if outline:
             outline_items = [f"{i+1}. {p}" for i, p in enumerate(outline)]
-            outline_text = "【写作大纲】\n" + "\n".join(outline_items) + "\n\n请严格按照以上大纲逐段写作。"
+            outline_section = (
+                "## 写作大纲\n"
+                + "\n".join(outline_items)
+                + "\n\n请严格按照以上大纲逐段写作，大纲有几段文章就必须有几段。\n"
+            )
 
         # 注入风格要求
         style_instructions = ""
@@ -133,24 +137,20 @@ def trigger_generate(self, topic: str, account_id: int, hotspot_id: int = None, 
         elif account and account.word_count:
             word_count_instruction = f"字数{account.word_count}。"
 
-        user_prompt = (
-            f'以"{topic}"为题，写一篇文章。\n\n'
-            f'{style_instructions}\n'
-            f'{outline_text}\n'
-            f'{word_count_instruction}'
-        )
-
-        # 调用 LLM 服务
+        # 调用 LLM 服务（通过 /chat 端点，variables 由 Gateway 渲染到 system_prompt_template）
         llm_url = settings.llm_service_url.rstrip("/")
         payload = {
-            "topic": topic,
+            "scenario": "generate",
             "account_id": account_id,
-            "user_prompt": user_prompt,
+            "variables": {
+                "topic": topic,
+                "style_instructions": style_instructions,
+                "outline_section": outline_section,
+                "word_count_instruction": word_count_instruction,
+            },
         }
-        if lora_path:
-            payload["lora_path"] = lora_path
         with httpx.Client(timeout=120.0) as client:
-            resp = client.post(f"{llm_url}/generate", json=payload)
+            resp = client.post(f"{llm_url}/chat", json=payload)
             resp.raise_for_status()
             data = resp.json()
 
@@ -161,7 +161,7 @@ def trigger_generate(self, topic: str, account_id: int, hotspot_id: int = None, 
         # 使用统一的标题解析逻辑（优先用户选择 → 回退自动提取）
         title = resolve_article_title(content, topic)
 
-        # 写入文章表
+        # 写入文章表 (unchanged)
         article = Article(
             title=title,
             hotspot_id=hotspot_id,
@@ -173,14 +173,14 @@ def trigger_generate(self, topic: str, account_id: int, hotspot_id: int = None, 
         db.commit()
         db.refresh(article)
 
-        # 更新热点状态（仅当关联了热点时）
+        # 更新热点状态（仅当关联了热点时）(unchanged)
         if hotspot_id:
             hotspot = db.query(Hotspot).filter(Hotspot.id == hotspot_id).first()
             if hotspot:
                 hotspot.status = "generated"
                 db.commit()
 
-        # 更新任务状态
+        # 更新任务状态 (unchanged)
         if gt:
             gt.status = "success"
             gt.article_id = article.id
@@ -188,7 +188,7 @@ def trigger_generate(self, topic: str, account_id: int, hotspot_id: int = None, 
 
         # 生成成功后，自动链式触发：去AI味 → 质量评审 + 合规评审
         if article:
-            trigger_humanize.delay(article.id, article.content)
+            trigger_humanize.delay(article.id, article.content, outline_section)
 
         return {"article_id": article.id}
     except Exception as e:
@@ -203,7 +203,7 @@ def trigger_generate(self, topic: str, account_id: int, hotspot_id: int = None, 
 
 
 @celery_app.task(bind=True)
-def trigger_humanize(self, article_id: int, content: str):
+def trigger_humanize(self, article_id: int, content: str, outline_section: str = ""):
     """
     去AI味重写：调用 LLM 检测AI痕迹并真人化重写，然后链式触发评审
     """
@@ -213,7 +213,10 @@ def trigger_humanize(self, article_id: int, content: str):
         with httpx.Client(timeout=120.0) as client:
             resp = client.post(f"{llm_url}/chat", json={
                 "scenario": "humanize",
-                "variables": {"article_content": content},
+                "variables": {
+                    "article_content": content,
+                    "outline_section": outline_section,
+                },
             })
             resp.raise_for_status()
             data = resp.json()
