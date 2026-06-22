@@ -450,6 +450,7 @@ def trigger_material_summary(self, material_id: int, title: str, content: str):
                 "variables": {
                     "title": title or "",
                     "content": content or "",
+                    "user_prompt": f"请为以下文章生成简洁摘要：\n\n标题：{title or ''}\n\n内容：{content or ''}",
                 },
             })
             resp.raise_for_status()
