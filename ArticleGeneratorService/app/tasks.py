@@ -595,7 +595,11 @@ def trigger_outline_generation(self, account_id: int, idea: str, direction: str)
             except (json.JSONDecodeError, TypeError):
                 pass
 
-        variables = {"idea": idea, "direction": direction}
+        variables = {
+            "idea": idea,
+            "direction": direction,
+            "user_prompt": f"想法：{idea}\n\n写作方向：{direction}\n\n请生成5-8个要点的大纲，以JSON数组格式输出：[\"要点1\", \"要点2\", ...]",
+        }
         if structured:
             variables["structure_pattern"] = structured.get("structure_pattern", "")
 
@@ -658,6 +662,7 @@ def trigger_title_generation(self, account_id: int, idea: str, direction: str, o
             "idea": idea,
             "direction": direction,
             "outline": outline_text,
+            "user_prompt": f"想法：{idea}\n\n写作方向：{direction}\n\n大纲：\n{outline_text}\n\n请生成3-5个候选标题，以JSON字符串数组格式输出：[\"标题1\", \"标题2\", ...]",
         }
         if account and account.style_profile:
             variables["style_profile"] = account.style_profile

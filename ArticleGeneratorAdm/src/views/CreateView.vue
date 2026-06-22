@@ -279,7 +279,11 @@ async function generateOutline() {
       const { data: taskData } = await api.getTaskResult(taskId)
       if (taskData.status === 'success') {
         const result = (taskData as any).result
-        outline.value = result?.outline || []
+        const rawOutline = result?.outline || []
+        // 后端返回字符串数组，转为前端期望的 { order, point } 格式
+        outline.value = rawOutline.map((item: any, i: number) =>
+          typeof item === 'string' ? { order: i + 1, point: item } : item
+        )
         if (outline.value.length) currentStep.value = 3
         return
       }
