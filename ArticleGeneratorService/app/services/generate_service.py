@@ -46,7 +46,7 @@ def trigger_generation(
     task_ids = []
 
     if custom_topic:
-        task = trigger_generate.delay(custom_topic, account_id, hotspot_id=None, outline=outline, word_count=word_count)
+        task = trigger_generate.delay(topic=custom_topic, account_id=account_id, hotspot_id=None, outline=outline, word_count=word_count)
         task_ids.append({"topic": custom_topic, "task_id": task.id})
         gt = GenerationTask(
             task_id=task.id,

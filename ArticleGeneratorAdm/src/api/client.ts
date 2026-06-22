@@ -147,10 +147,10 @@ export const api = {
     post<{ task_id: string; status: string; message: string }>("/generate/directions", { account_id: accountId, idea }),
   generateOutline: (accountId: number, idea: string, direction: string) =>
     post<{ task_id: string; status: string; message: string }>("/generate/outline", { account_id: accountId, idea, direction }),
-  generateTitles: (accountId: number, idea: string, direction: string, outline: string[]) =>
-    post<{ task_id: string; status: string; message: string }>("/generate/titles", { account_id: accountId, idea, direction, outline }),
-  triggerGenerateWithOutline: (accountId: number, customTopic: string, outline: string[], wordCount?: string) =>
-    post("/generate/trigger", { hotspot_ids: [], account_id: accountId, custom_topic: customTopic, outline, word_count: wordCount || null }),
+  generateTitles: (accountId: number, idea: string, direction: string, outline?: string[]) =>
+    post<{ task_id: string; status: string; message: string }>("/generate/titles", { account_id: accountId, idea, direction, outline: outline || [] }),
+  triggerGenerateWithOutline: (accountId: number, topic: string, outline?: string[], wordCount?: string) =>
+    post("/generate/trigger", { hotspot_ids: [], account_id: accountId, custom_topic: topic, outline: outline || [], word_count: wordCount || null }),
   triggerRefine: (articleId: number, keywords: string) =>
     post(`/generate/refine/${articleId}`, { keywords }),
   getTaskStatus: (taskId: string) => get(`/generate/task/${taskId}`),

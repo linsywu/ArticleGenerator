@@ -51,7 +51,7 @@ def get_db_session():
         db.close()
 
 
-def resolve_article_title(content: str, hotspot_title: str | None) -> str | None:
+def resolve_article_title(content: str, topic: str | None = None, hotspot_title: str | None = None) -> str | None:
     """
     解析文章最终标题。
 
@@ -60,10 +60,13 @@ def resolve_article_title(content: str, hotspot_title: str | None) -> str | None
 
     这修复了一个 bug：用户选择标题后，文章列表展示的却是 LLM
     输出内容自动提取的标题。
+
+    兼容旧参数名 hotspot_title（已废弃，优先使用 topic）。
     """
-    # 优先使用传入的标题（非空即用）
-    if hotspot_title and hotspot_title.strip():
-        return hotspot_title.strip()[:200]
+    # 兼容：优先 topic，回退 hotspot_title
+    resolved = topic or hotspot_title
+    if resolved and resolved.strip():
+        return resolved.strip()[:200]
 
     # 回退：从 LLM 输出内容中提取标题
     if not content:
@@ -85,7 +88,7 @@ def resolve_article_title(content: str, hotspot_title: str | None) -> str | None
 
 
 @celery_app.task(bind=True)
-def trigger_generate(self, hotspot_title: str, account_id: int, hotspot_id: int = None, outline: list = None, word_count: str = None):
+def trigger_generate(self, topic: str, account_id: int, hotspot_id: int = None, outline: list = None, word_count: str = None):
     """
     异步生成文章：调用 LLM 服务，写入数据库
     """
@@ -112,11 +115,15 @@ def trigger_generate(self, hotspot_title: str, account_id: int, hotspot_id: int 
             except (json.JSONDecodeError, TypeError):
                 pass
 
-        # 构建增强的 user_prompt
-        outline_text = ""
+        # 构建大纲 section（整段，含标题和约束语；无大纲时为空字符串）
+        outline_section = ""
         if outline:
             outline_items = [f"{i+1}. {p}" for i, p in enumerate(outline)]
-            outline_text = "【写作大纲】\n" + "\n".join(outline_items) + "\n\n请严格按照以上大纲逐段写作。"
+            outline_section = (
+                "## 写作大纲\n"
+                + "\n".join(outline_items)
+                + "\n\n请严格按照以上大纲逐段写作，大纲有几段文章就必须有几段。\n"
+            )
 
         # 注入风格要求
         style_instructions = ""
@@ -137,24 +144,20 @@ def trigger_generate(self, hotspot_title: str, account_id: int, hotspot_id: int 
         elif account and account.word_count:
             word_count_instruction = f"字数{account.word_count}。"
 
-        user_prompt = (
-            f'以"{hotspot_title}"为题，写一篇文章。\n\n'
-            f'{style_instructions}\n'
-            f'{outline_text}\n'
-            f'{word_count_instruction}'
-        )
-
-        # 调用 LLM 服务
+        # 调用 LLM 服务（通过 /chat 端点，variables 由 Gateway 渲染到 system_prompt_template）
         llm_url = settings.llm_service_url.rstrip("/")
         payload = {
-            "hotspot_title": hotspot_title,
+            "scenario": "generate",
             "account_id": account_id,
-            "user_prompt": user_prompt,
+            "variables": {
+                "topic": topic,
+                "style_instructions": style_instructions,
+                "outline_section": outline_section,
+                "word_count_instruction": word_count_instruction,
+            },
         }
-        if lora_path:
-            payload["lora_path"] = lora_path
         with httpx.Client(timeout=120.0) as client:
-            resp = client.post(f"{llm_url}/generate", json=payload)
+            resp = client.post(f"{llm_url}/chat", json=payload)
             resp.raise_for_status()
             data = resp.json()
 
@@ -163,9 +166,9 @@ def trigger_generate(self, hotspot_title: str, account_id: int, hotspot_id: int 
             raise ValueError("LLM 返回内容为空")
 
         # 使用统一的标题解析逻辑（优先用户选择 → 回退自动提取）
-        title = resolve_article_title(content, hotspot_title)
+        title = resolve_article_title(content, topic)
 
-        # 写入文章表
+        # 写入文章表 (unchanged)
         article = Article(
             title=title,
             hotspot_id=hotspot_id,
@@ -177,14 +180,14 @@ def trigger_generate(self, hotspot_title: str, account_id: int, hotspot_id: int 
         db.commit()
         db.refresh(article)
 
-        # 更新热点状态（仅当关联了热点时）
+        # 更新热点状态（仅当关联了热点时）(unchanged)
         if hotspot_id:
             hotspot = db.query(Hotspot).filter(Hotspot.id == hotspot_id).first()
             if hotspot:
                 hotspot.status = "generated"
                 db.commit()
 
-        # 更新任务状态
+        # 更新任务状态 (unchanged)
         if gt:
             gt.status = "success"
             gt.article_id = article.id
@@ -192,7 +195,7 @@ def trigger_generate(self, hotspot_title: str, account_id: int, hotspot_id: int 
 
         # 生成成功后，自动链式触发：去AI味 → 质量评审 + 合规评审
         if article:
-            trigger_humanize.delay(article.id, article.content)
+            trigger_humanize.delay(article.id, article.content, outline_section)
 
         return {"article_id": article.id}
     except Exception as e:
@@ -207,7 +210,7 @@ def trigger_generate(self, hotspot_title: str, account_id: int, hotspot_id: int 
 
 
 @celery_app.task(bind=True)
-def trigger_humanize(self, article_id: int, content: str):
+def trigger_humanize(self, article_id: int, content: str, outline_section: str = ""):
     """
     去AI味重写：调用 LLM 检测AI痕迹并真人化重写，然后链式触发评审
     """
@@ -217,7 +220,10 @@ def trigger_humanize(self, article_id: int, content: str):
         with httpx.Client(timeout=120.0) as client:
             resp = client.post(f"{llm_url}/chat", json={
                 "scenario": "humanize",
-                "variables": {"article_content": content},
+                "variables": {
+                    "article_content": content,
+                    "outline_section": outline_section,
+                },
             })
             resp.raise_for_status()
             data = resp.json()

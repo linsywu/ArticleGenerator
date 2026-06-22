@@ -81,8 +81,8 @@ class Gateway:
         messages = []
         if system_prompt.strip():
             messages.append(ChatMessage(role="system", content=system_prompt))
-        # 如果有 user prompt 模板变量
-        user_content = variables.get("user_prompt") or variables.get("hotspot_title") or variables.get("keywords") or ""
+        # 当没有 user_prompt 时（新架构：提示词统一在 system_prompt_template），使用极简触发语
+        user_content = variables.get("user_prompt") or "请开始创作。"
         if user_content:
             messages.append(ChatMessage(role="user", content=user_content))
         if extra_messages:
