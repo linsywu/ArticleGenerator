@@ -47,6 +47,22 @@
           <el-input v-model="form.model" placeholder="claude-opus-4-7" />
         </el-form-item>
         <el-form-item label="System Prompt">
+          <div v-if="currentScenarioVars.length" class="var-hints">
+            <span class="var-hints-label">可用变量：</span>
+            <el-tooltip
+              v-for="v in currentScenarioVars"
+              :key="v.name"
+              :content="v.description"
+              placement="top"
+            >
+              <el-tag
+                size="small"
+                type="info"
+                class="var-tag"
+                @click="insertVar(v.name)"
+              >{{ '{{' + v.name + '}}' }}</el-tag>
+            </el-tooltip>
+          </div>
           <el-input v-model="form.system_prompt_template" type="textarea" :rows="9" placeholder="支持 {{变量}} 占位" />
         </el-form-item>
         <el-form-item label="参数">
@@ -74,7 +90,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from "vue";
+import { ref, reactive, computed, onMounted } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { api, ScenarioConfig, Provider } from "@/api/client";
 
@@ -110,6 +126,59 @@ const scenarioOptions = [
 ];
 
 const scenarioMap: Record<string, string> = Object.fromEntries(scenarioOptions.map(s => [s.value, s.label]));
+
+// 各场景可用变量定义（hover 显示说明，点击插入到光标位置）
+const scenarioVariables: Record<string, { name: string; description: string }[]> = {
+  generate: [
+    { name: 'topic', description: '文章主题（用户确认的标题 + 原始想法，或热点标题）' },
+    { name: 'style_profile', description: '账号风格画像文本（来自风格蒸馏）' },
+    { name: 'style_instructions', description: '结构化风格要求（句式/用词/禁忌/留白）；无结构化画像时为空字符串' },
+    { name: 'outline_section', description: '写作大纲整段（含 ## 标题和约束语）；用户跳过或无大纲时为空字符串' },
+    { name: 'word_count_instruction', description: '字数要求，如「字数1500左右。」' },
+  ],
+  humanize: [
+    { name: 'article_content', description: 'generate 步骤生成的原始文章全文' },
+    { name: 'outline_section', description: '写作大纲整段（含标题和约束语）；无大纲时为空字符串' },
+  ],
+  title: [
+    { name: 'style_profile', description: '账号风格画像文本' },
+    { name: 'idea', description: '用户输入的原始想法' },
+    { name: 'direction', description: '用户选择的写作方向' },
+    { name: 'outline', description: '大纲要点列表（字符串数组的文本表示）' },
+  ],
+  outline: [
+    { name: 'style_profile', description: '账号风格画像文本' },
+    { name: 'idea', description: '用户输入的原始想法' },
+    { name: 'direction', description: '用户选择的写作方向' },
+  ],
+  direction: [
+    { name: 'style_profile', description: '账号风格画像文本' },
+    { name: 'idea', description: '用户输入的原始想法' },
+  ],
+  quality_review: [
+    { name: 'article_content', description: 'humanize 之后的文章全文' },
+  ],
+  compliance_review: [
+    { name: 'article_content', description: 'humanize 之后的文章全文' },
+  ],
+  refine: [
+    { name: 'article_content', description: '待微调的文章全文' },
+    { name: 'keywords', description: '用户输入的修改关键词' },
+  ],
+  distill: [],
+};
+
+const currentScenarioVars = computed(() => scenarioVariables[form.scenario] || []);
+
+function insertVar(varName: string) {
+  const placeholder = `{{${varName}}}`;
+  // 如果已有值，追加到末尾；否则直接设置
+  if (form.system_prompt_template) {
+    form.system_prompt_template += placeholder;
+  } else {
+    form.system_prompt_template = placeholder;
+  }
+}
 
 function scenarioLabel(s: string) { return scenarioMap[s] || s; }
 function scenarioTag(s: string): string {
@@ -201,4 +270,31 @@ onMounted(load);
 
 <style scoped>
 .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+
+.var-hints {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  padding: 8px 12px;
+  background: var(--el-fill-color-light);
+  border-radius: 6px;
+  border: 1px solid var(--el-border-color-lighter);
+}
+.var-hints-label {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  margin-right: 2px;
+}
+.var-tag {
+  cursor: pointer;
+  font-family: monospace;
+  font-size: 11px;
+  transition: all 0.2s;
+}
+.var-tag:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
 </style>
