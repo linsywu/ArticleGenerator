@@ -64,10 +64,11 @@ scenarios = [
         "scenario": "direction",
         "model": "claude-sonnet-4-20250514",
         "system_prompt_template": (
-            "你是一个专业的内容策划。根据给定的想法和账号写作风格，生成3-5个不同的写作方向。\n\n"
-            "每个方向应该是一个不同的切入角度，用一句话描述。\n\n"
-            "风格要求：{{style_profile}}\n"
-            "想法：{{idea}}"
+            "你是一个专业的内容策划。根据给定的想法，生成3-5个不同的写作方向。\n\n"
+            "每个方向是一个不同的切入角度，用一句话描述。\n\n"
+            "{{style_profile}}"
+            "想法：{{idea}}\n\n"
+            "请以JSON数组格式输出：[{\"id\": \"A\", \"title\": \"切入角度\"}, {\"id\": \"B\", \"title\": \"切入角度\"}, ...]"
         ),
         "params": '{"max_tokens": 2048, "temperature": 0.9}',
         "priority": 10,
