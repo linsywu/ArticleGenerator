@@ -110,7 +110,7 @@ def query_unified_tasks(
         extra_info = None
 
         if row.task_type == "generate":
-            # Target: hotspot.title or article.title
+            # Target: hotspot.title → article.title → custom_topic
             if row.hotspot_id:
                 hotspot = db.query(Hotspot).filter(Hotspot.id == row.hotspot_id).first()
                 if hotspot:
@@ -119,6 +119,8 @@ def query_unified_tasks(
                 article = db.query(Article).filter(Article.id == row.article_id).first()
                 if article:
                     target = article.title or target
+            if not target and row.custom_topic:
+                target = row.custom_topic
             # Account name
             if row.account_id:
                 account = db.query(Account).filter(Account.id == row.account_id).first()

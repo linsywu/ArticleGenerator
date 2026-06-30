@@ -42,6 +42,7 @@ def trigger_generation(
         gt = GenerationTask(
             task_id=task.id,
             account_id=account_id,
+            custom_topic=custom_topic,
             status="pending",
         )
         db.add(gt)

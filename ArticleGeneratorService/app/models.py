@@ -122,6 +122,7 @@ class GenerationTask(Base):
     hotspot_id = Column(Integer, ForeignKey("hotspots.id", ondelete="SET NULL"), nullable=True)
     account_id = Column(Integer, ForeignKey("accounts.id", ondelete="CASCADE"), nullable=False)
     article_id = Column(Integer)
+    custom_topic = Column(Text)  # 自定义主题（用户输入的标题/主题，无热点时作为标题回退）
     status = Column(String(20), default="pending")  # pending/running/success/failed
     error_message = Column(Text)
     sub_task_ids = Column(Text)  # JSON array: 子任务 Celery task_id 列表（humanize, review 等）

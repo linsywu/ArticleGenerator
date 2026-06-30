@@ -60,7 +60,7 @@ app.include_router(providers.router, prefix="/api", dependencies=[Depends(get_cu
 app.include_router(scenario_configs.router, prefix="/api", dependencies=[Depends(verify_any_auth)])
 app.include_router(reference_articles.router, prefix="/api", dependencies=[Depends(get_current_user)])
 app.include_router(distill.router, prefix="/api", dependencies=[Depends(get_current_user)])
-app.include_router(generation_logs.router, prefix="/api", dependencies=[Depends(get_current_user)])
+app.include_router(generation_logs.router, prefix="/api", dependencies=[Depends(verify_any_auth)])
 app.include_router(tasks.router, prefix="/api", dependencies=[Depends(get_current_user)])
 app.include_router(tracks.router, prefix="/api", dependencies=[Depends(get_current_user)])
 app.include_router(mp_accounts.router, prefix="/api", dependencies=[Depends(get_current_user)])
