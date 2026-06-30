@@ -189,21 +189,43 @@ def trigger_generate(self, topic: str, account_id: int, hotspot_id: int = None, 
                 hotspot.status = "generated"
                 db.commit()
 
-        # 更新任务状态 (unchanged)
+        # 生成成功后，同步执行去AI味（确保前端拿到的是最终内容，防止竞态）
+        # quality_review 和 compliance_review 不修改 content，可保持异步
+        humanized = content
+        try:
+            llm_url = settings.llm_service_url.rstrip("/")
+            with httpx.Client(timeout=120.0) as client:
+                resp = client.post(f"{llm_url}/chat", json={
+                    "scenario": "humanize",
+                    "task_id": self.request.id,
+                    "variables": {
+                        "article_content": content,
+                        "outline_section": outline_section,
+                    },
+                })
+                resp.raise_for_status()
+                data = resp.json()
+            humanized = data.get("content", "") or content
+            if humanized and humanized != content:
+                article.content = humanized
+                db.commit()
+        except Exception:
+            # humanize 失败不影响主流程，保留原始内容
+            pass
+
+        # 更新任务状态（humanize 完成后才标记 success）
         if gt:
             gt.status = "success"
             gt.article_id = article.id
             db.commit()
 
-        # 生成成功后，自动链式触发：去AI味 → 质量评审 + 合规评审
+        # 异步触发质量评审 + 合规评审（不修改 content）
         if article:
-            humanize_task = trigger_humanize.delay(article.id, article.content, outline_section)
-            # 记录子任务 ID，用于日志关联
-            sub_ids = [humanize_task.id]
-            # 同时更新 GenerationTask 的子任务列表
+            qr_task = trigger_quality_review.delay(article.id, article.content)
+            cr_task = trigger_compliance_review.delay(article.id, article.content)
             if gt:
                 try:
-                    gt.sub_task_ids = json.dumps(sub_ids)
+                    gt.sub_task_ids = json.dumps([qr_task.id, cr_task.id])
                     db.commit()
                 except Exception:
                     pass

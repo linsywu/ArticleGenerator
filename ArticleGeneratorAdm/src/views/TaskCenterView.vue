@@ -320,6 +320,13 @@ onUnmounted(() => {
   padding-bottom: var(--space-2xl);
 }
 
+.card-actions-row{
+  padding-top: 10px;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
 /* Page header */
 .page-header {
   display: flex;
