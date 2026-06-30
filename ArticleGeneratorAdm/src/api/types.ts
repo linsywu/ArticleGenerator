@@ -105,8 +105,11 @@ export interface ReferenceArticle {
 export interface GenerationLog {
   id: number;
   scenario: string;
+  task_id?: string;
   provider_id?: number;
   model?: string;
+  system_prompt?: string;
+  user_prompt?: string;
   prompt_tokens: number;
   completion_tokens: number;
   latency_ms: number;

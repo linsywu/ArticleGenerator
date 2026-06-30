@@ -16,6 +16,7 @@ app = FastAPI(
 
 class ChatRequest(BaseModel):
     scenario: str
+    task_id: Optional[str] = None  # Celery 任务 ID，用于日志关联
     account_id: Optional[int] = None
     variables: Optional[Dict[str, Any]] = None
     extra_messages: Optional[List[Dict[str, str]]] = None
@@ -31,6 +32,7 @@ def chat(req: ChatRequest):
     """统一聊天入口：按 scenario 路由到对应 provider + model"""
     result = gateway.chat(
         scenario=req.scenario,
+        task_id=req.task_id,
         account_id=req.account_id,
         variables=req.variables,
         extra_messages=req.extra_messages,

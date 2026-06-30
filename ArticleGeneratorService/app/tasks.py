@@ -88,7 +88,7 @@ def resolve_article_title(content: str, topic: str | None = None, hotspot_title:
 
 
 @celery_app.task(bind=True)
-def trigger_generate(self, topic: str, account_id: int, hotspot_id: int = None, outline: list = None, word_count: str = None):
+def trigger_generate(self, topic: str, account_id: int, hotspot_id: int = None, outline: list = None, word_count: str = None, direction: str = None):
     """
     异步生成文章：调用 LLM 服务，写入数据库
     """
@@ -148,9 +148,11 @@ def trigger_generate(self, topic: str, account_id: int, hotspot_id: int = None, 
         llm_url = settings.llm_service_url.rstrip("/")
         payload = {
             "scenario": "generate",
+            "task_id": self.request.id,
             "account_id": account_id,
             "variables": {
                 "topic": topic,
+                "direction": direction or "",
                 "style_instructions": style_instructions,
                 "outline_section": outline_section,
                 "word_count_instruction": word_count_instruction,
@@ -195,7 +197,16 @@ def trigger_generate(self, topic: str, account_id: int, hotspot_id: int = None, 
 
         # 生成成功后，自动链式触发：去AI味 → 质量评审 + 合规评审
         if article:
-            trigger_humanize.delay(article.id, article.content, outline_section)
+            humanize_task = trigger_humanize.delay(article.id, article.content, outline_section)
+            # 记录子任务 ID，用于日志关联
+            sub_ids = [humanize_task.id]
+            # 同时更新 GenerationTask 的子任务列表
+            if gt:
+                try:
+                    gt.sub_task_ids = json.dumps(sub_ids)
+                    db.commit()
+                except Exception:
+                    pass
 
         return {"article_id": article.id}
     except Exception as e:
@@ -220,6 +231,7 @@ def trigger_humanize(self, article_id: int, content: str, outline_section: str =
         with httpx.Client(timeout=120.0) as client:
             resp = client.post(f"{llm_url}/chat", json={
                 "scenario": "humanize",
+                "task_id": self.request.id,
                 "variables": {
                     "article_content": content,
                     "outline_section": outline_section,
@@ -239,9 +251,20 @@ def trigger_humanize(self, article_id: int, content: str, outline_section: str =
             article.content = humanized
             db.commit()
 
-        # Chain to quality + compliance review
-        trigger_quality_review.delay(article_id, humanized)
-        trigger_compliance_review.delay(article_id, humanized)
+        # Chain to quality + compliance review, track sub-task IDs
+        qr_task = trigger_quality_review.delay(article_id, humanized)
+        cr_task = trigger_compliance_review.delay(article_id, humanized)
+
+        # Append sub-task IDs to the parent GenerationTask for log linking
+        gt = db.query(GenerationTask).filter(GenerationTask.article_id == article_id).first()
+        if gt:
+            try:
+                existing = json.loads(gt.sub_task_ids) if gt.sub_task_ids else []
+                existing.extend([qr_task.id, cr_task.id])
+                gt.sub_task_ids = json.dumps(existing)
+                db.commit()
+            except Exception:
+                pass
 
         return {"article_id": article_id, "humanized": humanized != content}
     except Exception as e:
@@ -356,6 +379,7 @@ def trigger_distill(self, account_id: int, articles_content: list, num_articles:
                 try:
                     resp = client.post(f"{llm_url}/chat", json={
                         "scenario": "distill",
+                        "task_id": self.request.id,
                         "account_id": account_id,
                         "variables": {
                             "num_articles": str(num_articles),
@@ -452,6 +476,7 @@ def trigger_material_summary(self, material_id: int, title: str, content: str):
         with httpx.Client(timeout=120.0) as client:
             resp = client.post(f"{llm_url}/chat", json={
                 "scenario": "material-summary",
+                "task_id": self.request.id,
                 "account_id": 0,
                 "variables": {
                     "title": title or "",
@@ -504,6 +529,7 @@ def trigger_direction_generation(self, account_id: int, idea: str, word_count: s
         with httpx.Client(timeout=120.0) as client:
             resp = client.post(f"{llm_url}/chat", json={
                 "scenario": "direction",
+                "task_id": self.request.id,
                 "account_id": account_id,
                 "variables": variables,
             })
@@ -613,6 +639,7 @@ def trigger_outline_generation(self, account_id: int, idea: str, direction: str)
         with httpx.Client(timeout=120.0) as client:
             resp = client.post(f"{llm_url}/chat", json={
                 "scenario": "outline",
+                "task_id": self.request.id,
                 "account_id": account_id,
                 "variables": variables,
             })
@@ -677,6 +704,7 @@ def trigger_title_generation(self, account_id: int, idea: str, direction: str, o
         with httpx.Client(timeout=120.0) as client:
             resp = client.post(f"{llm_url}/chat", json={
                 "scenario": "title",
+                "task_id": self.request.id,
                 "account_id": account_id,
                 "variables": variables,
             })
@@ -721,6 +749,7 @@ def trigger_quality_review(self, article_id: int, article_content: str):
         with httpx.Client(timeout=120.0) as client:
             resp = client.post(f"{llm_url}/chat", json={
                 "scenario": "quality_review",
+                "task_id": self.request.id,
                 "variables": {"article_content": article_content},
             })
             resp.raise_for_status()
@@ -752,6 +781,7 @@ def trigger_compliance_review(self, article_id: int, article_content: str):
         with httpx.Client(timeout=120.0) as client:
             resp = client.post(f"{llm_url}/chat", json={
                 "scenario": "compliance_review",
+                "task_id": self.request.id,
                 "variables": {"article_content": article_content},
             })
             resp.raise_for_status()

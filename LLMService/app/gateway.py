@@ -48,6 +48,7 @@ class Gateway:
     def chat(
         self,
         scenario: str,
+        task_id: Optional[str] = None,
         account_id: Optional[int] = None,
         variables: Optional[Dict[str, Any]] = None,
         extra_messages: Optional[List[Dict[str, str]]] = None,
@@ -98,6 +99,7 @@ class Gateway:
         if isinstance(adapter_params, str):
             import json
             adapter_params = json.loads(adapter_params)
+
         try:
             result = adapter.chat(
                 base_url=provider.get("base_url", ""),
@@ -107,12 +109,22 @@ class Gateway:
                 params=adapter_params,
             )
         except Exception as e:
+            # 失败也记录日志（含完整提示词）
+            threading.Thread(
+                target=self._log_call,
+                args=(scenario, task_id, provider.get("id"), config.get("model"),
+                      system_prompt, user_content, 0, 0, 0, "failed", str(e)),
+                daemon=True,
+            ).start()
             return {"error": f"Provider call failed: {e}"}
 
-        # 6. 记录日志（异步 fire-and-forget）
+        # 6. 记录日志（异步 fire-and-forget，含完整提示词）
         threading.Thread(
             target=self._log_call,
-            args=(scenario, provider.get("id"), config.get("model"), result),
+            args=(scenario, task_id, provider.get("id"), config.get("model"),
+                  system_prompt, user_content,
+                  result.prompt_tokens, result.completion_tokens, result.latency_ms,
+                  "success", None),
             daemon=True,
         ).start()
 
@@ -125,18 +137,25 @@ class Gateway:
             "latency_ms": result.latency_ms,
         }
 
-    def _log_call(self, scenario: str, provider_id: Optional[int], model: str, result: ChatResult):
-        """记录调用日志到后端"""
+    def _log_call(self, scenario: str, task_id: Optional[str], provider_id: Optional[int],
+                  model: str, system_prompt: str, user_prompt: str,
+                  prompt_tokens: int, completion_tokens: int, latency_ms: int,
+                  status: str, error_message: Optional[str]):
+        """记录调用日志到后端（含完整提示词）"""
         try:
             with httpx.Client(timeout=5.0) as client:
                 client.post(f"{self.backend_api_url}/api/generation-logs", json={
                     "scenario": scenario,
+                    "task_id": task_id,
                     "provider_id": provider_id,
                     "model": model,
-                    "prompt_tokens": result.prompt_tokens,
-                    "completion_tokens": result.completion_tokens,
-                    "latency_ms": result.latency_ms,
-                    "status": "success",
+                    "system_prompt": system_prompt,
+                    "user_prompt": user_prompt,
+                    "prompt_tokens": prompt_tokens,
+                    "completion_tokens": completion_tokens,
+                    "latency_ms": latency_ms,
+                    "status": status,
+                    "error_message": error_message,
                 })
         except Exception as e:
             print(f"[gateway] Failed to log call for scenario={scenario}: {e}", file=sys.stderr)

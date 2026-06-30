@@ -124,6 +124,7 @@ class GenerationTask(Base):
     article_id = Column(Integer)
     status = Column(String(20), default="pending")  # pending/running/success/failed
     error_message = Column(Text)
+    sub_task_ids = Column(Text)  # JSON array: 子任务 Celery task_id 列表（humanize, review 等）
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -195,8 +196,11 @@ class GenerationLog(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     scenario = Column(String(50), nullable=False)
+    task_id = Column(String(100))  # Celery 任务 ID，关联 generation_tasks.task_id
     provider_id = Column(Integer)
     model = Column(String(100))
+    system_prompt = Column(Text)  # 渲染后的完整 system prompt
+    user_prompt = Column(Text)    # 渲染后的 user message
     prompt_tokens = Column(Integer, default=0)
     completion_tokens = Column(Integer, default=0)
     latency_ms = Column(Integer, default=0)

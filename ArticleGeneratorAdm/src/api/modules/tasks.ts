@@ -21,11 +21,13 @@ export default {
     accountId: number,
     topic: string,
     outline?: string[],
+    direction?: string,
   ) => post("/generate/trigger", {
     hotspot_ids: [],
     account_id: accountId,
     custom_topic: topic,
     outline: outline || [],
+    direction: direction || null,
   }),
 
   generateTitles: (accountId: number, idea: string, direction: string, outline?: string[]) =>

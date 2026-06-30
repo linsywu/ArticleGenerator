@@ -169,6 +169,23 @@ task = generate_article.delay(task_data)
 
 ## 已知陷阱
 
+### Datetime 序列化（CST 转换）
+
+**所有 API 输出的 datetime 必须经过 `_local_iso()` 转为北京时间 (CST, UTC+8)。** 数据库存储 UTC，直接 `.isoformat()` 会比北京时间少 8 小时。
+
+两种路径：
+1. **Pydantic response model**：字段类型统一用 `CstDateTime`（定义在 `schemas.py`），序列化自动走 `_local_iso()`
+   ```python
+   created_at: CstDateTime  # 不要用 datetime
+   ```
+2. **手动构建 dict**：显式调用 `_local_iso(dt)`
+
+⚠️ **反复出错的根因**：之前规则只覆盖了手动 dict 路径（grep `.isoformat()` 查不出来），Pydantic model 里的 `datetime` 类型字段绕过检查直接序列化。`CstDateTime` 类型让正确行为成为默认。
+
+**新增 response model 时的检查清单**：
+- [ ] `created_at`/`updated_at` 等字段类型是 `CstDateTime`，不是 `datetime`
+- [ ] `grep -n ': datetime\b' app/schemas.py` 只应匹配到 `CstDateTime` 定义行和函数参数，不应匹配到 response 字段
+
 ### SQLite CWD 依赖
 数据库路径 `article_generator.db` 相对于进程 CWD 解析。种子脚本、pytest、直接查询 **必须从 `ArticleGeneratorService/` 目录执行**，否则操作错误的数据库文件。详见根 `CLAUDE.md` 全局陷阱。
 

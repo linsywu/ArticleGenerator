@@ -3,8 +3,13 @@ Pydantic 请求/响应模型
 """
 from datetime import datetime, timezone, date
 from typing import Optional, List, Any, Annotated
-from pydantic import BaseModel, Field, field_validator, BeforeValidator
+from pydantic import BaseModel, Field, field_validator, BeforeValidator, PlainSerializer
 import json
+
+from .models import _local_iso
+
+# 自定义 datetime 类型：序列化时自动转为 CST ISO 字符串
+CstDateTime = Annotated[datetime, PlainSerializer(lambda dt: _local_iso(dt), return_type=str)]
 
 
 def _ensure_utc_tz(dt: datetime) -> datetime:
@@ -62,13 +67,13 @@ class AccountUpdate(BaseModel):
 class AccountResponse(AccountBase):
     id: int
     style_profile: Optional[str] = None
-    style_profile_updated_at: Optional[datetime] = None
+    style_profile_updated_at: Optional[CstDateTime] = None
     style_profile_structured: Optional[Any] = None
     style_profile_version: Optional[int] = None
     style_profile_status: Optional[str] = None
     word_count_options: Optional[str] = None
     word_count: Optional[str] = None  # e.g. "1500-3000字"
-    created_at: datetime
+    created_at: CstDateTime
 
     class Config: from_attributes = True
 
@@ -109,7 +114,7 @@ class HotspotSourceUpdate(BaseModel):
 
 class HotspotSourceResponse(HotspotSourceBase):
     id: int
-    created_at: datetime
+    created_at: CstDateTime
 
     class Config: from_attributes = True
 
@@ -126,7 +131,7 @@ class HotspotBase(BaseModel):
 
 class HotspotResponse(HotspotBase):
     id: int
-    created_at: datetime
+    created_at: CstDateTime
 
     class Config: from_attributes = True
 
@@ -167,9 +172,9 @@ class ArticleResponse(ArticleBase):
     quality_score: Optional[int] = None
     compliance_score: Optional[int] = None
     review_notes: Optional[str] = None
-    published_at: Optional[datetime] = None
-    created_at: datetime
-    updated_at: datetime
+    published_at: Optional[CstDateTime] = None
+    created_at: CstDateTime
+    updated_at: CstDateTime
 
     class Config: from_attributes = True
 
@@ -190,8 +195,9 @@ class GenerateRequest(BaseModel):
     hotspot_ids: List[int] = []
     account_id: int
     custom_topic: Optional[str] = None
-    outline: Optional[List[str]] = None  # 新增：大纲要点列表
+    outline: Optional[List[str]] = None  # 大纲要点列表
     word_count: Optional[str] = None  # 用户选择的字数
+    direction: Optional[str] = None  # 写作方向（用于生成提示词）
 
 
 class RefineRequest(BaseModel):
@@ -273,7 +279,7 @@ class ProviderUpdate(BaseModel):
 
 class ProviderResponse(ProviderBase):
     id: int
-    created_at: datetime
+    created_at: CstDateTime
     class Config: from_attributes = True
 
     @field_validator("api_key", mode="after")
@@ -308,7 +314,7 @@ class ScenarioConfigUpdate(BaseModel):
 class ScenarioConfigResponse(ScenarioConfigBase):
     id: int
     provider: Optional[ProviderResponse] = None
-    created_at: datetime
+    created_at: CstDateTime
     class Config: from_attributes = True
 
 
@@ -324,20 +330,41 @@ class ReferenceArticleBase(BaseModel):
 class ReferenceArticleCreate(ReferenceArticleBase): pass
 class ReferenceArticleResponse(ReferenceArticleBase):
     id: int
-    created_at: datetime
+    created_at: CstDateTime
     class Config: from_attributes = True
 
 
 # ----- GenerationLog -----
 class GenerationLogCreate(BaseModel):
     scenario: str
+    task_id: Optional[str] = None
     provider_id: Optional[int] = None
     model: Optional[str] = None
+    system_prompt: Optional[str] = None
+    user_prompt: Optional[str] = None
     prompt_tokens: int = 0
     completion_tokens: int = 0
     latency_ms: int = 0
     status: str = "success"
     error_message: Optional[str] = None
+
+
+class GenerationLogResponse(BaseModel):
+    id: int
+    scenario: str
+    task_id: Optional[str] = None
+    provider_id: Optional[int] = None
+    model: Optional[str] = None
+    system_prompt: Optional[str] = None
+    user_prompt: Optional[str] = None
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    latency_ms: int = 0
+    status: str = "success"
+    error_message: Optional[str] = None
+    created_at: CstDateTime
+
+    class Config: from_attributes = True
 
 
 # ----- Distill -----
@@ -382,7 +409,7 @@ class SubTrackCreate(SubTrackBase): pass
 class SubTrackResponse(SubTrackBase):
     id: int
     track_id: int
-    created_at: datetime
+    created_at: CstDateTime
     class Config: from_attributes = True
 
 class TrackBase(BaseModel):
@@ -406,8 +433,8 @@ class TrackResponse(TrackBase):
     id: int
     status: int = 1
     sub_tracks: List[SubTrackResponse] = []
-    created_at: datetime
-    updated_at: datetime
+    created_at: CstDateTime
+    updated_at: CstDateTime
     class Config: from_attributes = True
 
 
@@ -435,10 +462,10 @@ class MpAccountUpdate(BaseModel):
 class MpAccountResponse(MpAccountBase):
     id: int
     article_count: int = 0
-    last_collect_time: Optional[datetime] = None
+    last_collect_time: Optional[CstDateTime] = None
     status: int = 1
-    created_at: datetime
-    updated_at: datetime
+    created_at: CstDateTime
+    updated_at: CstDateTime
     class Config: from_attributes = True
 
 class MpAccountImportByNameRequest(BaseModel):
@@ -481,8 +508,8 @@ class MpCredentialResponse(BaseModel):
     token: str
     cookie: str
     status: str
-    check_time: Optional[datetime] = None
-    created_at: datetime
+    check_time: Optional[CstDateTime] = None
+    created_at: CstDateTime
     class Config: from_attributes = True
 
     @field_validator("token", mode="after")
@@ -541,8 +568,8 @@ class CollectTaskResponse(BaseModel):
     interval_hours: Optional[int] = None
     status: str
     last_result: Optional[CollectTaskLastResult] = None
-    created_at: datetime
-    updated_at: datetime
+    created_at: CstDateTime
+    updated_at: CstDateTime
     class Config: from_attributes = True
 
 
@@ -562,9 +589,9 @@ class MpMaterialResponse(BaseModel):
     content_hash: Optional[str] = None
     word_count: int = 0
     is_original: int = 0
-    published_at: Optional[datetime] = None
-    collected_at: Optional[datetime] = None
-    created_at: Optional[datetime] = None
+    published_at: Optional[CstDateTime] = None
+    collected_at: Optional[CstDateTime] = None
+    created_at: Optional[CstDateTime] = None
     account: Optional[dict] = None
 
     class Config: from_attributes = True
@@ -580,9 +607,9 @@ class MpMaterialListItem(BaseModel):
     summary: Optional[str] = None
     word_count: int = 0
     is_original: int = 0
-    published_at: Optional[datetime] = None
-    collected_at: Optional[datetime] = None
-    created_at: Optional[datetime] = None
+    published_at: Optional[CstDateTime] = None
+    collected_at: Optional[CstDateTime] = None
+    created_at: Optional[CstDateTime] = None
     account: Optional[dict] = None
     account: Optional[dict] = None
 
@@ -601,13 +628,13 @@ class CollectLogResponse(BaseModel):
     task_id: int
     task_name: Optional[str] = None
     account_id: Optional[int] = None
-    start_time: Optional[datetime] = None
-    end_time: Optional[datetime] = None
+    start_time: Optional[CstDateTime] = None
+    end_time: Optional[CstDateTime] = None
     total_count: int = 0
     success_count: int = 0
     fail_count: int = 0
     error_message: Optional[str] = None
-    created_at: Optional[datetime] = None
+    created_at: Optional[CstDateTime] = None
     account: Optional[dict] = None
     progress: Optional[list] = None
     siblings: Optional[list] = None

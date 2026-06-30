@@ -38,8 +38,14 @@
       <el-table-column label="创建时间" width="180">
         <template #default="{ row }">{{ formatDateTime(row.created_at) }}</template>
       </el-table-column>
-      <el-table-column label="操作" width="200" fixed="right">
+      <el-table-column label="操作" width="260" fixed="right">
         <template #default="{ row }">
+          <el-button
+            size="small"
+            @click="showLogs(row)"
+          >
+            日志
+          </el-button>
           <el-button
             v-if="row.status === 'pending' || row.status === 'running'"
             size="small"
@@ -81,6 +87,8 @@
       @current-change="load"
       @size-change="load"
     />
+
+    <GenerationLogDialog ref="logDialogRef" />
   </div>
 </template>
 
@@ -92,6 +100,7 @@ import { api, type Article } from "@/api/client";
 import { formatDateTime } from "@/utils/format";
 import PageHeader from "@/components/PageHeader.vue";
 import ArticleEditorDialog from "@/components/ArticleEditorDialog.vue";
+import GenerationLogDialog from "@/components/GenerationLogDialog.vue";
 
 interface TaskItem {
   id: number;
@@ -120,6 +129,11 @@ const currentArticleId = ref<number | null>(null);
 const currentArticleData = ref<Article | null>(null);
 
 const articleEditorRef = ref<InstanceType<typeof ArticleEditorDialog> | null>(null);
+const logDialogRef = ref<InstanceType<typeof GenerationLogDialog> | null>(null);
+
+function showLogs(row: TaskItem) {
+  logDialogRef.value?.open(row.id, row.title || row.hotspot?.title);
+}
 
 const taskStatusType: Record<string, string> = {
   pending: "warning",

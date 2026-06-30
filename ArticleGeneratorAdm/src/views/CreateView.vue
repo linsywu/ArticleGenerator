@@ -157,7 +157,7 @@
             <span>⏳ 正在生成标题...</span>
           </div>
           <div class="card-actions">
-            <el-button size="large" @click="currentStep = 3">返回修改大纲</el-button>
+            <el-button size="large" @click="goBack()">返回上一步</el-button>
             <el-button
               size="large"
               type="primary"
@@ -186,12 +186,12 @@
               <p class="done-desc">文章已加入任务中心，请在「评审」页面查看。</p>
             </div>
             <div class="card-actions">
-              <el-button size="large" @click="currentStep = 4">返回修改标题</el-button>
+              <el-button size="large" @click="goBack()">返回上一步</el-button>
               <el-button size="large" type="primary" @click="currentStep = 0">重新创作</el-button>
             </div>
           </div>
           <div v-else class="card-actions">
-            <el-button size="large" @click="currentStep = 4">返回上一步</el-button>
+            <el-button size="large" @click="goBack()">返回上一步</el-button>
           </div>
         </div>
       </transition>
@@ -200,7 +200,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { api } from '@/api/client'
@@ -301,8 +301,25 @@ async function generateOutline() {
 
 function skipToTitles() {
   outline.value = []  // 清空大纲
-  currentStep.value = 4  // 直接跳到标题生成步骤（step index 4）
+  currentStep.value = 4  // 跳到标题生成步骤（step index 4），触发下方 watcher
 }
+
+// 统一返回上一步，正确处理跳过大纲的情况
+function goBack() {
+  if (currentStep.value === 4) {
+    // 从标题步骤返回：如果跳过了大纲，回方向步骤；否则回大纲步骤
+    currentStep.value = outline.value.length ? 3 : 2
+  } else {
+    currentStep.value = currentStep.value - 1
+  }
+}
+
+// 进入步骤 5 时自动触发标题生成（仅 skip 路径；大纲路径已手动点击触发）
+watch(currentStep, (step) => {
+  if (step === 4 && !titles.value.length && !loadingTitles.value) {
+    generateTitles()
+  }
+})
 
 async function generateTitles() {
   if (!selectedAccountId.value || !selectedDirection.value) return
@@ -351,7 +368,7 @@ async function startGenerate() {
     const topicWithTitle = editedTitle.value
       ? `${editedTitle.value}\n\n${idea.value.trim()}`
       : idea.value.trim()
-    const { data } = await api.triggerGenerateWithOutline(selectedAccountId.value, topicWithTitle, points)
+    const { data } = await api.triggerGenerateWithOutline(selectedAccountId.value, topicWithTitle, points, undefined, selectedDirection.value?.title)
     const taskId = data.tasks?.[0]?.task_id
     if (!taskId) throw new Error('未获取到任务 ID')
 
@@ -362,7 +379,7 @@ async function startGenerate() {
       await new Promise(r => setTimeout(r, 3000))
       const { data: taskData } = await api.getTaskResult(taskId)
       if (taskData.status === 'success') {
-        const articleId = taskData.article_id
+        const articleId = taskData.result?.article_id
         const { data: articleData } = await api.getArticle(articleId)
         generatedArticle.value = articleData.content || ''
         generating.value = false
@@ -376,11 +393,18 @@ async function startGenerate() {
   } catch (e: any) {
     ElMessage.error(e?.message || '生成失败')
     generating.value = false
-    currentStep.value = 3
+    currentStep.value = outline.value.length ? 3 : 2  // 有大纲回大纲步骤，否则回方向步骤
   }
 }
 
-onMounted(async () => {
+	// 进入步骤 6 时自动触发文章生成（仅首次进入，防止 startGenerate 内部设 currentStep 时重复触发）
+	watch(currentStep, (step) => {
+	  if (step === 5 && !generating.value && !generatedArticle.value) {
+	    startGenerate()
+	  }
+	})
+
+	onMounted(async () => {
   try {
     await accountsStore.fetch()
 

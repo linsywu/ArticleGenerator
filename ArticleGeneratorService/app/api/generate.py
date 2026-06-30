@@ -9,7 +9,7 @@ from ..database import get_db
 from ..models import Article, Account, GenerationTask, RefineTask
 from ..schemas import GenerateRequest, RefineRequest, DirectionsRequest, OutlineRequest, TitleRequest
 from ..tasks import celery_app, trigger_direction_generation, trigger_outline_generation, trigger_title_generation, trigger_refine
-from ..services.generate_service import trigger_generation, list_generation_tasks
+from ..services.generate_service import trigger_generation, list_generation_tasks as _list_generation_tasks
 
 router = APIRouter(prefix="/generate", tags=["文章生成"])
 
@@ -24,6 +24,7 @@ def trigger_article_generation(data: GenerateRequest, db: Session = Depends(get_
         custom_topic=data.custom_topic,
         outline=data.outline,
         word_count=data.word_count,
+        direction=data.direction,
     )
 
 
@@ -119,7 +120,7 @@ def list_generation_tasks(
     page_size: int = Query(20, ge=1, le=100),
 ):
     """任务列表，支持状态筛选和分页。generating 表示 pending+running"""
-    return list_generation_tasks(db=db, status=status, page=page, page_size=page_size)
+    return _list_generation_tasks(db=db, status=status, page=page, page_size=page_size)
 
 
 @router.post("/tasks/{task_id}/cancel")

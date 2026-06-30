@@ -149,8 +149,8 @@ export const api = {
     post<{ task_id: string; status: string; message: string }>("/generate/outline", { account_id: accountId, idea, direction }),
   generateTitles: (accountId: number, idea: string, direction: string, outline?: string[]) =>
     post<{ task_id: string; status: string; message: string }>("/generate/titles", { account_id: accountId, idea, direction, outline: outline || [] }),
-  triggerGenerateWithOutline: (accountId: number, topic: string, outline?: string[], wordCount?: string) =>
-    post("/generate/trigger", { hotspot_ids: [], account_id: accountId, custom_topic: topic, outline: outline || [], word_count: wordCount || null }),
+  triggerGenerateWithOutline: (accountId: number, topic: string, outline?: string[], wordCount?: string, direction?: string) =>
+    post("/generate/trigger", { hotspot_ids: [], account_id: accountId, custom_topic: topic, outline: outline || [], word_count: wordCount || null, direction: direction || null }),
   triggerRefine: (articleId: number, keywords: string) =>
     post(`/generate/refine/${articleId}`, { keywords }),
   getTaskStatus: (taskId: string) => get(`/generate/task/${taskId}`),
@@ -211,6 +211,8 @@ export const api = {
     get<{ status: string; progress?: { completed: number; total: number; current_dimension: string }; style_profile_version?: number; error?: string }>(`/accounts/${accountId}/distill/status`),
 
   // 生成日志
-  getGenerationLogs: (params?: { scenario?: string; page?: number; page_size?: number }) =>
+  getGenerationLogs: (params?: { scenario?: string; task_id?: string; page?: number; page_size?: number }) =>
     get<PaginatedResponse<GenerationLog>>("/generation-logs", params as Record<string, unknown>),
+      getGenerationLogsByTask: (generationTaskId: number) =>
+        get<{ data: GenerationLog[]; total: number }>(`/generation-logs/by-generation-task/${generationTaskId}`),
 };

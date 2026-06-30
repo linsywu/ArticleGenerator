@@ -1,23 +1,13 @@
 """
 生成服务层：触发生成、任务列表查询
 """
-from datetime import timezone as dt_timezone
 from fastapi import HTTPException
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
 from typing import Optional, List
 
-from ..models import Hotspot, Account, Article, GenerationTask
+from ..models import Hotspot, Account, Article, GenerationTask, _local_iso
 from ..tasks import trigger_generate
-
-
-def _as_utc(dt):
-    """确保 datetime 带 UTC 时区（兼容旧数据中 naive datetime）"""
-    if dt is None:
-        return None
-    if dt.tzinfo is None:
-        return dt.replace(tzinfo=dt_timezone.utc)
-    return dt
 
 
 def trigger_generation(
@@ -27,6 +17,7 @@ def trigger_generation(
     custom_topic: Optional[str] = None,
     outline: Optional[List[str]] = None,
     word_count: Optional[str] = None,
+    direction: Optional[str] = None,
 ) -> dict:
     """校验参数、创建 Celery 任务和 GenerationTask 记录，返回提交结果"""
     account = db.query(Account).filter(Account.id == account_id).first()
@@ -46,7 +37,7 @@ def trigger_generation(
     task_ids = []
 
     if custom_topic:
-        task = trigger_generate.delay(topic=custom_topic, account_id=account_id, hotspot_id=None, outline=outline, word_count=word_count)
+        task = trigger_generate.delay(topic=custom_topic, account_id=account_id, hotspot_id=None, outline=outline, word_count=word_count, direction=direction)
         task_ids.append({"topic": custom_topic, "task_id": task.id})
         gt = GenerationTask(
             task_id=task.id,
@@ -106,7 +97,7 @@ def list_generation_tasks(
             "status": t.status,
             "error_message": t.error_message,
             "title": article_title,
-            "created_at": _as_utc(t.created_at),
+            "created_at": _local_iso(t.created_at),
             "hotspot": {"id": hotspot.id, "title": hotspot.title, "source": hotspot.source} if hotspot else None,
             "account": {"id": account.id, "account_name": account.account_name, "platform": account.platform} if account else None,
         })

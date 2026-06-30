@@ -49,6 +49,9 @@
               </span>
               <span class="meta-item meta-time">{{ formatTime(t.created_at) }}</span>
             </div>
+            <div class="card-actions-row">
+              <el-button size="small" text type="primary" @click="showLogsByTaskId(t.task_id, t.target)">查看日志</el-button>
+            </div>
           </div>
         </div>
       </div>
@@ -121,6 +124,9 @@
               <span class="meta-item meta-time">{{ formatTime(t.created_at) }}</span>
             </div>
             <div v-if="t.error_message" class="error-msg">{{ t.error_message }}</div>
+            <div class="card-actions-row">
+              <el-button size="small" text type="primary" @click="showLogsByTaskId(t.task_id, t.target)">查看日志</el-button>
+            </div>
           </div>
         </div>
       </div>
@@ -136,12 +142,15 @@
       <p class="empty-text">暂无任务</p>
       <p class="empty-hint">在创作页面选择热点并生成文章后，任务将在此展示</p>
     </div>
+
+    <GenerationLogDialog ref="logDialogRef" />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from "vue";
 import { api, type UnifiedTaskItem } from "@/api/client";
+import GenerationLogDialog from "@/components/GenerationLogDialog.vue";
 import { formatDateTime, relativeTime } from "@/utils/format";
 import { storeToRefs } from "pinia";
 import { useTasksStore } from "@/store/tasks";
@@ -149,6 +158,11 @@ import { useTasksStore } from "@/store/tasks";
 const tasks = ref<UnifiedTaskItem[]>([]);
 const loading = ref(true);
 const showCompleted = ref(false);
+const logDialogRef = ref<InstanceType<typeof GenerationLogDialog> | null>(null);
+
+function showLogsByTaskId(taskId: string, title?: string) {
+  logDialogRef.value?.openByTaskId(taskId, title);
+}
 const now = ref(Date.now());
 
 // 活跃任务信息（来自 Pinia store，用于头部徽章）
