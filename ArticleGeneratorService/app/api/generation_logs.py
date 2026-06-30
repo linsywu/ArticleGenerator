@@ -50,7 +50,17 @@ def list_logs(
     if scenario:
         q = q.filter(GenerationLog.scenario == scenario)
     if task_id:
-        q = q.filter(GenerationLog.task_id == task_id)
+        # 查找关联的 GenerationTask，获取 sub_task_ids 以实现完整日志链
+        gt = db.query(GenerationTask).filter(GenerationTask.task_id == task_id).first()
+        task_ids = [task_id]
+        if gt and gt.sub_task_ids:
+            import json
+            try:
+                sub_ids = json.loads(gt.sub_task_ids)
+                task_ids.extend(sub_ids)
+            except (json.JSONDecodeError, TypeError):
+                pass
+        q = q.filter(GenerationLog.task_id.in_(task_ids))
     q = q.order_by(GenerationLog.created_at.asc())
     total = q.count()
     offset = (page - 1) * page_size
