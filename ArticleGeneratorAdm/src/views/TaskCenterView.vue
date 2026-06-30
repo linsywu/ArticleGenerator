@@ -51,6 +51,7 @@
             </div>
             <div class="card-actions-row">
               <el-button size="small" text type="primary" @click="showLogsByTaskId(t.task_id, t.target)">查看日志</el-button>
+              <el-button v-if="t.task_type === 'generate'" size="small" type="danger" text @click="cancelUnifiedTask(t)">取消任务</el-button>
             </div>
           </div>
         </div>
@@ -85,6 +86,9 @@
                 {{ t.extra_info }}
               </span>
               <span class="meta-item meta-time">{{ formatTime(t.created_at) }}</span>
+            </div>
+            <div class="card-actions-row" v-if="t.task_type === 'generate'">
+              <el-button size="small" type="danger" text @click="cancelUnifiedTask(t)">取消任务</el-button>
             </div>
           </div>
         </div>
@@ -126,6 +130,13 @@
             <div v-if="t.error_message" class="error-msg">{{ t.error_message }}</div>
             <div class="card-actions-row">
               <el-button size="small" text type="primary" @click="showLogsByTaskId(t.task_id, t.target)">查看日志</el-button>
+              <el-button
+                v-if="t.task_type === 'generate' && t.status !== 'pending' && t.status !== 'running'"
+                size="small"
+                type="danger"
+                text
+                @click="deleteUnifiedTask(t)"
+              >删除</el-button>
             </div>
           </div>
         </div>
@@ -149,6 +160,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from "vue";
+import { ElMessage, ElMessageBox } from "element-plus";
 import { api, type UnifiedTaskItem } from "@/api/client";
 import GenerationLogDialog from "@/components/GenerationLogDialog.vue";
 import { formatDateTime, relativeTime } from "@/utils/format";
@@ -268,6 +280,32 @@ onMounted(() => {
     now.value = Date.now();
   }, 1000);
 });
+
+async function cancelUnifiedTask(t: UnifiedTaskItem) {
+  try {
+    await ElMessageBox.confirm(`确定取消任务「${t.target}」？`, "确认取消");
+    await api.cancelTask(t.task_id);
+    ElMessage.success("已取消");
+    loadTasks();
+  } catch (e: any) {
+    if (e !== "cancel") ElMessage.error("取消失败");
+  }
+}
+
+async function deleteUnifiedTask(t: UnifiedTaskItem) {
+  try {
+    await ElMessageBox.confirm(
+      `确定删除「${t.target}」？`,
+      "确认删除",
+      { confirmButtonText: "删除", cancelButtonText: "取消", type: "warning" }
+    );
+    await api.deleteGenerationTask(t.task_id);
+    ElMessage.success("已删除");
+    tasks.value = tasks.value.filter(task => task.task_id !== t.task_id);
+  } catch (e: any) {
+    if (e !== "cancel") ElMessage.error(e?.response?.data?.detail || "删除失败");
+  }
+}
 
 onUnmounted(() => {
   if (listPollTimer) clearInterval(listPollTimer);

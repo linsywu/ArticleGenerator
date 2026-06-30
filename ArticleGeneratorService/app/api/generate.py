@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from typing import Optional
 
 from ..database import get_db
-from ..models import Article, Account, GenerationTask, RefineTask
+from ..models import Article, Account, GenerationTask, RefineTask, GenerationLog
 from ..schemas import GenerateRequest, RefineRequest, DirectionsRequest, OutlineRequest, TitleRequest
 from ..tasks import celery_app, trigger_direction_generation, trigger_outline_generation, trigger_title_generation, trigger_refine
 from ..services.generate_service import trigger_generation, list_generation_tasks as _list_generation_tasks
@@ -138,6 +138,23 @@ def cancel_generation_task(task_id: str, db: Session = Depends(get_db)):
     task.status = "cancelled"
     db.commit()
     return {"message": "已取消"}
+
+
+@router.delete("/tasks/{task_id}")
+def delete_generation_task(task_id: str, db: Session = Depends(get_db)):
+    """删除生成任务（仅 success/failed/cancelled 状态可删）"""
+    task = db.query(GenerationTask).filter(GenerationTask.task_id == task_id).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    if task.status in ("pending", "running"):
+        raise HTTPException(status_code=400, detail="请先取消任务后再删除")
+
+    # 清理关联的生成日志
+    db.query(GenerationLog).filter(GenerationLog.task_id == task_id).delete()
+
+    db.delete(task)
+    db.commit()
+    return {"message": "已删除"}
 
 
 @router.post("/directions")

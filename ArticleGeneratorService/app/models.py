@@ -195,6 +195,7 @@ class GenerationLog(Base):
     __tablename__ = "generation_logs"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    task_id = Column(String(100), default=None)
     scenario = Column(String(50), nullable=False)
     task_id = Column(String(100))  # Celery 任务 ID，关联 generation_tasks.task_id
     provider_id = Column(Integer)
