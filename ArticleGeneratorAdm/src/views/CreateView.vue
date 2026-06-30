@@ -276,7 +276,8 @@ async function generateOutline() {
       const { data: taskData } = await api.getTaskResult(taskId)
       if (taskData.status === 'success') {
         const result = (taskData as any).result
-        outline.value = result?.outline || []
+        const rawOutline: string[] = result?.outline || []
+        outline.value = rawOutline.map((point: string, i: number) => ({ order: i + 1, point }))
         if (outline.value.length) currentStep.value = 3
         return
       }
