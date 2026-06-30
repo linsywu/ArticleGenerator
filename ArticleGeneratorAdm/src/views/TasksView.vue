@@ -38,7 +38,7 @@
       <el-table-column label="创建时间" width="180">
         <template #default="{ row }">{{ formatDateTime(row.created_at) }}</template>
       </el-table-column>
-      <el-table-column label="操作" width="200" fixed="right">
+      <el-table-column label="操作" width="320" fixed="right">
         <template #default="{ row }">
           <el-button
             v-if="row.status === 'pending' || row.status === 'running'"
@@ -47,6 +47,15 @@
             @click="cancelTask(row)"
           >
             取消
+          </el-button>
+          <el-button
+            v-if="row.status === 'success' || row.status === 'failed' || row.status === 'cancelled'"
+            size="small"
+            type="danger"
+            @click="deleteTask(row)"
+            text
+          >
+            删除
           </el-button>
           <template v-if="row.status === 'success' && row.article_id">
             <el-button size="small" @click="viewArticle(row)">查看文章</el-button>
@@ -176,6 +185,17 @@ async function cancelTask(row: TaskItem) {
     load();
   } catch (e) {
     if (e !== "cancel") ElMessage.error("取消失败");
+  }
+}
+
+async function deleteTask(row: TaskItem) {
+  try {
+    await ElMessageBox.confirm(`确定删除任务「${row.hotspot?.title || row.task_id}」？删除后不可恢复。`, "提示");
+    await api.deleteGenerationTask(row.task_id);
+    ElMessage.success("已删除");
+    load();
+  } catch (e) {
+    if (e !== "cancel") ElMessage.error("删除失败");
   }
 }
 

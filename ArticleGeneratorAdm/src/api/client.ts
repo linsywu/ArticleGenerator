@@ -160,6 +160,7 @@ export const api = {
   getTaskList: (params?: { status?: string; page?: number; page_size?: number }) =>
     get<PaginatedResponse<unknown>>("/generate/tasks/list", params as Record<string, unknown>),
   cancelTask: (taskId: string) => post(`/generate/tasks/${taskId}/cancel`),
+  deleteGenerationTask: (taskId: string) => del(`/generate/tasks/${taskId}`),
   getRefineTaskStatus: (taskId: string) => get(`/generate/refine-task/${taskId}`),
 
   // 统一任务中心
