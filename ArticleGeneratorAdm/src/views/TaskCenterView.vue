@@ -86,6 +86,9 @@
               </span>
               <span class="meta-item meta-time">{{ formatTime(t.created_at) }}</span>
             </div>
+            <div class="card-actions-row" v-if="t.task_type === 'generate'">
+              <el-button size="small" type="danger" text @click="cancelUnifiedTask(t)">取消任务</el-button>
+            </div>
           </div>
         </div>
       </div>
