@@ -198,6 +198,9 @@ class GenerateRequest(BaseModel):
     outline: Optional[List[str]] = None  # 大纲要点列表
     word_count: Optional[str] = None  # 用户选择的字数
     direction: Optional[str] = None  # 写作方向（用于生成提示词）
+    direction_task_id: Optional[str] = None  # 方向生成 task_id（用于日志关联）
+    outline_task_id: Optional[str] = None    # 大纲生成 task_id
+    title_task_id: Optional[str] = None      # 标题生成 task_id
 
 
 class RefineRequest(BaseModel):

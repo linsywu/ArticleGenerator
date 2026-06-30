@@ -225,7 +225,9 @@ def trigger_generate(self, topic: str, account_id: int, hotspot_id: int = None, 
             cr_task = trigger_compliance_review.delay(article.id, article.content)
             if gt:
                 try:
-                    gt.sub_task_ids = json.dumps([qr_task.id, cr_task.id])
+                    existing = json.loads(gt.sub_task_ids) if gt.sub_task_ids else []
+                    existing.extend([qr_task.id, cr_task.id])
+                    gt.sub_task_ids = json.dumps(existing)
                     db.commit()
                 except Exception:
                     pass

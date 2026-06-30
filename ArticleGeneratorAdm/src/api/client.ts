@@ -149,8 +149,8 @@ export const api = {
     post<{ task_id: string; status: string; message: string }>("/generate/outline", { account_id: accountId, idea, direction }),
   generateTitles: (accountId: number, idea: string, direction: string, outline?: string[]) =>
     post<{ task_id: string; status: string; message: string }>("/generate/titles", { account_id: accountId, idea, direction, outline: outline || [] }),
-  triggerGenerateWithOutline: (accountId: number, topic: string, outline?: string[], wordCount?: string, direction?: string) =>
-    post("/generate/trigger", { hotspot_ids: [], account_id: accountId, custom_topic: topic, outline: outline || [], word_count: wordCount || null, direction: direction || null }),
+  triggerGenerateWithOutline: (accountId: number, topic: string, outline?: string[], wordCount?: string, direction?: string, directionTaskId?: string, outlineTaskId?: string, titleTaskId?: string) =>
+    post("/generate/trigger", { hotspot_ids: [], account_id: accountId, custom_topic: topic, outline: outline || [], word_count: wordCount || null, direction: direction || null, direction_task_id: directionTaskId || null, outline_task_id: outlineTaskId || null, title_task_id: titleTaskId || null }),
   triggerRefine: (articleId: number, keywords: string) =>
     post(`/generate/refine/${articleId}`, { keywords }),
   getTaskStatus: (taskId: string) => get(`/generate/task/${taskId}`),

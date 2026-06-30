@@ -25,6 +25,9 @@ def trigger_article_generation(data: GenerateRequest, db: Session = Depends(get_
         outline=data.outline,
         word_count=data.word_count,
         direction=data.direction,
+        direction_task_id=data.direction_task_id,
+        outline_task_id=data.outline_task_id,
+        title_task_id=data.title_task_id,
     )
 
 

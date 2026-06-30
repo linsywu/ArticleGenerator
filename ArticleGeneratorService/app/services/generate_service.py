@@ -1,6 +1,7 @@
 """
 生成服务层：触发生成、任务列表查询
 """
+import json
 from fastapi import HTTPException
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
@@ -18,6 +19,9 @@ def trigger_generation(
     outline: Optional[List[str]] = None,
     word_count: Optional[str] = None,
     direction: Optional[str] = None,
+    direction_task_id: Optional[str] = None,
+    outline_task_id: Optional[str] = None,
+    title_task_id: Optional[str] = None,
 ) -> dict:
     """校验参数、创建 Celery 任务和 GenerationTask 记录，返回提交结果"""
     account = db.query(Account).filter(Account.id == account_id).first()
@@ -36,6 +40,9 @@ def trigger_generation(
 
     task_ids = []
 
+    # 收集前序步骤的 task_id，用于完整日志关联
+    step_ids = [tid for tid in [direction_task_id, outline_task_id, title_task_id] if tid]
+
     if custom_topic:
         task = trigger_generate.delay(topic=custom_topic, account_id=account_id, hotspot_id=None, outline=outline, word_count=word_count, direction=direction)
         task_ids.append({"topic": custom_topic, "task_id": task.id})
@@ -43,6 +50,7 @@ def trigger_generation(
             task_id=task.id,
             account_id=account_id,
             custom_topic=custom_topic,
+            sub_task_ids=json.dumps(step_ids) if step_ids else None,
             status="pending",
         )
         db.add(gt)
@@ -55,6 +63,7 @@ def trigger_generation(
                 task_id=task.id,
                 hotspot_id=hid,
                 account_id=account_id,
+                sub_task_ids=json.dumps(step_ids) if step_ids else None,
                 status="pending",
             )
             db.add(gt)

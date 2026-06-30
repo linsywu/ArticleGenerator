@@ -222,6 +222,10 @@ const loadingOutline = ref(false)
 // 步骤 5
 const generating = ref(false)
 const taskSubmitted = ref(false)
+// 前序步骤 task_id（用于关联完整日志）
+const directionTaskId = ref('')
+const outlineTaskId = ref('')
+const titleTaskId = ref('')
 // 步骤 5: 标题
 const titles = ref<string[]>([])
 const selectedTitle = ref('')
@@ -236,6 +240,9 @@ async function generateDirections() {
     const { data } = await api.generateDirections(selectedAccountId.value, idea.value.trim())
     const taskId = data.task_id
     if (!taskId) throw new Error('未获取到任务 ID')
+    directionTaskId.value = taskId
+    outlineTaskId.value = ''
+    titleTaskId.value = ''
 
     // 轮询任务状态
     let attempts = 0
@@ -267,6 +274,7 @@ async function generateOutline() {
     const { data } = await api.generateOutline(selectedAccountId.value, idea.value.trim(), selectedDirection.value.title)
     const taskId = data.task_id
     if (!taskId) throw new Error('未获取到任务 ID')
+    outlineTaskId.value = taskId
 
     // 轮询任务状态
     let attempts = 0
@@ -297,6 +305,7 @@ async function generateTitles() {
     const { data } = await api.generateTitles(selectedAccountId.value, idea.value.trim(), selectedDirection.value.title, points)
     const taskId = data.task_id
     if (!taskId) throw new Error('未获取到任务 ID')
+    titleTaskId.value = taskId
 
     // 轮询任务状态
     let attempts = 0
@@ -335,7 +344,7 @@ async function startGenerate() {
     const topicWithTitle = editedTitle.value
       ? `${editedTitle.value}\n\n${idea.value.trim()}`
       : idea.value.trim()
-    const { data } = await api.triggerGenerateWithOutline(selectedAccountId.value, topicWithTitle, points, undefined, selectedDirection.value?.title)
+    const { data } = await api.triggerGenerateWithOutline(selectedAccountId.value, topicWithTitle, points, undefined, selectedDirection.value?.title, directionTaskId.value || undefined, outlineTaskId.value || undefined, titleTaskId.value || undefined)
     const taskId = data.tasks?.[0]?.task_id
     if (!taskId) throw new Error('未获取到任务 ID')
 
