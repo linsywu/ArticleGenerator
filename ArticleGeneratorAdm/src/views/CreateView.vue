@@ -180,7 +180,7 @@
             <p class="submit-title">文章生产中，请前往任务中心查看</p>
             <p class="submit-desc">文章生成需要一定时间，您可以在任务中心查看实时进度和结果。</p>
             <div class="card-actions">
-              <el-button size="large" @click="currentStep = 4">返回修改标题</el-button>
+              <el-button size="large" @click="taskSubmitted = false; currentStep = 4">返回修改标题</el-button>
               <el-button size="large" type="primary" @click="$router.push('/task-center')">前往任务中心</el-button>
             </div>
           </div>
