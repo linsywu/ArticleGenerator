@@ -144,7 +144,8 @@ class Gateway:
         """记录调用日志到后端（含完整提示词）"""
         try:
             with httpx.Client(timeout=5.0) as client:
-                client.post(f"{self.backend_api_url}/api/generation-logs", json={
+                headers = {"X-API-Key": settings.crawler_api_key}
+                client.post(f"{self.backend_api_url}/api/generation-logs", headers=headers, json={
                     "scenario": scenario,
                     "task_id": task_id,
                     "provider_id": provider_id,
