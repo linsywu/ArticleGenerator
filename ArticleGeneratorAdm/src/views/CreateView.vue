@@ -328,7 +328,7 @@ async function startGenerate() {
   currentStep.value = 5
 
   try {
-    const points = outline.value.map(o => o.point)
+    const points = outline.value.length ? outline.value.map(o => o.point) : undefined
     const topicWithTitle = editedTitle.value
       ? `${editedTitle.value}\n\n${idea.value.trim()}`
       : idea.value.trim()
@@ -455,13 +455,7 @@ onMounted(async () => {
 .submit-title { font-size: 18px; font-weight: 600; color: var(--el-text-color-primary); margin: 0 0 8px 0; }
 .submit-desc { font-size: 14px; color: var(--el-text-color-secondary); margin: 0 0 24px 0; }
 
-/* 文章结果 */
-.article-content { white-space: pre-wrap; line-height: 1.8; color: var(--text-on-dark); background: var(--ink-surface); padding: var(--space-xl); border-radius: var(--radius-lg); margin-bottom: var(--space-xl); font-size: 15px; max-height: 500px; overflow-y: auto; }
 .loading-state { display: flex; align-items: center; gap: 12px; color: var(--text-muted); padding: var(--space-xl); justify-content: center; }
-
-.done-message { text-align: center; padding: var(--space-lg) 0; }
-.done-title { font-size: 20px; font-weight: 700; color: var(--green-muted); margin-bottom: 6px; }
-.done-desc { font-size: 14px; color: var(--text-muted); }
 
 .step-trans-enter-active, .step-trans-leave-active { transition: opacity 0.2s ease, transform 0.2s ease; }
 .step-trans-enter-from { opacity: 0; transform: translateX(20px); }
