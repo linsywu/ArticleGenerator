@@ -107,14 +107,6 @@ def trigger_generate(self, topic: str, account_id: int, hotspot_id: int = None, 
         account = db.query(Account).filter(Account.id == account_id).first()
         lora_path = account.lora_path if account else None
 
-        # 获取结构化画像字段
-        structured = None
-        if account and account.style_profile_structured:
-            try:
-                structured = json.loads(account.style_profile_structured)
-            except (json.JSONDecodeError, TypeError):
-                pass
-
         # 构建大纲 section（整段，含标题和约束语；无大纲时为空字符串）
         outline_section = ""
         if outline:
@@ -123,18 +115,6 @@ def trigger_generate(self, topic: str, account_id: int, hotspot_id: int = None, 
                 "## 写作大纲\n"
                 + "\n".join(outline_items)
                 + "\n\n请严格按照以上大纲逐段写作，大纲有几段文章就必须有几段。\n"
-            )
-
-        # 注入风格要求
-        style_instructions = ""
-        if structured:
-            sp = structured
-            style_instructions = (
-                f"【风格要求 - 必须严格遵守】\n"
-                f"句式：{sp.get('sentence_pattern', '长短句参差，避免单调')}\n"
-                f"用词：{sp.get('vocabulary_pattern', '')}\n"
-                f"禁忌——绝对不要出现以下内容：{sp.get('taboos', '')}\n"
-                f"留白：{sp.get('blank_leaving', '道理只讲七分，不总结不升华')}\n"
             )
 
         # 字数指令（用户选择优先 → 账号配置 → 默认值）
@@ -153,7 +133,6 @@ def trigger_generate(self, topic: str, account_id: int, hotspot_id: int = None, 
             "variables": {
                 "topic": topic,
                 "direction": direction or "",
-                "style_instructions": style_instructions,
                 "outline_section": outline_section,
                 "word_count_instruction": word_count_instruction,
             },
@@ -449,20 +428,20 @@ def trigger_distill(self, account_id: int, articles_content: list, num_articles:
         # All 7 dimensions complete
         structured.pop("_progress", None)
 
-        # Generate legacy summary text
+        # Assemble writing guide from 7 dimension results
         dim_labels = {
-            "thinking_pattern": "思维特征",
+            "thinking_pattern": "思维模式",
             "structure_pattern": "结构模式",
-            "sentence_pattern": "句式特征",
-            "vocabulary_pattern": "词汇偏好",
-            "evidence_type": "论据类型",
-            "taboos": "禁忌清单",
-            "blank_leaving": "留白程度",
+            "sentence_pattern": "句式要求",
+            "vocabulary_pattern": "用词要求",
+            "evidence_type": "论据要求",
+            "taboos": "写作禁忌",
+            "blank_leaving": "留白要求",
         }
         parts = []
         for key, label in dim_labels.items():
             if structured.get(key):
-                parts.append(f"【{label}】\n{structured[key]}")
+                parts.append(f"## {label}\n{structured[key]}")
         summary_text = "\n\n".join(parts)
 
         account = db.query(Account).filter(Account.id == account_id).first()

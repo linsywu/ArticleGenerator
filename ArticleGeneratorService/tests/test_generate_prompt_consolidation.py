@@ -62,13 +62,12 @@ class TestPayloadStructure:
     """验证发往 LLM 的 payload 结构"""
 
     def test_new_payload_uses_chat_endpoint_with_variables(self):
-        """新架构：发 /chat，传 scenario + variables，不传 user_prompt"""
+        """新架构：发 /chat，传 scenario + variables，不传 style_instructions"""
         payload = {
             "scenario": "generate",
             "account_id": 1,
             "variables": {
                 "topic": "测试主题",
-                "style_instructions": "句式：长短句参差\n",
                 "outline_section": "",
                 "word_count_instruction": "字数1500左右。",
             },
@@ -79,6 +78,44 @@ class TestPayloadStructure:
         assert "topic" in payload["variables"]
         assert "outline_section" in payload["variables"]
         assert "word_count_instruction" in payload["variables"]
+        # 关键：style_instructions 不应出现
+        assert "style_instructions" not in payload["variables"]
+
+    def test_generate_payload_excludes_style_instructions(self):
+        """trigger_generate 构建的 variables 不得包含 style_instructions"""
+        payload = {
+            "scenario": "generate",
+            "account_id": 1,
+            "variables": {
+                "topic": "测试主题",
+                "direction": "技术分析",
+                "outline_section": "## 写作大纲\n1. 引言\n\n请严格按照以上大纲逐段写作...\n",
+                "word_count_instruction": "字数1500左右。",
+            },
+        }
+        # style_instructions 已被合并到 style_profile（由 Gateway 自动注入）
+        assert "style_instructions" not in payload["variables"]
+        # 确认核心变量全部存在
+        assert "topic" in payload["variables"]
+        assert "direction" in payload["variables"]
+        assert "outline_section" in payload["variables"]
+        assert "word_count_instruction" in payload["variables"]
+
+    def test_generate_payload_relies_on_gateway_for_style_profile(self):
+        """style_profile 由 Gateway 自动注入，tasks.py 不传"""
+        payload = {
+            "scenario": "generate",
+            "account_id": 1,
+            "variables": {
+                "topic": "测试",
+                "direction": "",
+                "outline_section": "",
+                "word_count_instruction": "字数1500左右。",
+            },
+        }
+        # Gateway 注入 style_profile，tasks.py 不负责
+        assert "style_profile" not in payload["variables"]
+        assert "style_instructions" not in payload["variables"]
 
     def test_humanize_payload_includes_outline_section(self):
         """Humanize 新 payload 包含 outline_section"""
