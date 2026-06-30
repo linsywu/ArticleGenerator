@@ -177,17 +177,15 @@
           </div>
           <div v-if="generating" class="generating-state">
             <div class="generating-spinner"></div>
-            <p class="generating-text">{{ generatingStatusText }}</p>
+            <p class="generating-text">正在提交生成任务...</p>
           </div>
-          <div v-else-if="generatedArticle" class="article-result">
-            <div class="article-content">{{ generatedArticle }}</div>
-            <div class="done-message">
-              <p class="done-title">生成任务已提交</p>
-              <p class="done-desc">文章已加入任务中心，请在「评审」页面查看。</p>
-            </div>
+          <div v-else-if="taskSubmitted" class="task-submitted-state">
+            <div class="submit-success-icon">✅</div>
+            <p class="submit-title">文章生产中，请前往任务中心查看</p>
+            <p class="submit-desc">文章生成需要一定时间，您可以在任务中心查看实时进度和结果。</p>
             <div class="card-actions">
               <el-button size="large" @click="goBack()">返回上一步</el-button>
-              <el-button size="large" type="primary" @click="currentStep = 0">重新创作</el-button>
+              <el-button size="large" type="primary" @click="$router.push('/task-center')">前往任务中心</el-button>
             </div>
           </div>
           <div v-else class="card-actions">
@@ -202,7 +200,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '@/api/client'
 import type { DirectionItem, OutlinePoint } from '@/api/client'
 import { useAccountsStore } from "@/store/accounts"
@@ -227,8 +225,7 @@ const loadingOutline = ref(false)
 
 // 步骤 5
 const generating = ref(false)
-const generatingStatusText = ref('')
-const generatedArticle = ref('')
+const taskSubmitted = ref(false)
 // 步骤 5: 标题
 const titles = ref<string[]>([])
 const selectedTitle = ref('')
@@ -361,7 +358,6 @@ async function startGenerate() {
   if (!selectedAccountId.value || !idea.value.trim()) return
   generating.value = true
   currentStep.value = 5
-  generatingStatusText.value = '正在生成文章...'
 
   try {
     const points = outline.value.length ? outline.value.map(o => o.point) : undefined
@@ -372,34 +368,27 @@ async function startGenerate() {
     const taskId = data.tasks?.[0]?.task_id
     if (!taskId) throw new Error('未获取到任务 ID')
 
-    // 轮询任务状态
-    let attempts = 0
-    const maxAttempts = 60
-    while (attempts < maxAttempts) {
-      await new Promise(r => setTimeout(r, 3000))
-      const { data: taskData } = await api.getTaskResult(taskId)
-      if (taskData.status === 'success') {
-        const articleId = taskData.result?.article_id
-        const { data: articleData } = await api.getArticle(articleId)
-        generatedArticle.value = articleData.content || ''
-        generating.value = false
-        return
-      }
-      if (taskData.status === 'failed') throw new Error(taskData.error_message || '生成失败')
-      attempts++
-      generatingStatusText.value = `生成中...（${attempts * 3}秒）`
-    }
-    throw new Error('生成超时，请重试')
-  } catch (e: any) {
-    ElMessage.error(e?.message || '生成失败')
     generating.value = false
-    currentStep.value = outline.value.length ? 3 : 2  // 有大纲回大纲步骤，否则回方向步骤
+    taskSubmitted.value = true
+  } catch (e: any) {
+    generating.value = false
+    const errMsg = e?.response?.data?.detail || e?.message || '生成失败'
+    try {
+      await ElMessageBox.confirm(
+        `文章生成失败：${errMsg}\n\n是否返回上一步重新尝试？`,
+        '生成失败',
+        { confirmButtonText: '返回上一步', cancelButtonText: '关闭', type: 'error' }
+      )
+      currentStep.value = outline.value.length ? 3 : 2
+    } catch {
+      // 用户点击关闭，留在当前页面
+    }
   }
 }
 
-	// 进入步骤 6 时自动触发文章生成（仅首次进入，防止 startGenerate 内部设 currentStep 时重复触发）
+	// 进入步骤 6 时自动触发文章生成（仅首次进入）
 	watch(currentStep, (step) => {
-	  if (step === 5 && !generating.value && !generatedArticle.value) {
+	  if (step === 5 && !generating.value && !taskSubmitted.value) {
 	    startGenerate()
 	  }
 	})
@@ -511,6 +500,27 @@ async function startGenerate() {
 .generating-spinner { width: 40px; height: 40px; border: 3px solid var(--ink-border); border-top-color: var(--amber); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .generating-text { color: var(--text-muted); font-size: 14px; }
+
+/* 任务提交成功 */
+.task-submitted-state {
+  text-align: center;
+  padding: 40px 20px;
+}
+.submit-success-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+.submit-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+  margin: 0 0 8px 0;
+}
+.submit-desc {
+  font-size: 14px;
+  color: var(--el-text-color-secondary);
+  margin: 0 0 24px 0;
+}
 
 /* 文章结果 */
 .article-content { white-space: pre-wrap; line-height: 1.8; color: var(--text-on-dark); background: var(--ink-surface); padding: var(--space-xl); border-radius: var(--radius-lg); margin-bottom: var(--space-xl); font-size: 15px; max-height: 500px; overflow-y: auto; }
