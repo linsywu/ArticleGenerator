@@ -192,6 +192,7 @@ class GenerationLog(Base):
     __tablename__ = "generation_logs"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    task_id = Column(String(100), default=None)
     scenario = Column(String(50), nullable=False)
     provider_id = Column(Integer)
     model = Column(String(100))
