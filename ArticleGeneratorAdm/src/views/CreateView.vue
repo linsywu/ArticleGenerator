@@ -94,11 +94,8 @@
           </div>
           <div class="card-actions">
             <el-button size="large" @click="currentStep = 1">返回上一步</el-button>
-            <el-button size="large" :disabled="!selectedDirection" @click="skipToTitles">
-              跳过大纲 · 直接生成标题
-            </el-button>
             <el-button size="large" type="primary" :disabled="!selectedDirection" :loading="loadingOutline" @click="generateOutline">
-              生成大纲预览
+              下一步 · 生成大纲
             </el-button>
           </div>
         </div>
@@ -122,9 +119,8 @@
           <el-button size="small" @click="outline.push({ order: outline.length + 1, point: '' })" style="margin-top:12px">＋ 添加要点</el-button>
           <div class="card-actions">
             <el-button size="large" @click="currentStep = 2">返回上一步</el-button>
-            <el-button size="large" @click="skipToTitles">不使用大纲 · 直接生成标题</el-button>
             <el-button size="large" type="primary" :disabled="!outline.length || !outline.every(o => o.point.trim())" @click="generateTitles">
-              使用大纲 · 生成标题
+              下一步 · 生成标题
             </el-button>
           </div>
         </div>
@@ -157,7 +153,7 @@
             <span>⏳ 正在生成标题...</span>
           </div>
           <div class="card-actions">
-            <el-button size="large" @click="goBack()">返回上一步</el-button>
+            <el-button size="large" @click="currentStep = 3">返回修改大纲</el-button>
             <el-button
               size="large"
               type="primary"
@@ -184,12 +180,12 @@
             <p class="submit-title">文章生产中，请前往任务中心查看</p>
             <p class="submit-desc">文章生成需要一定时间，您可以在任务中心查看实时进度和结果。</p>
             <div class="card-actions">
-              <el-button size="large" @click="goBack()">返回上一步</el-button>
+              <el-button size="large" @click="taskSubmitted = false; currentStep = 4">返回修改标题</el-button>
               <el-button size="large" type="primary" @click="$router.push('/task-center')">前往任务中心</el-button>
             </div>
           </div>
           <div v-else class="card-actions">
-            <el-button size="large" @click="goBack()">返回上一步</el-button>
+            <el-button size="large" @click="currentStep = 4">返回上一步</el-button>
           </div>
         </div>
       </transition>
@@ -280,11 +276,7 @@ async function generateOutline() {
       const { data: taskData } = await api.getTaskResult(taskId)
       if (taskData.status === 'success') {
         const result = (taskData as any).result
-        const rawOutline = result?.outline || []
-        // 后端返回字符串数组，转为前端期望的 { order, point } 格式
-        outline.value = rawOutline.map((item: any, i: number) =>
-          typeof item === 'string' ? { order: i + 1, point: item } : item
-        )
+        outline.value = result?.outline || []
         if (outline.value.length) currentStep.value = 3
         return
       }
@@ -296,33 +288,11 @@ async function generateOutline() {
   finally { loadingOutline.value = false }
 }
 
-function skipToTitles() {
-  outline.value = []  // 清空大纲
-  currentStep.value = 4  // 跳到标题生成步骤（step index 4），触发下方 watcher
-}
-
-// 统一返回上一步，正确处理跳过大纲的情况
-function goBack() {
-  if (currentStep.value === 4) {
-    // 从标题步骤返回：如果跳过了大纲，回方向步骤；否则回大纲步骤
-    currentStep.value = outline.value.length ? 3 : 2
-  } else {
-    currentStep.value = currentStep.value - 1
-  }
-}
-
-// 进入步骤 5 时自动触发标题生成（仅 skip 路径；大纲路径已手动点击触发）
-watch(currentStep, (step) => {
-  if (step === 4 && !titles.value.length && !loadingTitles.value) {
-    generateTitles()
-  }
-})
-
 async function generateTitles() {
-  if (!selectedAccountId.value || !selectedDirection.value) return
+  if (!selectedAccountId.value || !selectedDirection.value || !outline.value.length) return
   loadingTitles.value = true
   try {
-    const points = outline.value.length ? outline.value.map(o => o.point) : undefined
+    const points = outline.value.map(o => o.point)
     const { data } = await api.generateTitles(selectedAccountId.value, idea.value.trim(), selectedDirection.value.title, points)
     const taskId = data.task_id
     if (!taskId) throw new Error('未获取到任务 ID')
@@ -386,14 +356,14 @@ async function startGenerate() {
   }
 }
 
-	// 进入步骤 6 时自动触发文章生成（仅首次进入）
-	watch(currentStep, (step) => {
-	  if (step === 5 && !generating.value && !taskSubmitted.value) {
-	    startGenerate()
-	  }
-	})
+// 进入步骤 6 时自动触发文章生成（仅首次进入）
+watch(currentStep, (step) => {
+  if (step === 5 && !generating.value && !taskSubmitted.value) {
+    startGenerate()
+  }
+})
 
-	onMounted(async () => {
+onMounted(async () => {
   try {
     await accountsStore.fetch()
 
@@ -404,16 +374,13 @@ async function startGenerate() {
         selectedAccountId.value = qAccountId
       }
     }
-    if (!selectedAccountId.value && accounts.value.length) {
-      selectedAccountId.value = accounts.value[0].id
-    }
-
-    // Pre-fill idea from query param (does NOT auto-generate directions)
     if (route.query.idea) {
       idea.value = String(route.query.idea)
     }
 
-    // Auto-advance to step 1 when account is pre-filled from query (e.g., from materials center)
+    if (!selectedAccountId.value && accounts.value.length) selectedAccountId.value = accounts.value[0].id
+
+    // Auto-navigate to step 2 if pre-filled from MaterialsView
     if (route.query.account_id && selectedAccountId.value) {
       currentStep.value = 1
     }
@@ -502,33 +469,12 @@ async function startGenerate() {
 .generating-text { color: var(--text-muted); font-size: 14px; }
 
 /* 任务提交成功 */
-.task-submitted-state {
-  text-align: center;
-  padding: 40px 20px;
-}
-.submit-success-icon {
-  font-size: 48px;
-  margin-bottom: 16px;
-}
-.submit-title {
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--el-text-color-primary);
-  margin: 0 0 8px 0;
-}
-.submit-desc {
-  font-size: 14px;
-  color: var(--el-text-color-secondary);
-  margin: 0 0 24px 0;
-}
+.task-submitted-state { text-align: center; padding: 40px 20px; }
+.submit-success-icon { font-size: 48px; margin-bottom: 16px; }
+.submit-title { font-size: 18px; font-weight: 600; color: var(--el-text-color-primary); margin: 0 0 8px 0; }
+.submit-desc { font-size: 14px; color: var(--el-text-color-secondary); margin: 0 0 24px 0; }
 
-/* 文章结果 */
-.article-content { white-space: pre-wrap; line-height: 1.8; color: var(--text-on-dark); background: var(--ink-surface); padding: var(--space-xl); border-radius: var(--radius-lg); margin-bottom: var(--space-xl); font-size: 15px; max-height: 500px; overflow-y: auto; }
 .loading-state { display: flex; align-items: center; gap: 12px; color: var(--text-muted); padding: var(--space-xl); justify-content: center; }
-
-.done-message { text-align: center; padding: var(--space-lg) 0; }
-.done-title { font-size: 20px; font-weight: 700; color: var(--green-muted); margin-bottom: 6px; }
-.done-desc { font-size: 14px; color: var(--text-muted); }
 
 .step-trans-enter-active, .step-trans-leave-active { transition: opacity 0.2s ease, transform 0.2s ease; }
 .step-trans-enter-from { opacity: 0; transform: translateX(20px); }
