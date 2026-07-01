@@ -12,16 +12,9 @@
  */
 import { test, expect } from "@playwright/test";
 
-// 预置 JWT token（从后端登录获取，24h 有效）
-const AUTH_TOKEN =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbiIsImV4cCI6MTc4MjExOTQ0NX0.pRoGDzMo3ei9KX-iQ6slcvHQx80Lzut9JlmSeh14GUc";
-
 test.describe("Article Creation Full Workflow", () => {
   test.beforeEach(async ({ page }) => {
-    // 绕过登录：注入 token 到 localStorage
-    await page.addInitScript((token: string) => {
-      localStorage.setItem("access_token", token);
-    }, AUTH_TOKEN);
+    // 登录状态由 auth.setup.ts 处理，storageState 自动注入
 
     // 收集 JS 控制台错误
     page.on("pageerror", (err) => {
@@ -402,19 +395,20 @@ test.describe("Article Creation Full Workflow", () => {
   });
 
   // ══════════════════════════════════════════════════════════
-  // 测试 11: 无账号时 CreateView 的降级表现
+  // 测试 11: 无认证时 CreateView 应重定向到登录页
   // ══════════════════════════════════════════════════════════
-  test("11-createView handles missing auth gracefully", async ({ page }) => {
-    // 不注入 token，模拟未登录
-    await page.addInitScript(() => {
-      localStorage.removeItem("access_token");
-    });
+  test("11-createView redirects to login when unauthenticated", async ({
+    browser,
+  }) => {
+    // 创建无 storageState 的新 context，模拟未登录状态
+    const context = await browser.newContext();
+    const page = await context.newPage();
 
     const errors: string[] = [];
     page.on("pageerror", (err) => errors.push(err.message));
 
     await page.goto("/create");
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(3000);
 
     // 应重定向到 /login
     expect(page.url()).toContain("/login");
@@ -427,5 +421,7 @@ test.describe("Article Creation Full Workflow", () => {
         e.includes("Cannot read")
     );
     expect(crashErrors).toEqual([]);
+
+    await context.close();
   });
 });

@@ -1,2 +1,3 @@
 node_modules
 article_generator.db.bak
+e2e/.auth/
