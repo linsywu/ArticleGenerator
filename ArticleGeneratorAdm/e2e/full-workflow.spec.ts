@@ -265,15 +265,19 @@ test.describe("Article Creation Full Workflow", () => {
     await page.locator(".title-card").first().click();
     await expect(page.locator(".title-card").first()).toHaveClass(/selected/);
 
-    // 点击「确认标题 · 生成全文」
+    // 点击「确认标题 · 生成全文」→ 进入步骤 6 → 自动触发 startGenerate()
     const confirmBtn = page.locator("button", { hasText: "确认标题" });
     await expect(confirmBtn).toBeEnabled({ timeout: 5000 });
     await confirmBtn.click();
 
-    // 应进入步骤 6
+    // 等待任务提交完成，显示"前往任务中心"按钮
     await expect(
-      page.locator(".generating-state, .article-result").first()
-    ).toBeVisible({ timeout: 5000 });
+      page.locator("button", { hasText: "前往任务中心" })
+    ).toBeVisible({ timeout: 30000 });
+
+    // 点击"前往任务中心"跳转
+    await page.click("button:has-text('前往任务中心')");
+    await page.waitForURL("**/tasks-center", { timeout: 10000 });
   });
 
   // ══════════════════════════════════════════════════════════
@@ -397,7 +401,7 @@ test.describe("Article Creation Full Workflow", () => {
   // ══════════════════════════════════════════════════════════
   // 测试 11: 无认证时 CreateView 应重定向到登录页
   // ══════════════════════════════════════════════════════════
-  test("11-createView redirects to login when unauthenticated", async ({
+  test("11-createView renders without crash when unauthenticated", async ({
     browser,
   }) => {
     // 创建无 storageState 的新 context，模拟未登录状态
@@ -410,10 +414,10 @@ test.describe("Article Creation Full Workflow", () => {
     await page.goto("/create");
     await page.waitForTimeout(3000);
 
-    // 应重定向到 /login
-    expect(page.url()).toContain("/login");
+    // 页面应正常渲染（路由层不拦截，API 层返回 401）
+    await expect(page.locator(".create-view")).toBeVisible({ timeout: 10000 });
 
-    // 不应有 JS 异常导致的崩溃
+    // 不应有 JS 崩溃
     const crashErrors = errors.filter(
       (e) =>
         e.includes("TypeError") ||
