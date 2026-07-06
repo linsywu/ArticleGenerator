@@ -493,25 +493,12 @@ def trigger_direction_generation(self, account_id: int, idea: str, word_count: s
     """生成写作方向：想法 → 3-5 个不同切入角度"""
     db = SessionLocal()
     try:
-        # 获取账号的结构化画像
-        account = db.query(Account).filter(Account.id == account_id).first()
-        structured = None
-        if account and account.style_profile_structured:
-            try:
-                structured = json.loads(account.style_profile_structured)
-            except (json.JSONDecodeError, TypeError):
-                pass
-
-        # 构建变量
+        # 变量：style_profile 由 Gateway 按 account_id 自动注入
         variables = {"idea": idea}
         if word_count:
             variables["word_count"] = f"字数{word_count}。"
         else:
             variables["word_count"] = "字数1500左右。"
-
-        if structured:
-            variables["thinking_pattern"] = structured.get("thinking_pattern", "")
-            variables["structure_pattern"] = structured.get("structure_pattern", "")
 
         llm_url = settings.llm_service_url.rstrip("/")
         with httpx.Client(timeout=120.0) as client:
@@ -607,21 +594,12 @@ def trigger_outline_generation(self, account_id: int, idea: str, direction: str)
     """生成大纲：想法+方向 → 5-8 个要点"""
     db = SessionLocal()
     try:
-        account = db.query(Account).filter(Account.id == account_id).first()
-        structured = None
-        if account and account.style_profile_structured:
-            try:
-                structured = json.loads(account.style_profile_structured)
-            except (json.JSONDecodeError, TypeError):
-                pass
-
+        # style_profile 由 Gateway 按 account_id 自动注入
         variables = {
             "idea": idea,
             "direction": direction,
             "user_prompt": f"想法：{idea}\n\n写作方向：{direction}\n\n请生成5-8个要点的大纲，以JSON数组格式输出：[\"要点1\", \"要点2\", ...]",
         }
-        if structured:
-            variables["structure_pattern"] = structured.get("structure_pattern", "")
 
         llm_url = settings.llm_service_url.rstrip("/")
         with httpx.Client(timeout=120.0) as client:
@@ -668,15 +646,7 @@ def trigger_title_generation(self, account_id: int, idea: str, direction: str, o
     """生成标题：想法+方向+大纲 → 3-5 个候选标题"""
     db = SessionLocal()
     try:
-        account = db.query(Account).filter(Account.id == account_id).first()
-        structured = None
-        if account and account.style_profile_structured:
-            try:
-                structured = json.loads(account.style_profile_structured)
-            except (json.JSONDecodeError, TypeError):
-                pass
-
-        # 构建大纲文本
+        # 构建大纲文本；style_profile 由 Gateway 按 account_id 自动注入
         outline_text = "\n".join([f"- {p}" for p in outline]) if outline else ""
 
         variables = {
@@ -685,8 +655,6 @@ def trigger_title_generation(self, account_id: int, idea: str, direction: str, o
             "outline": outline_text,
             "user_prompt": f"想法：{idea}\n\n写作方向：{direction}\n\n大纲：\n{outline_text}\n\n请生成3-5个候选标题，以JSON字符串数组格式输出：[\"标题1\", \"标题2\", ...]",
         }
-        if account and account.style_profile:
-            variables["style_profile"] = account.style_profile
 
         llm_url = settings.llm_service_url.rstrip("/")
         with httpx.Client(timeout=120.0) as client:
