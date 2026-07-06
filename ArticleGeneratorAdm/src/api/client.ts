@@ -84,7 +84,6 @@ export default client;
 // 视图文件逐步迁移到统一导入，过渡期间保留此导出
 export type {
   Hotspot,
-  StyleProfile,
   Account,
   HotspotSource,
   Article,
@@ -209,7 +208,7 @@ export const api = {
     post(`/accounts/${accountId}/distill`),
   // 蒸馏状态
   getDistillStatus: (accountId: number) =>
-    get<{ status: string; progress?: { completed: number; total: number; current_dimension: string }; style_profile_version?: number; error?: string }>(`/accounts/${accountId}/distill/status`),
+    get<{ status: string; stage?: number; stage_name?: string; style_profile_version?: number; error?: string }>(`/accounts/${accountId}/distill/status`),
 
   // 生成日志
   getGenerationLogs: (params?: { scenario?: string; task_id?: string; page?: number; page_size?: number }) =>

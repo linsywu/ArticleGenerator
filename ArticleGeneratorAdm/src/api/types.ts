@@ -13,16 +13,6 @@ export interface Hotspot {
   created_at: string;
 }
 
-export interface StyleProfile {
-  thinking_pattern: string;
-  structure_pattern: string;
-  sentence_pattern: string;
-  vocabulary_pattern: string;
-  evidence_type: string;
-  taboos: string;
-  blank_leaving: string;
-}
-
 export interface Account {
   id: number;
   platform: string;
@@ -31,7 +21,6 @@ export interface Account {
   sample_articles?: string;
   style_profile?: string;
   style_profile_updated_at?: string;
-  style_profile_structured?: StyleProfile | null;
   style_profile_version?: number;
   style_profile_status?: string;
   word_count_options?: string;
