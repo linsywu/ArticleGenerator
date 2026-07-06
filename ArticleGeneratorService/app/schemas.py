@@ -2,9 +2,8 @@
 Pydantic 请求/响应模型
 """
 from datetime import datetime, timezone, date
-from typing import Optional, List, Any, Annotated
+from typing import Optional, List, Annotated
 from pydantic import BaseModel, Field, field_validator, BeforeValidator, PlainSerializer
-import json
 
 from .models import _local_iso
 
@@ -68,7 +67,6 @@ class AccountResponse(AccountBase):
     id: int
     style_profile: Optional[str] = None
     style_profile_updated_at: Optional[CstDateTime] = None
-    style_profile_structured: Optional[Any] = None
     style_profile_version: Optional[int] = None
     style_profile_status: Optional[str] = None
     word_count_options: Optional[str] = None
@@ -76,21 +74,6 @@ class AccountResponse(AccountBase):
     created_at: CstDateTime
 
     class Config: from_attributes = True
-
-    @field_validator("style_profile_structured", mode="before")
-    @classmethod
-    def parse_structured(cls, v):
-        """将数据库中的 JSON 字符串转为 dict"""
-        if v is None:
-            return None
-        if isinstance(v, dict):
-            return v
-        if isinstance(v, str):
-            try:
-                return json.loads(v)
-            except (json.JSONDecodeError, TypeError):
-                return None
-        return None
 
 
 # ----- 热点源 -----

@@ -60,7 +60,6 @@ class Account(Base):
     sample_articles = Column(Text)  # JSON 字符串
     style_profile = Column(Text)
     style_profile_updated_at = Column(DateTime)
-    style_profile_structured = Column(Text)  # JSON: 7维度结构化画像
     style_profile_version = Column(Integer, default=1)
     style_profile_status = Column(String(20), default="none")  # idle/running/ready/failed
     word_count_options = Column(Text)  # JSON: ["800", "1500", "3000"]
