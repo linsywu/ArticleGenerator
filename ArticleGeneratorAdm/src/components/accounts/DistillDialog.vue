@@ -43,13 +43,8 @@
         <!-- Idle / Empty -->
         <div v-if="status === 'idle'" class="distill-center">
           <p v-if="!articles.length" class="empty-hint">请先在左侧添加参考文章</p>
-          <div v-else-if="account?.style_profile_structured" class="profile-content-area">
-            <div v-for="dim in styleDimensions" :key="dim.key" class="dim-content-card">
-              <div class="dim-content-header">
-                <span>{{ dim.icon }} {{ dim.label }}</span>
-              </div>
-              <p class="dim-content-text">{{ getDimContent(dim.key) || '未定义' }}</p>
-            </div>
+          <div v-else-if="account?.style_profile" class="profile-content-area">
+            <div class="guide-text">{{ account.style_profile }}</div>
           </div>
           <p v-else class="empty-hint">点击下方按钮开始蒸馏</p>
         </div>
@@ -62,16 +57,11 @@
             <div class="progress-bar">
               <div class="progress-fill" :style="{ width: progressPercent + '%' }"></div>
             </div>
-            <p class="progress-text">已完成 {{ progress.completed }}/{{ progress.total }} 维度</p>
-            <p class="progress-dim">正在分析：{{ progress.current_dimension }}</p>
-            <p class="progress-eta">预计还需 {{ etaSeconds }} 秒</p>
-            <div class="dimension-status-grid">
-              <div v-for="dim in dimensionStatusList" :key="dim.key" class="dim-status-item" :class="dim.state">
-                <span>{{ dim.icon }} {{ dim.label }}</span>
-                <span v-if="dim.state === 'done'">✓</span>
-                <span v-else-if="dim.state === 'active'" class="active-dot">●</span>
-                <span v-else>○</span>
-              </div>
+            <p class="progress-text">{{ stageName }}（{{ stage }} / 2）</p>
+            <div class="stage-status">
+              <span :class="{ active: stage === 1, done: stage > 1 }">① 提取特征</span>
+              <span class="arrow">→</span>
+              <span :class="{ active: stage === 2 }">② 凝练指南</span>
             </div>
           </div>
         </div>
@@ -79,12 +69,7 @@
         <!-- Completed -->
         <div v-else-if="status === 'completed'" class="distill-center">
           <div class="profile-content-area">
-            <div v-for="dim in styleDimensions" :key="dim.key" class="dim-content-card">
-              <div class="dim-content-header">
-                <span>{{ dim.icon }} {{ dim.label }}</span>
-              </div>
-              <p class="dim-content-text">{{ getDimContent(dim.key) || '未定义' }}</p>
-            </div>
+            <div class="guide-text">{{ account?.style_profile || '（无指南内容）' }}</div>
           </div>
         </div>
 
@@ -117,7 +102,7 @@
             :loading="distillLoading"
             @click="triggerDistill"
           >
-            {{ account?.style_profile_structured ? '🔄 重新蒸馏' : '🔥 开始蒸馏' }}
+            {{ account?.style_profile ? '🔄 重新蒸馏' : '🔥 开始蒸馏' }}
           </el-button>
           <el-button v-if="status === 'failed' || status === 'timeout'" type="primary" :loading="distillLoading" @click="retryDistill">
             🔄 重试蒸馏
@@ -150,29 +135,14 @@ const emit = defineEmits<{
   (e: "profile-updated"): void;
 }>();
 
-const styleDimensions = [
-  { key: "thinking_pattern", label: "思维特征", icon: "🧠" },
-  { key: "structure_pattern", label: "结构模式", icon: "🏗️" },
-  { key: "sentence_pattern", label: "句式特征", icon: "✍️" },
-  { key: "vocabulary_pattern", label: "词汇偏好", icon: "📝" },
-  { key: "evidence_type", label: "论据类型", icon: "📊" },
-  { key: "taboos", label: "禁忌清单", icon: "🚫" },
-  { key: "blank_leaving", label: "留白程度", icon: "💭" },
-];
-
-function getDimContent(key: string): string {
-  const profile = props.account?.style_profile_structured;
-  if (!profile || typeof profile !== "object") return "";
-  return (profile as Record<string, string>)[key] || "";
-}
-
 const visible = ref(props.modelValue);
 watch(() => props.modelValue, (v) => { visible.value = v; if (v) { dialogOpen = true; onOpen(); } });
 watch(visible, (v) => { emit("update:modelValue", v); if (!v) { dialogOpen = false; stopPolling(); } });
 
 const articles = ref<ReferenceArticle[]>([]);
 const status = ref<"idle" | "running" | "completed" | "failed" | "timeout">("idle");
-const progress = ref({ completed: 0, total: 7, current_dimension: "" });
+const stage = ref(1);
+const stageName = ref("提取特征中");
 const errorMessage = ref("");
 const distillLoading = ref(false);
 const showDetail = ref(false);
@@ -183,24 +153,7 @@ let pollErrorCount = 0;
 let dialogOpen = false;  // guard against async onOpen race
 
 const isRunning = computed(() => status.value === "running");
-const progressPercent = computed(() => {
-  if (progress.value.total === 0) return 0;
-  return Math.round((progress.value.completed / progress.value.total) * 100);
-});
-const etaSeconds = computed(() => {
-  if (progress.value.completed === 0) return 60;
-  const elapsed = (Date.now() - startTime) / 1000;
-  if (elapsed < 1) return 60;
-  const rate = elapsed / progress.value.completed;
-  return Math.max(1, Math.round(rate * (progress.value.total - progress.value.completed)));
-});
-
-const dimensionStatusList = computed(() => {
-  return styleDimensions.map((dim, i) => ({
-    ...dim,
-    state: i < progress.value.completed ? "done" : i === progress.value.completed ? "active" : "pending",
-  }));
-});
+const progressPercent = computed(() => (stage.value === 1 ? 25 : 75));
 
 // Article sub-form
 const articleFormVisible = ref(false);
@@ -238,7 +191,8 @@ async function checkStatus() {
     pollErrorCount = 0;  // reset error count on success
     if (data.status === "running") {
       status.value = "running";
-      if (data.progress) progress.value = data.progress;
+      if (data.stage) stage.value = data.stage;
+      if (data.stage_name) stageName.value = data.stage_name;
       if (startTime === 0) startTime = Date.now();
     } else if (data.status === "completed") {
       status.value = "completed";
@@ -291,7 +245,8 @@ async function triggerDistill() {
     await api.triggerDistill(props.account.id);
     ElMessage.success("蒸馏任务已开始");
     status.value = "running";
-    progress.value = { completed: 0, total: 7, current_dimension: "准备中" };
+    stage.value = 1;
+    stageName.value = "提取特征中";
     startPolling();
   } catch (e: any) {
     ElMessage.error(e?.response?.data?.detail || "蒸馏失败");
@@ -375,42 +330,26 @@ onUnmounted(() => stopPolling());
   width: 100%;
   display: flex; flex-direction: column; gap: 10px;
 }
-.dim-content-card {
-  background: var(--ink-surface); border-left: 2px solid var(--amber);
-  border-radius: 0 var(--radius-md) var(--radius-md) 0;
-  padding: 12px 14px;
-}
-.dim-content-header {
-  font-size: 13px; font-weight: 600; color: var(--amber-light);
-  margin-bottom: 6px;
-}
-.dim-content-text {
-  font-size: 12px; line-height: 1.7; color: var(--text-dim);
-  white-space: pre-wrap; margin: 0;
+.guide-text {
+  font-size: 13px; line-height: 1.8; color: var(--text-dim);
+  white-space: pre-wrap; background: var(--ink-surface);
+  border-left: 2px solid var(--amber); border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  padding: 14px 16px; max-height: 420px; overflow-y: auto; width: 100%;
 }
 .distill-action-bar { text-align: center; padding-top: 16px; border-top: 1px solid var(--ink-border); }
 .progress-bar { width: 100%; height: 8px; background: var(--ink-border); border-radius: 8px; overflow: hidden; margin: 16px 0; }
 .progress-fill { height: 100%; background: #409eff; border-radius: 8px; transition: width 0.3s; }
 .progress-text { font-size: 13px; margin-top: 8px; color: var(--text-dim); }
-.progress-dim { font-size: 13px; color: var(--text-on-dark); font-weight: 500; }
-.progress-eta { font-size: 11px; color: var(--text-muted); }
-.dimension-status-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-top: 12px; text-align: left; font-size: 12px; }
-.dim-status-item { padding: 4px 8px; border-radius: 4px; }
-.dim-status-item.done { color: var(--green-muted); }
-.dim-status-item.active { color: #409eff; font-weight: 600; }
-.dim-status-item.pending { color: var(--text-dim); }
-.profile-mini-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; }
-.dim-mini-card {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 8px 10px; background: var(--ink-surface); border-radius: 6px; font-size: 12px;
-}
-.dim-mini-card.done .check { color: var(--green-muted); }
+.stage-status { margin-top: 16px; font-size: 13px; display: flex; gap: 8px; justify-content: center; align-items: center; }
+.stage-status span { color: var(--text-dim); }
+.stage-status span.active { color: #409eff; font-weight: 600; }
+.stage-status span.done { color: var(--green-muted); }
+.stage-status .arrow { color: var(--text-muted); }
 .status-tag { font-size: 11px; padding: 2px 8px; border-radius: 4px; }
 .status-tag.ready { background: rgba(91,140,90,0.12); color: var(--green-muted); }
 .status-tag.running { background: rgba(64,158,255,0.12); color: #409eff; }
 .status-tag.failed { background: rgba(245,108,108,0.12); color: #f56c6c; }
 .error-detail { background: var(--ink-surface); padding: 12px; border-radius: 6px; font-size: 12px; color: #cf1322; max-height: 200px; overflow-y: auto; text-align: left; white-space: pre-wrap; margin-top: 12px; }
-.active-dot { color: #409eff; }
 .empty-hint { text-align: center; color: var(--text-dim); font-size: 14px; padding: 32px 0; }
 .tag-benchmark { font-size: 10px; padding: 2px 8px; border-radius: 10px; background: var(--amber-glow); color: var(--amber-light); font-weight: 600; }
 </style>
