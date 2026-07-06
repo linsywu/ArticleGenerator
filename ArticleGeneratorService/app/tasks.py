@@ -87,6 +87,41 @@ def resolve_article_title(content: str, topic: str | None = None, hotspot_title:
     return None
 
 
+def _sample_segments(article: str, max_chars: int = 1200) -> str:
+    """取首段 + 中段 + 尾段，保留全文风格信号（替代硬截断）"""
+    if len(article) <= max_chars:
+        return article
+    chunk = max_chars // 3
+    head = article[:chunk]
+    mid = article[len(article) // 2 : len(article) // 2 + chunk]
+    tail = article[-chunk:]
+    return f"{head}\n\n[...中段抽样...]\n\n{mid}\n\n[...尾段...]\n\n{tail}"
+
+
+def _compress_articles(articles_content: list) -> str:
+    """
+    文章压缩策略（替代旧的 800 字硬截断）：
+    - ≤5 篇：全文输入
+    - 6-15 篇：每篇取首/中/尾段抽样
+    - >15 篇：均匀抽样到 15 篇（首+末+中间均匀），再对每篇抽样
+    """
+    MAX_FULL = 5
+    MAX_SAMPLED = 15
+
+    articles = list(articles_content)
+    if len(articles) > MAX_SAMPLED:
+        n = len(articles)
+        # 均匀抽样到 MAX_SAMPLED 篇：含首篇、末篇、中间均匀分布
+        indices = sorted(set(round(i * (n - 1) / (MAX_SAMPLED - 1)) for i in range(MAX_SAMPLED)))
+        articles = [articles[i] for i in indices]
+
+    parts = []
+    use_full = len(articles) <= MAX_FULL
+    for a in articles:
+        parts.append(a if use_full else _sample_segments(a))
+    return "\n\n---\n\n".join(parts)
+
+
 @celery_app.task(bind=True)
 def trigger_generate(self, topic: str, account_id: int, hotspot_id: int = None, outline: list = None, word_count: str = None, direction: str = None):
     """
@@ -341,113 +376,63 @@ def trigger_refine(self, article_id: int, keywords: str):
 
 @celery_app.task(bind=True)
 def trigger_distill(self, account_id: int, articles_content: list, num_articles: int):
-    """异步蒸馏：逐维度调用 LLM，实时更新进度"""
+    """异步蒸馏：两阶段（证据提取 → 凝练指南），实时更新进度"""
     db = SessionLocal()
     try:
-        # Truncate articles
-        max_per_article = 800
-        truncated = []
-        for a in articles_content:
-            if len(a) > max_per_article:
-                truncated.append(a[:max_per_article] + "\n\n[... 后续内容已截断 ...]")
-            else:
-                truncated.append(a)
-        combined_articles = "\n\n---\n\n".join(truncated)
+        # 文章压缩（替代 800 字硬截断）
+        combined_articles = _compress_articles(articles_content)
 
-        # Mark as running
+        # 标记 extracting
         account = db.query(Account).filter(Account.id == account_id).first()
         if account:
-            account.style_profile_status = "running"
-            account.style_profile_structured = json.dumps({
-                "_progress": {"completed": 0, "total": 7, "current_dimension": "准备中"}
-            })
+            account.style_profile_status = "extracting"
             db.commit()
 
-        # Define 7 dimensions
-        dimensions = [
-            ("thinking_pattern", "思维模式", "分析作者的核心思维模式：是理性分析型、情感共鸣型、还是批判质疑型？描述其推理逻辑和论证方式。"),
-            ("structure_pattern", "结构模式", "分析文章的结构特点：开篇方式、段落组织、过渡手法、结尾风格。"),
-            ("sentence_pattern", "句式特征", "分析句式特点：长短句比例、修辞手法、句式多样性、节奏感。"),
-            ("vocabulary_pattern", "词汇偏好", "分析词汇使用习惯：高频词汇、专业术语、口语化程度、用词偏好。"),
-            ("evidence_type", "论据类型", "分析论据使用方式：数据引用、案例引用、个人经验、权威引用等。"),
-            ("taboos", "写作禁忌", "识别写作中应避免的内容：敏感话题、表达方式禁忌、价值观红线。"),
-            ("blank_leaving", "留白习惯", "分析留白手法：结尾方式、悬念设置、读者参与空间、余韵处理。"),
-        ]
-
         llm_url = settings.llm_service_url.rstrip("/")
-        structured = {}
 
+        # Stage 1：证据提取（低温度，重证据）
         with httpx.Client(timeout=120.0) as client:
-            for i, (dim_key, dim_label, dim_prompt) in enumerate(dimensions):
-                try:
-                    resp = client.post(f"{llm_url}/chat", json={
-                        "scenario": "distill",
-                        "task_id": self.request.id,
-                        "account_id": account_id,
-                        "variables": {
-                            "num_articles": str(num_articles),
-                            "articles_content": combined_articles,
-                            "dimension": dim_label,
-                            "dimension_prompt": dim_prompt,
-                            "user_prompt": f"请只分析「{dim_label}」这一个维度：{dim_prompt}",
-                        },
-                    })
-                    resp.raise_for_status()
-                    data = resp.json()
-                    content = data.get("content", "").strip()
+            resp = client.post(f"{llm_url}/chat", json={
+                "scenario": "distill-extract",
+                "task_id": self.request.id,
+                "account_id": account_id,
+                "variables": {
+                    "num_articles": str(num_articles),
+                    "articles_content": combined_articles,
+                },
+            })
+            resp.raise_for_status()
+            data = resp.json()
+        features = (data.get("content") or "").strip()
+        if not features:
+            raise ValueError("Stage 1 证据提取返回内容为空")
 
-                    if content:
-                        structured[dim_key] = content
-                    else:
-                        # LLM returned empty content for this dimension — save a placeholder
-                        structured[dim_key] = f"[{dim_label}] 未返回有效内容"
-                        logger.warning(f"Distill dimension '{dim_label}' returned empty content for account {account_id}")
-
-                except Exception as dim_err:
-                    account = db.query(Account).filter(Account.id == account_id).first()
-                    if account:
-                        account.style_profile_status = "failed"
-                        account.style_profile = f"维度 [{dim_label}] 蒸馏失败: {str(dim_err)}"
-                        db.commit()
-                    db.close()
-                    return {"account_id": account_id, "status": "failed", "error": str(dim_err)}
-
-                # Update progress after each dimension
-                completed = i + 1
-                structured["_progress"] = {
-                    "completed": completed,
-                    "total": 7,
-                    "current_dimension": dim_label if completed < 7 else "完成"
-                }
-
-                account = db.query(Account).filter(Account.id == account_id).first()
-                if account:
-                    account.style_profile_structured = json.dumps(structured, ensure_ascii=False)
-                    db.commit()
-
-        # All 7 dimensions complete
-        structured.pop("_progress", None)
-
-        # Assemble writing guide from 7 dimension results
-        dim_labels = {
-            "thinking_pattern": "思维模式",
-            "structure_pattern": "结构模式",
-            "sentence_pattern": "句式要求",
-            "vocabulary_pattern": "用词要求",
-            "evidence_type": "论据要求",
-            "taboos": "写作禁忌",
-            "blank_leaving": "留白要求",
-        }
-        parts = []
-        for key, label in dim_labels.items():
-            if structured.get(key):
-                parts.append(f"## {label}\n{structured[key]}")
-        summary_text = "\n\n".join(parts)
-
+        # 标记 synthesizing
         account = db.query(Account).filter(Account.id == account_id).first()
         if account:
-            account.style_profile = summary_text
-            account.style_profile_structured = json.dumps(structured, ensure_ascii=False)
+            account.style_profile_status = "synthesizing"
+            db.commit()
+
+        # Stage 2：凝练指南（中温度，重表达）
+        with httpx.Client(timeout=120.0) as client:
+            resp = client.post(f"{llm_url}/chat", json={
+                "scenario": "distill-synthesize",
+                "task_id": self.request.id,
+                "account_id": account_id,
+                "variables": {
+                    "features": features,
+                },
+            })
+            resp.raise_for_status()
+            data = resp.json()
+        guide = (data.get("content") or "").strip()
+        if not guide:
+            raise ValueError("Stage 2 凝练指南返回内容为空")
+
+        # 落库整段指南
+        account = db.query(Account).filter(Account.id == account_id).first()
+        if account:
+            account.style_profile = guide
             account.style_profile_status = "ready"
             account.style_profile_version = (account.style_profile_version or 0) + 1
             account.style_profile_updated_at = datetime.now(timezone.utc)
