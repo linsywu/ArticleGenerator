@@ -38,23 +38,62 @@ db.flush()
 # 9 个 ScenarioConfig ——  UPSERT 模式
 # ---------------------------------------------------------------------------
 scenarios = [
-    # ── ① 风格蒸馏 ──────────────────────────────────────────────────────────
+    # ── ① 风格蒸馏 Stage 1：证据提取 ──────────────────────────────────────────
     {
-        "scenario": "distill",
+        "scenario": "distill-extract",
         "model": "claude-sonnet-4-20250514",
         "system_prompt_template": (
-            "你是一个写作风格提炼师。根据以下参考文章，仅针对「{{dimension}}」这一个维度提炼写作指导。\n\n"
-            "分析要点：{{dimension_prompt}}\n\n"
-            "要求：\n"
-            "- 输出 4-6 条写作指导指令，每条不超过 40 字\n"
-            "- 用指令式语气：应... / 避免... / 倾向于... / 多...少...\n"
-            "- 不要写分析过程或原因解释\n"
-            "- 只写确定能观察到的特征，不要编造\n\n"
+            "你是一位资深的写作风格分析师。通读以下参考文章，提炼这位作者**独有**的写作风格特征。\n\n"
+            "## 工作步骤\n\n"
+            "### 第一步：定位作者类型\n"
+            "判断这位作者属于什么类型/垂类（情感两性、科技评论、财经分析、文学散文、生活方式、知识科普等），"
+            "以及该类型的「主流写法」是什么样。后续所有「独特性」判断都以此为基准。\n\n"
+            "### 第二步：提取标志性特征\n"
+            "在该类型内，找出这位作者**区别于主流写法**的标志性特征。"
+            "只提取这位作者确实有、而同类型普通写作者没有的特征——不要给通用写作建议。\n\n"
+            "## 硬性要求（违反则失败）\n"
+            "1. **每条特征必须附原文逐字引用**（用「」标出原句/原词）。没有原文佐证的特征不要写。\n"
+            "2. **不要写通用建议**。「应多用短句」「应结构清晰」这类对任何作者都成立的话，一律删除。\n"
+            "3. **维度自定**：不要套用固定维度。这位作者最值得提炼的方面是什么，你就提炼什么。\n"
+            "4. 宁可少而准（5-8 条带引证的特征），不要多而泛。\n\n"
+            "## few-shot 对比\n\n"
+            "❌ 泛化（错误）：「应优先使用短句，增强冲击力」——这是通用建议，任何作者都成立\n"
+            "✅ 具体（正确）：「设问式开头：「你有没有发现，越是懂事的女人，越没人疼？」"
+            "——几乎每篇用反问设问开篇制造代入感」\n\n"
+            "## 输出格式\n\n"
+            "作者类型：<判断的类型> · <一句话主流写法画像>\n\n"
+            "标志性特征：\n"
+            "1. <特征名>：「<原文引用>」—— <如何体现该特征，1 句话>\n"
+            "2. ...\n"
+            "（5-8 条）\n\n"
             "共 {{num_articles}} 篇参考文章：\n{{articles_content}}"
         ),
-        "params": '{"max_tokens": 1024, "temperature": 0.5}',
+        "params": '{"max_tokens": 2048, "temperature": 0.2}',
         "priority": 10,
-        "description": "① 风格蒸馏：单维度提炼写作指导指令",
+        "description": "① 蒸馏 Stage1 证据提取：定位作者类型+提取带引证的标志性特征",
+        "sort_order": 1,
+    },
+    # ── ① 风格蒸馏 Stage 2：凝练指南 ──────────────────────────────────────────
+    {
+        "scenario": "distill-synthesize",
+        "model": "claude-sonnet-4-20250514",
+        "system_prompt_template": (
+            "你是一位写作教练。下面是一位作者的标志性特征清单（含原文引证）。"
+            "请把它凝练成一份**可直接指导模仿**的《写作风格指南》。\n\n"
+            "## 特征清单\n{{features}}\n\n"
+            "## 要求\n\n"
+            "1. **保留具体范例**：指南必须包含——标志性开头范例（1-2 例，带原句）、"
+            "标志性结尾范例（1-2 例，带原句）、高频标志词清单（具体词）、禁忌词/禁忌处理清单。\n"
+            "2. **指令必须由范例推出**：每条写作指令都应能从上面的特征清单找到依据，不要凭空增加。\n"
+            "3. **用第二人称指令式**，把范例嵌进指令：「开头常用设问引入，如『你有没有发现...』」。\n"
+            "4. **连贯成文**：不是罗列，而是一份读起来连贯的风格说明，让另一个写作者读完就能上手模仿。\n\n"
+            "## 输出\n\n"
+            "一份 600-900 字的《写作风格指南》，段落自定，"
+            "但必须包含开头/结尾/标志词/禁忌这几类具体样板。"
+        ),
+        "params": '{"max_tokens": 2048, "temperature": 0.5}',
+        "priority": 10,
+        "description": "① 蒸馏 Stage2 凝练指南：特征清单→含范例的写作风格指南",
         "sort_order": 1,
     },
     # ── ⓪ 素材摘要 ──────────────────────────────────────────────────────────
@@ -232,6 +271,12 @@ scenarios = [
     },
 ]
 
+# 删除旧的 distill 场景（已被 distill-extract + distill-synthesize 替代）
+old_distill = db.query(ScenarioConfig).filter(ScenarioConfig.scenario == "distill").first()
+if old_distill:
+    db.delete(old_distill)
+    print("Deleted legacy scenario: distill (replaced by distill-extract + distill-synthesize)")
+
 for s in scenarios:
     existing = db.query(ScenarioConfig).filter(ScenarioConfig.scenario == s["scenario"]).first()
     if existing:
@@ -247,4 +292,4 @@ for s in scenarios:
 
 db.commit()
 db.close()
-print("Done: 1 provider + 9 scenario configs seeded (UPSERT).")
+print("Done: 1 provider + scenario configs seeded (UPSERT).")
