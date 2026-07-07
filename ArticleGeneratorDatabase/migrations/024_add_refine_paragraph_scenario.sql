@@ -1,7 +1,7 @@
 -- 024_add_refine_paragraph_scenario.sql
 -- Change 3：新增段落级微调场景（单段输入/输出，后端切片拼接）
 
-INSERT INTO scenario_configs (scenario, model, system_prompt_template, params, priority, enabled, provider_id, description)
+INSERT INTO scenario_configs (scenario, model, system_prompt_template, params, priority, enabled, provider_id, description, created_at, updated_at)
 VALUES (
     'refine-paragraph',
     'gpt-5',
@@ -10,5 +10,7 @@ VALUES (
     10,
     1,
     1,
-    '⑦ 段落级微调：单段改写（后端切片逐段调用，拼接回填）'
+    '⑦ 段落级微调：单段改写（后端切片逐段调用，拼接回填）',
+    NOW(),
+    NOW()
 );
