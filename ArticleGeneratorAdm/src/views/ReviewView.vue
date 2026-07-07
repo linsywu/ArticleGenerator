@@ -89,7 +89,9 @@
       <p class="refine-tip">提交后将自动改写问题段落，其他内容保持不变。可在任务中心查看进度。</p>
       <template #footer>
         <el-button @click="refineVisible = false">取消</el-button>
-        <el-button type="primary" :loading="refining" @click="doRefine">确认微调</el-button>
+        <el-button type="primary" :loading="refining" @click="doRefine">
+          {{ refineSuggestions.length ? `改写 ${refineSuggestions.length} 个问题段落` : '按关键词微调全文' }}
+        </el-button>
       </template>
     </el-dialog>
   </div>
