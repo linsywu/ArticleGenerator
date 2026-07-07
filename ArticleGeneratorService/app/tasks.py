@@ -819,16 +819,18 @@ def _find_paragraph(body_pairs: list, index: int) -> str:
 
 def _refine_single_paragraph(llm_url: str, task_id: str, account_id: int,
                               wp: dict, keywords: str, old_text: str) -> str:
-    """调用 /chat scenario=refine-paragraph 改写单个段落"""
+    """调用 /chat scenario=refine 改写单个段落（article_content=单段原文）"""
+    issue = wp.get("issue", "")
+    suggestion = wp.get("suggestion", "")
+    review_suggestions = f"问题：{issue}\n建议：{suggestion}" if issue or suggestion else ""
     with httpx.Client(timeout=60.0) as client:
         resp = client.post(f"{llm_url}/chat", json={
-            "scenario": "refine-paragraph",
+            "scenario": "refine",
             "task_id": task_id,
             "account_id": account_id,
             "variables": {
-                "paragraph_text": old_text,
-                "issue": wp.get("issue", ""),
-                "suggestion": wp.get("suggestion", ""),
+                "article_content": old_text,
+                "review_suggestions": review_suggestions,
                 "keywords": keywords or "优化表达",
             },
         })
