@@ -44,7 +44,9 @@
         <div v-if="status === 'idle'" class="distill-center">
           <p v-if="!articles.length" class="empty-hint">请先在左侧添加参考文章</p>
           <div v-else-if="account?.style_profile" class="profile-content-area">
+            <div class="profile-content-title">写作风格</div>
             <div class="guide-text">{{ account.style_profile }}</div>
+            <div class="profile-content-title">特征清单</div>
             <div v-if="account?.style_features" class="features-text">{{ account.style_features }}</div>
           </div>
           <p v-else class="empty-hint">点击下方按钮开始蒸馏</p>
@@ -70,7 +72,9 @@
         <!-- Completed -->
         <div v-else-if="status === 'completed'" class="distill-center">
           <div class="profile-content-area">
+            <div class="profile-content-title">写作风格</div>
             <div class="guide-text">{{ account?.style_profile || '（无指南内容）' }}</div>
+            <div class="profile-content-title">特征清单</div>
             <div v-if="account?.style_features" class="features-text">{{ account.style_features }}</div>
           </div>
         </div>
@@ -329,22 +333,27 @@ onUnmounted(() => stopPolling());
 .distill-article-meta { font-size: 11px; color: var(--text-dim); }
 .distill-center { flex: 1; display: flex; align-items: center; justify-content: center; }
 .profile-content-area {
-  width: 100%; max-height: 500px; overflow-y: auto;
-  display: flex; flex-direction: column; gap: 0;
+  width: 100%;
+}
+.profile-content-title {
+  font-size: 14px; font-weight: bold; color: var(--text-on-dark);
+  padding: 6px 12px;
+  border-left: 3px solid var(--amber);
+  background: var(--ink-surface);
+  border-bottom: 1px solid var(--ink-border);
 }
 .guide-text {
+  max-height: 500px; overflow-y: auto;
   font-size: 13px; line-height: 1.8; color: var(--text-dim);
   white-space: pre-wrap; background: var(--ink-surface);
-  border-left: 2px solid var(--amber); border-radius: 0 var(--radius-md) var(--radius-md) 0;
   padding: 14px 16px; width: 100%;
+  margin-bottom: 14px;
 }
 .features-text {
+  max-height: 500px; overflow-y: auto;
   font-size: 12px; line-height: 1.7; color: var(--text-dim);
   white-space: pre-wrap; background: var(--ink-surface);
-  border-radius: 0 var(--radius-md) var(--radius-md) 0;
-  border-left: 2px solid var(--blue-muted);
-  padding: 14px 16px; margin-top: 12px;
-  border-top: 1px dashed var(--ink-border);
+  padding: 14px 16px;
 }
 .distill-action-bar { text-align: center; padding-top: 16px; border-top: 1px solid var(--ink-border); }
 .progress-bar { width: 100%; height: 8px; background: var(--ink-border); border-radius: 8px; overflow: hidden; margin: 16px 0; }
