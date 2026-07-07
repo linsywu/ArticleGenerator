@@ -20,6 +20,7 @@ export interface Account {
   lora_path?: string;
   sample_articles?: string;
   style_profile?: string;
+  style_features?: string;
   style_profile_updated_at?: string;
   style_profile_version?: number;
   style_profile_status?: string;
