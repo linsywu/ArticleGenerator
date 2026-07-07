@@ -203,31 +203,7 @@ def trigger_generate(self, topic: str, account_id: int, hotspot_id: int = None, 
                 hotspot.status = "generated"
                 db.commit()
 
-        # 生成成功后，同步执行去AI味（确保前端拿到的是最终内容，防止竞态）
-        # quality_review 和 compliance_review 不修改 content，可保持异步
-        humanized = content
-        try:
-            llm_url = settings.llm_service_url.rstrip("/")
-            with httpx.Client(timeout=120.0) as client:
-                resp = client.post(f"{llm_url}/chat", json={
-                    "scenario": "humanize",
-                    "task_id": self.request.id,
-                    "variables": {
-                        "article_content": content,
-                        "outline_section": outline_section,
-                    },
-                })
-                resp.raise_for_status()
-                data = resp.json()
-            humanized = data.get("content", "") or content
-            if humanized and humanized != content:
-                article.content = humanized
-                db.commit()
-        except Exception:
-            # humanize 失败不影响主流程，保留原始内容
-            pass
-
-        # 更新任务状态（humanize 完成后才标记 success）
+        # 更新任务状态（生成完成后标记 success）
         if gt:
             gt.status = "success"
             gt.article_id = article.id
