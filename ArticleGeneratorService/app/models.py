@@ -104,6 +104,7 @@ class Article(Base):
     quality_score = Column(Integer)
     compliance_score = Column(Integer)
     review_notes = Column(Text)
+    quality_review_detail = Column(Text)  # 段落级质量评审 JSON
     published_at = Column(DateTime)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

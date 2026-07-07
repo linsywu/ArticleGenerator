@@ -156,6 +156,7 @@ class ArticleResponse(ArticleBase):
     quality_score: Optional[int] = None
     compliance_score: Optional[int] = None
     review_notes: Optional[str] = None
+    quality_review_detail: Optional[str] = None
     published_at: Optional[CstDateTime] = None
     created_at: CstDateTime
     updated_at: CstDateTime

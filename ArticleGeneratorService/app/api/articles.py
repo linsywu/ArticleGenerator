@@ -43,6 +43,7 @@ def list_articles(
             quality_score=a.quality_score,
             compliance_score=a.compliance_score,
             review_notes=a.review_notes,
+            quality_review_detail=a.quality_review_detail,
             published_at=a.published_at,
             created_at=a.created_at,
             updated_at=a.updated_at,
