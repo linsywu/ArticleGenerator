@@ -238,7 +238,7 @@ def trigger_generate(self, topic: str, account_id: int, hotspot_id: int = None, 
 @celery_app.task(bind=True)
 def trigger_refine(self, article_id: int, keywords: str):
     """
-    异步微调文章：仅改写评审发现的问题段落，调用 LLM 服务
+    异步微调文章：后端切片逐段改写（有弱段时）或回退整篇（无弱段时）
     """
     db = SessionLocal()
     rt = None
@@ -252,37 +252,59 @@ def trigger_refine(self, article_id: int, keywords: str):
         if not article:
             raise ValueError("文章不存在")
 
-        # 从评审详情提取问题段落，格式化为改写建议
-        review_suggestions = _format_review_suggestions(article.quality_review_detail)
-
+        # 解析 weak_paragraphs
+        weak_paragraphs = _parse_weak_paragraphs(article.quality_review_detail)
         llm_url = settings.llm_service_url.rstrip("/")
-        with httpx.Client(timeout=120.0) as client:
-            resp = client.post(
-                f"{llm_url}/refine",
-                json={
-                    "article_id": article_id,
-                    "content": article.content,
-                    "keywords": keywords,
-                    "account_id": article.account_id,
-                    "review_suggestions": review_suggestions,
-                },
-            )
-            resp.raise_for_status()
-            data = resp.json()
+        history_entry = {"keywords": keywords or "", "mode": "full", "changes": []}
 
-        new_content = data.get("content", "")
+        if weak_paragraphs:
+            # ── 段落级模式：切片 + 逐段改写 + 拼接 ──
+            body_pairs, title = _split_paragraphs(article.content)
+            if not body_pairs:
+                # 切分失败，回退整篇
+                new_content = _refine_full(llm_url, self.request.id, article, keywords)
+            else:
+                for wp in weak_paragraphs:
+                    idx = wp.get("index", 0)
+                    old_text = _find_paragraph(body_pairs, idx)
+                    if not old_text:
+                        history_entry["changes"].append({
+                            "index": idx, "before": "", "after": "",
+                            "status": "skipped", "reason": "段落未找到"
+                        })
+                        continue
+                    # 单段调用 LLM 改写
+                    new_text = _refine_single_paragraph(
+                        llm_url, self.request.id, article.account_id, wp, keywords, old_text
+                    )
+                    validated = _validate_paragraph(new_text, old_text)
+                    status = "rewritten" if validated != old_text else "skipped"
+                    history_entry["changes"].append({
+                        "index": idx, "before": old_text, "after": validated, "status": status
+                    })
+                    # 替换段落数组
+                    body_pairs = [(pi, validated if pi == idx else pt) for pi, pt in body_pairs]
+
+                new_content = title + "\n\n" + "\n\n".join([p[1] for p in body_pairs])
+                history_entry["mode"] = "paragraph"
+        else:
+            # ── 回退整篇模式 ──
+            new_content = _refine_full(llm_url, self.request.id, article, keywords)
+
+        # 更新文章
         if not new_content:
             raise ValueError("LLM 返回内容为空")
+        if new_content != article.content:
+            article.content = new_content
 
-        # 保留微调历史（简化：追加记录）
+        # 增强历史
         history = []
         if article.refine_history:
             try:
                 history = json.loads(article.refine_history)
             except Exception:
                 pass
-        history.append({"keywords": keywords, "prev_len": len(article.content)})
-        article.content = new_content
+        history.append(history_entry)
         article.refine_history = json.dumps(history, ensure_ascii=False)
         article.status = "pending_review"
         db.commit()
@@ -735,7 +757,7 @@ def _parse_score_fallback(text: str) -> int:
 
 
 def _format_review_suggestions(quality_review_detail: str) -> str:
-    """从 quality_review_detail JSON 中提取问题段落，格式化为改写建议文本"""
+    """从 quality_review_detail JSON 中提取问题段落，格式化为改写建议文本（前端弹窗展示用）"""
     if not quality_review_detail:
         return ""
     try:
@@ -757,3 +779,86 @@ def _format_review_suggestions(quality_review_detail: str) -> str:
         lines.append(f"段落 {idx}（{severity_label}）：{issue} → 建议：{sug}")
 
     return "\n".join(lines)
+
+
+def _parse_weak_paragraphs(quality_review_detail: str) -> list:
+    """解析 weak_paragraphs，返回 [] 表示无弱段或解析失败"""
+    if not quality_review_detail:
+        return []
+    try:
+        detail = json.loads(quality_review_detail)
+    except (json.JSONDecodeError, TypeError):
+        return []
+    return detail.get("weak_paragraphs", [])
+
+
+def _split_paragraphs(content: str):
+    """按空行切段，第一段为标题（跳过），与评审编号规则一致。
+    返回 ([(1, "正文段1"), (2, "正文段2"), ...], "标题")。
+    无法切分时返回 ([], content)。"""
+    import re
+    blocks = [b.strip() for b in re.split(r'\n\s*\n', content.strip()) if b.strip()]
+    if len(blocks) <= 1:
+        return [], content  # 只有标题或根本切不了
+    title = blocks[0]
+    body = blocks[1:]
+    return list(enumerate(body, start=1)), title
+
+
+def _find_paragraph(body_pairs: list, index: int) -> str:
+    """从段落对中按编号查找段落文本"""
+    for pi, pt in body_pairs:
+        if pi == index:
+            return pt
+    return ""
+
+
+def _refine_single_paragraph(llm_url: str, task_id: str, account_id: int,
+                              wp: dict, keywords: str, old_text: str) -> str:
+    """调用 /chat scenario=refine-paragraph 改写单个段落"""
+    with httpx.Client(timeout=60.0) as client:
+        resp = client.post(f"{llm_url}/chat", json={
+            "scenario": "refine-paragraph",
+            "task_id": task_id,
+            "account_id": account_id,
+            "variables": {
+                "paragraph_text": old_text,
+                "issue": wp.get("issue", ""),
+                "suggestion": wp.get("suggestion", ""),
+                "keywords": keywords or "优化表达",
+            },
+        })
+        resp.raise_for_status()
+        data = resp.json()
+    return (data.get("content") or "").strip()
+
+
+def _refine_full(llm_url: str, task_id: str, article, keywords: str) -> str:
+    """回退整篇改写：调用 /chat scenario=refine"""
+    with httpx.Client(timeout=120.0) as client:
+        resp = client.post(f"{llm_url}/chat", json={
+            "scenario": "refine",
+            "task_id": task_id,
+            "account_id": article.account_id,
+            "variables": {
+                "article_content": article.content,
+                "keywords": keywords or "优化文章质量",
+                "review_suggestions": "",
+            },
+        })
+        resp.raise_for_status()
+        data = resp.json()
+    return (data.get("content") or "").strip()
+
+
+def _validate_paragraph(new_text: str, old_text: str) -> str:
+    """校验单段改写：非空、不过短（≥30%原文）、不含多段（无空行分隔）。
+    失败返回原文本，通过返回 new_text。"""
+    if not new_text:
+        return old_text
+    if len(new_text) < len(old_text) * 0.3:
+        return old_text
+    if "\n\n" in new_text:
+        # LLM 输出了多段，可能超越了单段范围
+        return old_text
+    return new_text
