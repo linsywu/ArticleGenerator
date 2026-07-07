@@ -238,7 +238,7 @@ def trigger_generate(self, topic: str, account_id: int, hotspot_id: int = None, 
 @celery_app.task(bind=True)
 def trigger_refine(self, article_id: int, keywords: str):
     """
-    异步微调文章：调用 LLM 服务，更新文章内容
+    异步微调文章：仅改写评审发现的问题段落，调用 LLM 服务
     """
     db = SessionLocal()
     rt = None
@@ -252,11 +252,20 @@ def trigger_refine(self, article_id: int, keywords: str):
         if not article:
             raise ValueError("文章不存在")
 
+        # 从评审详情提取问题段落，格式化为改写建议
+        review_suggestions = _format_review_suggestions(article.quality_review_detail)
+
         llm_url = settings.llm_service_url.rstrip("/")
         with httpx.Client(timeout=120.0) as client:
             resp = client.post(
                 f"{llm_url}/refine",
-                json={"article_id": article_id, "content": article.content, "keywords": keywords, "account_id": article.account_id},
+                json={
+                    "article_id": article_id,
+                    "content": article.content,
+                    "keywords": keywords,
+                    "account_id": article.account_id,
+                    "review_suggestions": review_suggestions,
+                },
             )
             resp.raise_for_status()
             data = resp.json()
@@ -723,3 +732,28 @@ def _parse_score_fallback(text: str) -> int:
     nums = re.findall(r"\b([0-9]{1,3})\b", text)
     scores = [int(n) for n in nums if 0 <= int(n) <= 100]
     return scores[-1] if scores else 0
+
+
+def _format_review_suggestions(quality_review_detail: str) -> str:
+    """从 quality_review_detail JSON 中提取问题段落，格式化为改写建议文本"""
+    if not quality_review_detail:
+        return ""
+    try:
+        detail = json.loads(quality_review_detail)
+    except (json.JSONDecodeError, TypeError):
+        return ""
+
+    weak = detail.get("weak_paragraphs", [])
+    if not weak:
+        return "无特定问题段落，请根据关键词微调全文。"
+
+    lines = []
+    for wp in weak:
+        idx = wp.get("index", "?")
+        sev = wp.get("severity", "")
+        issue = wp.get("issue", "")
+        sug = wp.get("suggestion", "")
+        severity_label = "严重" if sev == "high" else "中等"
+        lines.append(f"段落 {idx}（{severity_label}）：{issue} → 建议：{sug}")
+
+    return "\n".join(lines)
