@@ -64,14 +64,13 @@ class Gateway:
         if not config:
             return {"error": f"Scenario not found: {scenario}"}
 
-        # 2. 注入风格画像
+        # 2. 注入风格画像（始终注入，即使为空也替换占位符）
         if account_id and "style_profile" not in variables:
             try:
                 account = self._fetch_account(account_id)
-                if account.get("style_profile"):
-                    variables["style_profile"] = account["style_profile"]
+                variables["style_profile"] = account.get("style_profile") or ""
             except Exception:
-                pass
+                variables["style_profile"] = ""
 
         # 3. 渲染 system prompt
         system_prompt = self._render_prompt(

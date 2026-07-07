@@ -53,7 +53,7 @@ app.include_router(hotspot_sources.router, prefix="/api")
 
 
 # ── 受保护路由（需 JWT）──
-app.include_router(accounts.router, prefix="/api", dependencies=[Depends(get_current_user)])
+app.include_router(accounts.router, prefix="/api")
 app.include_router(articles.router, prefix="/api", dependencies=[Depends(get_current_user)])
 app.include_router(generate.router, prefix="/api", dependencies=[Depends(get_current_user)])
 app.include_router(providers.router, prefix="/api", dependencies=[Depends(get_current_user)])
