@@ -67,14 +67,26 @@
       </template>
     </ArticleEditorDialog>
 
-    <el-dialog v-model="refineVisible" title="微调" width="500px">
+    <el-dialog v-model="refineVisible" title="微调" width="550px">
+      <!-- 评审建议 -->
+      <div v-if="refineSuggestions.length" class="refine-suggestions">
+        <div class="refine-suggestions-title">📋 质量评审发现的问题（将优先修复）：</div>
+        <div v-for="(wp, i) in refineSuggestions" :key="i" class="refine-suggestion-item">
+          <el-tag :type="wp.severity === 'high' ? 'danger' : 'warning'" size="small">段落 {{ wp.index }}</el-tag>
+          <span class="refine-suggestion-issue">{{ wp.issue }}</span>
+          <span class="refine-suggestion-tip">💡 {{ wp.suggestion }}</span>
+        </div>
+      </div>
+      <div v-else-if="currentArticle?.quality_review_detail" class="refine-no-issues">
+        ✅ 评审未发现明显问题段落，可自由输入修改方向
+      </div>
       <el-input
         v-model="refineKeywords"
         type="textarea"
         rows="3"
-        placeholder="输入修改关键词，如：增加幽默感、缩短到500字"
+        placeholder="补充修改方向（选填），如：语气更温和"
       />
-      <p class="refine-tip">微调完成后将自动刷新列表，您也可点击「刷新」按钮手动刷新。</p>
+      <p class="refine-tip">提交后将自动改写问题段落，其他内容保持不变。可在任务中心查看进度。</p>
       <template #footer>
         <el-button @click="refineVisible = false">取消</el-button>
         <el-button type="primary" :loading="refining" @click="doRefine">确认微调</el-button>
@@ -84,7 +96,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { ref, onMounted, computed } from "vue";
 import { ElMessage } from "element-plus";
 import { api, type Article } from "@/api/client";
 import { formatDateTime } from "@/utils/format";
@@ -101,6 +113,16 @@ const currentArticle = ref<Article | null>(null);
 const refineVisible = ref(false);
 const refineKeywords = ref("");
 const refining = ref(false);
+
+const refineSuggestions = computed(() => {
+  if (!currentArticle.value?.quality_review_detail) return [];
+  try {
+    const detail = JSON.parse(currentArticle.value.quality_review_detail);
+    return detail.weak_paragraphs || [];
+  } catch {
+    return [];
+  }
+});
 
 const articleEditorRef = ref<InstanceType<typeof ArticleEditorDialog> | null>(null);
 
@@ -162,12 +184,14 @@ function openRefine(row: Article) {
 }
 
 async function doRefine() {
-  if (!currentArticle.value || !refineKeywords.value.trim()) return;
+  if (!currentArticle.value) return;
   refining.value = true;
   try {
-    await api.triggerRefine(currentArticle.value.id, refineKeywords.value.trim());
+    await api.triggerRefine(currentArticle.value.id, refineKeywords.value.trim() || "优化文章质量");
     refineVisible.value = false;
-    ElMessage.success("微调任务已加入任务中心");
+    ElMessage.success({ message: "微调任务已提交，仅改写问题段落，其他内容保持不变。请在任务中心查看进度。", duration: 5000 });
+    // 延迟刷新，给微调处理时间
+    setTimeout(() => load(), 3000);
   } catch (e) {
     ElMessage.error("提交失败");
   } finally {
@@ -180,6 +204,37 @@ onMounted(load);
 
 <style scoped>
 .page { padding: 0; }
+.refine-suggestions {
+  background: var(--el-fill-color-light);
+  padding: 12px;
+  border-radius: 6px;
+  margin-bottom: 12px;
+}
+.refine-suggestions-title {
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 8px;
+  color: var(--el-text-color-primary);
+}
+.refine-suggestion-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-bottom: 6px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.refine-suggestion-issue {
+  color: var(--el-text-color-regular);
+}
+.refine-suggestion-tip {
+  color: var(--el-color-success);
+}
+.refine-no-issues {
+  font-size: 13px;
+  color: var(--el-color-success);
+  margin-bottom: 12px;
+}
 .refine-tip { margin-top: 12px; font-size: 12px; color: var(--text-muted); }
 .el-pagination { margin-top: 16px; }
 </style>
