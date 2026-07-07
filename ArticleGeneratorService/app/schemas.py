@@ -66,6 +66,7 @@ class AccountUpdate(BaseModel):
 class AccountResponse(AccountBase):
     id: int
     style_profile: Optional[str] = None
+    style_features: Optional[str] = None
     style_profile_updated_at: Optional[CstDateTime] = None
     style_profile_version: Optional[int] = None
     style_profile_status: Optional[str] = None

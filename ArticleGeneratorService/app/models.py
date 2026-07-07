@@ -59,6 +59,7 @@ class Account(Base):
     lora_path = Column(String(500))
     sample_articles = Column(Text)  # JSON 字符串
     style_profile = Column(Text)
+    style_features = Column(Text)  # Stage1 证据清单（带原文引证），仅展示/审计用，不注入生成
     style_profile_updated_at = Column(DateTime)
     style_profile_version = Column(Integer, default=1)
     style_profile_status = Column(String(20), default="none")  # idle/running/ready/failed

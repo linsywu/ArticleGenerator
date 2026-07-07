@@ -45,6 +45,7 @@ def test_distill_task_two_llm_calls_and_stores_guide():
     assert account.style_profile_status == "ready"
     assert "写作风格指南" in (account.style_profile or "")
     assert account.style_profile_version >= 1
+    assert account.style_features == stage1_output  # NEW：Stage 1 证据已持久化
     db.close()
 
 

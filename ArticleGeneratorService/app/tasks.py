@@ -407,9 +407,10 @@ def trigger_distill(self, account_id: int, articles_content: list, num_articles:
         if not features:
             raise ValueError("Stage 1 证据提取返回内容为空")
 
-        # 标记 synthesizing
+        # 标记 synthesizing + 持久化 Stage 1 证据（Stage 2 失败也保留供调试）
         account = db.query(Account).filter(Account.id == account_id).first()
         if account:
+            account.style_features = features
             account.style_profile_status = "synthesizing"
             db.commit()
 
