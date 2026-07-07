@@ -619,7 +619,7 @@ def trigger_title_generation(self, account_id: int, idea: str, direction: str, o
 
 @celery_app.task(bind=True)
 def trigger_quality_review(self, article_id: int, article_content: str):
-    """异步质量评审：文章 → 质量评分"""
+    """异步质量评审：段落级 JSON 结构化输出"""
     db = SessionLocal()
     try:
         llm_url = settings.llm_service_url.rstrip("/")
@@ -633,16 +633,15 @@ def trigger_quality_review(self, article_id: int, article_content: str):
             data = resp.json()
 
         content = data.get("content", "")
-        score = _parse_score(content)
+        review = _parse_quality_review(content)
 
         article = db.query(Article).filter(Article.id == article_id).first()
         if article:
-            article.quality_score = score
-            notes = (article.review_notes or "") + f"\n[质量评审] {content[:500]}"
-            article.review_notes = notes.strip()
+            article.quality_score = review.get("overall_score", 0)
+            article.quality_review_detail = json.dumps(review, ensure_ascii=False)
             db.commit()
 
-        return {"article_id": article_id, "score": score}
+        return {"article_id": article_id, "score": review.get("overall_score", 0)}
     except Exception as e:
         raise
     finally:
@@ -681,29 +680,46 @@ def trigger_compliance_review(self, article_id: int, article_content: str):
         db.close()
 
 
-def _parse_score(text: str) -> int:
-    """从评审文本中提取总分（优先匹配"总分"行，否则取最后一个合法分数）"""
+def _parse_quality_review(text: str) -> dict:
+    """从 LLM 输出中提取段落级评审 JSON。容错：优先 ```json 块 → 纯文本 regex → 旧 _parse_score 回退。"""
+    import re
+    import json as _json
+
+    # 1) 尝试提取 ```json ... ``` 代码块
+    m = re.search(r"```json\s*([\s\S]*?)\s*```", text)
+    if m:
+        try:
+            return _json.loads(m.group(1))
+        except _json.JSONDecodeError:
+            pass
+
+    # 2) 尝试直接找最外层 JSON 对象（含 overall_score key）
+    m2 = re.search(r"\{[\s\S]*\"overall_score\"[\s\S]*\}", text)
+    if m2:
+        try:
+            return _json.loads(m2.group(0))
+        except _json.JSONDecodeError:
+            pass
+
+    # 3) 回退：只取总分
+    score = _parse_score_fallback(text)
+    return {"overall_score": score, "dimensions": {}, "weak_paragraphs": []}
+
+
+def _parse_score_fallback(text: str) -> int:
+    """旧 _parse_score 逻辑（兼容非 JSON 输出）"""
     import re
 
-    # 优先匹配 "总分：85" 或 "总分: 85" 或 "总分 85"
     total_match = re.search(r"总分[：:\s]*(\d{1,3})", text)
     if total_match:
         score = int(total_match.group(1))
         if 0 <= score <= 100:
             return score
-
-    # 其次匹配 "综合评分：85" 等
     overall_match = re.search(r"(?:综合|最终)(?:评分|得分)[：:\s]*(\d{1,3})", text)
     if overall_match:
         score = int(overall_match.group(1))
         if 0 <= score <= 100:
             return score
-
-    # 兜底：取最后一个 0-100 的数字（通常是总分）
     nums = re.findall(r"\b([0-9]{1,3})\b", text)
-    if nums:
-        scores = [int(n) for n in nums if 0 <= int(n) <= 100]
-        if scores:
-            return scores[-1]  # 最后一个，不是平均值
-
-    return 0
+    scores = [int(n) for n in nums if 0 <= int(n) <= 100]
+    return scores[-1] if scores else 0
