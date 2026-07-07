@@ -258,62 +258,6 @@ def trigger_generate(self, topic: str, account_id: int, hotspot_id: int = None, 
         db.close()
 
 
-@celery_app.task(bind=True)
-def trigger_humanize(self, article_id: int, content: str, outline_section: str = ""):
-    """
-    去AI味重写：调用 LLM 检测AI痕迹并真人化重写，然后链式触发评审
-    """
-    db = SessionLocal()
-    try:
-        llm_url = settings.llm_service_url.rstrip("/")
-        with httpx.Client(timeout=120.0) as client:
-            resp = client.post(f"{llm_url}/chat", json={
-                "scenario": "humanize",
-                "task_id": self.request.id,
-                "variables": {
-                    "article_content": content,
-                    "outline_section": outline_section,
-                },
-            })
-            resp.raise_for_status()
-            data = resp.json()
-
-        humanized = data.get("content", "")
-        if not humanized or humanized == content:
-            # Humanization failed or no change, fall through to review
-            humanized = content
-
-        # Update article with humanized content
-        article = db.query(Article).filter(Article.id == article_id).first()
-        if article:
-            article.content = humanized
-            db.commit()
-
-        # Chain to quality + compliance review, track sub-task IDs
-        qr_task = trigger_quality_review.delay(article_id, humanized)
-        cr_task = trigger_compliance_review.delay(article_id, humanized)
-
-        # Append sub-task IDs to the parent GenerationTask for log linking
-        gt = db.query(GenerationTask).filter(GenerationTask.article_id == article_id).first()
-        if gt:
-            try:
-                existing = json.loads(gt.sub_task_ids) if gt.sub_task_ids else []
-                existing.extend([qr_task.id, cr_task.id])
-                gt.sub_task_ids = json.dumps(existing)
-                db.commit()
-            except Exception:
-                pass
-
-        return {"article_id": article_id, "humanized": humanized != content}
-    except Exception as e:
-        # If humanization fails, still run reviews on original content
-        if content:
-            trigger_quality_review.delay(article_id, content)
-            trigger_compliance_review.delay(article_id, content)
-        raise
-    finally:
-        db.close()
-
 
 @celery_app.task(bind=True)
 def trigger_refine(self, article_id: int, keywords: str):
