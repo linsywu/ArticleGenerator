@@ -313,6 +313,10 @@ def trigger_refine(self, article_id: int, keywords: str):
             rt.status = "success"
             db.commit()
 
+        # 微调后重新触发质量评审（更新评分和弱段清单）
+        if new_content:
+            trigger_quality_review.delay(article_id, new_content)
+
         return {"article_id": article_id}
     except Exception as e:
         rt = db.query(RefineTask).filter(RefineTask.task_id == self.request.id).first()
