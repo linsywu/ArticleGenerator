@@ -49,6 +49,7 @@ export interface Article {
   quality_score?: number;
   compliance_score?: number;
   review_notes?: string;
+  quality_review_detail?: string;  // JSON: 段落级评审详情
   published_at?: string;
   created_at: string;
   updated_at: string;

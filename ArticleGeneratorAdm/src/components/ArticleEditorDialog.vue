@@ -19,6 +19,29 @@
       </el-tag>
     </div>
 
+    <!-- 段落级评审详情（结构化展示） -->
+    <div v-if="reviewDetail" class="review-detail-section">
+      <div class="review-section-title">AI 质量评审：</div>
+      <!-- 四维评分 -->
+      <div v-if="reviewDetail.dimensions" class="dimensions-row">
+        <span class="dim-item">原创性 {{ reviewDetail.dimensions.originality }}/25</span>
+        <span class="dim-item">逻辑性 {{ reviewDetail.dimensions.logic }}/25</span>
+        <span class="dim-item">可读性 {{ reviewDetail.dimensions.readability }}/25</span>
+        <span class="dim-item">信息密度 {{ reviewDetail.dimensions.info_density }}/25</span>
+      </div>
+      <!-- 问题段落清单 -->
+      <div v-if="reviewDetail.weak_paragraphs?.length" class="weak-paragraphs">
+        <div v-for="wp in reviewDetail.weak_paragraphs" :key="wp.index" class="weak-item">
+          <el-tag :type="wp.severity === 'high' ? 'danger' : 'warning'" size="small" class="weak-tag">
+            段落 {{ wp.index }}
+          </el-tag>
+          <span class="weak-issue">{{ wp.issue }}</span>
+          <span class="weak-suggestion">💡 {{ wp.suggestion }}</span>
+        </div>
+      </div>
+      <div v-else-if="reviewDetail.dimensions" class="no-weak-msg">✅ 所有段落质量良好</div>
+    </div>
+
     <!-- 编辑模式：文本域 -->
     <template v-if="editable && isEditing">
       <el-input
@@ -85,6 +108,15 @@ const emit = defineEmits<{
 }>();
 
 const internalTitle = computed(() => props.dialogTitle || "文章详情");
+
+const reviewDetail = computed(() => {
+  if (!props.article?.quality_review_detail) return null;
+  try {
+    return JSON.parse(props.article.quality_review_detail);
+  } catch {
+    return null;
+  }
+});
 
 const isEditing = ref(false);
 const editContent = ref("");
@@ -209,5 +241,50 @@ function complianceType(s: number) {
   color: var(--text-muted);
   margin-top: 4px;
   font-family: inherit;
+}
+
+/* 段落级评审 */
+.review-detail-section {
+  margin-top: var(--space-md);
+  border-top: 1px solid var(--el-border-color-lighter);
+  padding-top: var(--space-sm);
+}
+.dimensions-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: var(--space-sm) 0;
+}
+.dim-item {
+  font-size: 13px;
+  color: var(--text-on-dark);
+  background: var(--ink-surface);
+  padding: 2px 10px;
+  border-radius: 4px;
+}
+.weak-paragraphs {
+  margin-top: var(--space-sm);
+}
+.weak-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-bottom: 6px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.weak-tag {
+  flex-shrink: 0;
+}
+.weak-issue {
+  color: var(--text-on-dark);
+}
+.weak-suggestion {
+  color: var(--el-color-success);
+}
+.no-weak-msg {
+  color: var(--el-color-success);
+  font-size: 13px;
+  margin-top: 4px;
 }
 </style>
