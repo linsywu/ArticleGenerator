@@ -256,7 +256,7 @@ def trigger_refine(self, article_id: int, keywords: str):
         with httpx.Client(timeout=120.0) as client:
             resp = client.post(
                 f"{llm_url}/refine",
-                json={"article_id": article_id, "content": article.content, "keywords": keywords},
+                json={"article_id": article_id, "content": article.content, "keywords": keywords, "account_id": article.account_id},
             )
             resp.raise_for_status()
             data = resp.json()

@@ -54,6 +54,7 @@ class RefineLegacyRequest(BaseModel):
     article_id: int
     content: str
     keywords: str
+    account_id: Optional[int] = None
 
 
 # 保留旧端点兼容（标记废弃），内部转发到 /chat
@@ -75,5 +76,6 @@ def generate_legacy(req: GenerateLegacyRequest):
 def refine_legacy(req: RefineLegacyRequest):
     return gateway.chat(
         scenario="refine",
+        account_id=req.account_id,
         variables={"article_content": req.content, "keywords": req.keywords},
     )
