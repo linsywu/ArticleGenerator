@@ -146,7 +146,7 @@
           <el-button size="small" @click="outline.push({ order: outline.length + 1, point: '' })" style="margin-top:12px">＋ 添加要点</el-button>
           <div class="card-actions">
             <el-button size="large" @click="currentStep = 2">返回上一步</el-button>
-            <el-button size="large" type="primary" :disabled="!outline.length || !outline.every(o => o.point?.trim())" @click="generateTitles">
+            <el-button size="large" type="primary" :disabled="!outline.length || !outline.every(o => o.point?.trim())" :loading="loadingTitles" @click="generateTitles">
               下一步 · 生成标题
             </el-button>
           </div>
