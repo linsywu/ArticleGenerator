@@ -274,8 +274,9 @@ def trigger_refine(self, article_id: int, keywords: str):
         if not body_pairs:
             raise ValueError("无法解析文章段落结构")
 
-        # 用标记包裹问题段落
+        # 用标记包裹问题段落 + 构建改写指导
         marked_content, changes_before = _wrap_paragraphs(title, body_pairs, weak_paragraphs)
+        review_suggestions = _format_weak_paragraphs_for_refine(weak_paragraphs)
 
         # 一次 LLM 调用
         llm_url = settings.llm_service_url.rstrip("/")
@@ -286,8 +287,8 @@ def trigger_refine(self, article_id: int, keywords: str):
                 "account_id": article.account_id,
                 "variables": {
                     "article_content": marked_content,
-                    "keywords": keywords or "优化表达",
-                    "review_suggestions": "",
+                    "keywords": keywords or "",
+                    "review_suggestions": review_suggestions,
                 },
             })
             resp.raise_for_status()
@@ -876,3 +877,19 @@ def _append_refine_history(article, keywords: str, mode: str, changes: list) -> 
 def _append_refine_history_dict(article, keywords: str, mode: str, changes: list):
     """便捷方法：追加历史但总是写入"""
     return _append_refine_history(article, keywords, mode, changes)
+
+
+def _format_weak_paragraphs_for_refine(weak_paragraphs: list) -> str:
+    """将弱段列表格式化为改写指导文本，供 refine 模板的 {{review_suggestions}} 使用"""
+    if not weak_paragraphs:
+        return ""
+    lines = ["以下段落需要改写，请只修改标记区间内的内容（保持标记不变）：", ""]
+    for wp in weak_paragraphs:
+        idx = wp.get("index", "?")
+        sev = "严重" if wp.get("severity") == "high" else "中等"
+        issue = wp.get("issue", "")
+        suggestion = wp.get("suggestion", "")
+        lines.append(f"段落 {idx}（{sev}）：{issue}")
+        if suggestion:
+            lines.append(f"  改进方向：{suggestion}")
+    return "\n".join(lines)
