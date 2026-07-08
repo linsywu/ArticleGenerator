@@ -92,8 +92,19 @@
           <div v-if="directions.length" class="directions-grid">
             <div v-for="d in directions" :key="d.id" class="direction-card" :class="{ selected: selectedDirection?.id === d.id }" @click="selectedDirection = d">
               <span class="direction-id">{{ d.id }}</span>
-              <span class="direction-title">{{ d.title }}</span>
-              <span v-if="selectedDirection?.id === d.id" class="direction-check">✓</span>
+              <div class="direction-body">
+                <div class="direction-title-row">
+                  <span class="direction-title">{{ d.title }}</span>
+                  <span v-if="selectedDirection?.id === d.id" class="direction-check">✓</span>
+                </div>
+                <p v-if="d.core_viewpoint" class="direction-viewpoint">{{ d.core_viewpoint }}</p>
+                <p v-if="d.reader_gain" class="direction-gain">📌 {{ d.reader_gain }}</p>
+                <p v-if="d.check" class="direction-check-text">{{ d.check }}</p>
+                <div v-if="d.angle || d.article_type" class="direction-meta">
+                  <el-tag v-if="d.angle" size="small" :type="angleTagType(d.angle)">{{ d.angle }}</el-tag>
+                  <el-tag v-if="d.article_type" size="small" type="info">{{ d.article_type }}</el-tag>
+                </div>
+              </div>
             </div>
           </div>
           <div v-else class="loading-state">
@@ -350,6 +361,19 @@ async function generateTitles() {
 function moveOutlineUp(i: number) { if (i > 0) { const t = outline.value[i]; outline.value[i] = outline.value[i-1]; outline.value[i-1] = t } }
 function moveOutlineDown(i: number) { if (i < outline.value.length - 1) { const t = outline.value[i]; outline.value[i] = outline.value[i+1]; outline.value[i+1] = t } }
 
+function angleTagType(angle: string): string {
+  const t: Record<string, string> = {
+    "反常识": "danger",
+    "情感共鸣": "warning",
+    "利益驱动": "success",
+    "实用干货": "",
+    "故事切入": "info",
+    "社会观察": "warning",
+    "心理机制": "info",
+  };
+  return t[angle] || "";
+}
+
 async function startGenerate() {
   if (!selectedAccountId.value || !idea.value.trim()) return
   generating.value = true
@@ -464,12 +488,18 @@ onMounted(async () => {
 
 /* 方向卡片 */
 .directions-grid { display: flex; flex-direction: column; gap: 8px; margin-bottom: var(--space-xl); }
-.direction-card { display: flex; align-items: center; gap: 14px; padding: 14px 18px; background: var(--ink-surface); border: 1px solid var(--ink-border); border-radius: var(--radius-lg); cursor: pointer; transition: all var(--duration-fast) var(--ease-out); }
+.direction-card { display: flex; align-items: flex-start; gap: 14px; padding: 14px 18px; background: var(--ink-surface); border: 1px solid var(--ink-border); border-radius: var(--radius-lg); cursor: pointer; transition: all var(--duration-fast) var(--ease-out); }
 .direction-card:hover { border-color: var(--text-dim); }
 .direction-card.selected { border-color: var(--amber); background: rgba(200,132,60,0.06); }
-.direction-id { font-family: var(--font-serif); font-size: 20px; font-weight: 700; color: var(--amber); width: 32px; flex-shrink: 0; }
-.direction-title { flex: 1; font-size: 15px; color: var(--text-on-dark); }
-.direction-check { color: var(--amber); font-weight: 700; }
+.direction-id { font-family: var(--font-serif); font-size: 20px; font-weight: 700; color: var(--amber); width: 32px; flex-shrink: 0; line-height: 1.4; }
+.direction-body { flex: 1; min-width: 0; }
+.direction-title-row { display: flex; align-items: center; gap: 8px; }
+.direction-title { flex: 1; font-size: 15px; font-weight: 600; color: var(--text-on-dark); }
+.direction-check { color: var(--amber); font-weight: 700; flex-shrink: 0; }
+.direction-viewpoint { font-size: 13px; color: var(--text-muted); line-height: 1.6; margin: 6px 0 0; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.direction-gain { font-size: 12px; color: var(--amber-light); margin: 4px 0 0; line-height: 1.5; }
+.direction-check-text { font-size: 11px; color: var(--text-dim); margin: 4px 0 0; line-height: 1.5; }
+.direction-meta { display: flex; gap: 6px; margin-top: 8px; }
 
 /* 标题卡片 */
 .titles-grid { display: flex; flex-direction: column; gap: 8px; margin-bottom: var(--space-lg); }
