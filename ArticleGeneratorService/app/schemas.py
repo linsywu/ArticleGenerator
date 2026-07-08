@@ -369,6 +369,11 @@ class DirectionsRequest(BaseModel):
 class DirectionItem(BaseModel):
     id: str
     title: str
+    angle: Optional[str] = None
+    core_viewpoint: Optional[str] = None
+    reader_gain: Optional[str] = None
+    article_type: Optional[str] = None
+    check: Optional[str] = None
 
 class DirectionsResponse(BaseModel):
     directions: List[DirectionItem]
