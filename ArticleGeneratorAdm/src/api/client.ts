@@ -138,6 +138,7 @@ export const api = {
     patch(`/articles/${id}/status`, { status }),
   updateArticle: (id: number, data: { content?: string; review_notes?: string }) =>
     put(`/articles/${id}`, data),
+  reReviewArticle: (id: number) => post(`/articles/${id}/re-review`),
 
   // 生成
   triggerGenerate: (accountId: number, hotspotIds?: number[], customTopic?: string) =>
