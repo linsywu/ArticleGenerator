@@ -101,10 +101,10 @@
                 <p v-if="d.reader_gain" class="direction-gain">📌 {{ d.reader_gain }}</p>
                 <div v-if="d.evaluation" class="direction-eval">
                   <span class="eval-scores">
-                    <span class="eval-score" :style="{ color: scoreColor(d.evaluation.novelty) }">新{{ d.evaluation.novelty }}</span>
-                    <span class="eval-score" :style="{ color: scoreColor(d.evaluation.emotion) }">情{{ d.evaluation.emotion }}</span>
-                    <span class="eval-score" :style="{ color: scoreColor(d.evaluation.discussion) }">议{{ d.evaluation.discussion }}</span>
-                    <span class="eval-score" :style="{ color: scoreColor(d.evaluation.viral) }">传{{ d.evaluation.viral }}</span>
+                    <span class="eval-score" :style="{ color: scoreColor(d.evaluation.novelty) }">新意{{ d.evaluation.novelty }}</span>
+                    <span class="eval-score" :style="{ color: scoreColor(d.evaluation.emotion) }">共鸣{{ d.evaluation.emotion }}</span>
+                    <span class="eval-score" :style="{ color: scoreColor(d.evaluation.discussion) }">论议{{ d.evaluation.discussion }}</span>
+                    <span class="eval-score" :style="{ color: scoreColor(d.evaluation.viral) }">传播{{ d.evaluation.viral }}</span>
                   </span>
                   <span class="eval-reason">{{ d.evaluation.reason }}</span>
                 </div>
