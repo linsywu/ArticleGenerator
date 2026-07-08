@@ -66,11 +66,19 @@
               <span class="hint-tag" @click="idea = '大厂裁员潮下，技术人员该如何构建自己的护城河？'">技术人的护城河</span>
             </div>
           </div>
-          <div class="card-actions">
-            <el-button size="large" @click="currentStep = 0">返回上一步</el-button>
-            <el-button size="large" type="primary" :disabled="!idea.trim()" :loading="loadingDirections" @click="generateDirections">
-              生成写作方向
-            </el-button>
+          <div class="card-actions" style="justify-content: space-between; align-items: flex-end;">
+            <div v-if="wordCountOptions.length" class="word-count-area">
+              <span class="word-count-label">目标字数</span>
+              <el-select v-model="wordCount" placeholder="选择字数" size="large" style="width: 200px" clearable>
+                <el-option v-for="opt in wordCountOptions" :key="opt" :label="opt" :value="opt" />
+              </el-select>
+            </div>
+            <div style="display:flex; gap:12px; margin-left: auto;">
+              <el-button size="large" @click="currentStep = 0">返回上一步</el-button>
+              <el-button size="large" type="primary" :disabled="!idea.trim()" :loading="loadingDirections" @click="generateDirections">
+                生成写作方向
+              </el-button>
+            </div>
           </div>
         </div>
 
@@ -231,6 +239,14 @@ const titles = ref<string[]>([])
 const selectedTitle = ref('')
 const editedTitle = ref('')
 const loadingTitles = ref(false)
+const wordCount = ref('')
+
+const wordCountOptions = computed(() => {
+  if (!selectedAccount.value?.word_count_options) return []
+  try {
+    return JSON.parse(selectedAccount.value.word_count_options) as string[]
+  } catch { return [] }
+})
 const selectedAccount = computed(() => accounts.value.find(a => a.id === selectedAccountId.value) || null)
 
 async function generateDirections() {
@@ -344,7 +360,7 @@ async function startGenerate() {
     const topicWithTitle = editedTitle.value
       ? `${editedTitle.value}\n\n${idea.value.trim()}`
       : idea.value.trim()
-    const { data } = await api.triggerGenerateWithOutline(selectedAccountId.value, topicWithTitle, points, undefined, selectedDirection.value?.title, directionTaskId.value || undefined, outlineTaskId.value || undefined, titleTaskId.value || undefined)
+    const { data } = await api.triggerGenerateWithOutline(selectedAccountId.value, topicWithTitle, points, wordCount.value || undefined, selectedDirection.value?.title, directionTaskId.value || undefined, outlineTaskId.value || undefined, titleTaskId.value || undefined)
     const taskId = data.tasks?.[0]?.task_id
     if (!taskId) throw new Error('未获取到任务 ID')
 
@@ -489,4 +505,7 @@ onMounted(async () => {
 .step-trans-enter-active, .step-trans-leave-active { transition: opacity 0.2s ease, transform 0.2s ease; }
 .step-trans-enter-from { opacity: 0; transform: translateX(20px); }
 .step-trans-leave-to { opacity: 0; transform: translateX(-20px); }
+
+.word-count-area { display: flex; flex-direction: column; gap: 4px; }
+.word-count-label { font-size: 12px; color: var(--el-text-color-secondary); }
 </style>
