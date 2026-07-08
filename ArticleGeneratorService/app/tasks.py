@@ -66,7 +66,9 @@ def resolve_article_title(content: str, topic: str | None = None, hotspot_title:
     # 兼容：优先 topic，回退 hotspot_title
     resolved = topic or hotspot_title
     if resolved and resolved.strip():
-        return resolved.strip()[:200]
+        # topic 可能包含「标题\n\n想法」拼接（CreateView 传入），只取第一行作为标题
+        first_line = resolved.strip().split("\n")[0].strip()
+        return first_line[:200] if first_line else resolved.strip()[:200]
 
     # 回退：从 LLM 输出内容中提取标题
     if not content:
