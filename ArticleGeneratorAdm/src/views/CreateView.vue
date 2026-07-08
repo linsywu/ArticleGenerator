@@ -114,7 +114,7 @@
             <span class="card-number">04</span>
             <h2 class="card-title">确认大纲</h2>
           </div>
-          <p class="card-desc">方向：{{ selectedDirection?.title }}。编辑、排序或增删要点。</p>
+          <p class="card-desc">方向：{{ selectedDirection?.core_viewpoint || selectedDirection?.title }}。编辑、排序或增删要点。</p>
           <div v-if="outline.length" class="outline-list">
             <div v-for="(item, i) in outline" :key="i" class="outline-row">
               <span class="outline-order">{{ i + 1 }}</span>
@@ -287,7 +287,7 @@ async function generateOutline() {
   if (!selectedAccountId.value || !selectedDirection.value) return
   loadingOutline.value = true
   try {
-    const { data } = await api.generateOutline(selectedAccountId.value, idea.value.trim(), selectedDirection.value.title)
+    const { data } = await api.generateOutline(selectedAccountId.value, idea.value.trim(), selectedDirection.value.core_viewpoint || selectedDirection.value.title)
     const taskId = data.task_id
     if (!taskId) throw new Error('未获取到任务 ID')
     outlineTaskId.value = taskId
@@ -318,7 +318,7 @@ async function generateTitles() {
   loadingTitles.value = true
   try {
     const points = outline.value.map(o => o.point)
-    const { data } = await api.generateTitles(selectedAccountId.value, idea.value.trim(), selectedDirection.value.title, points)
+    const { data } = await api.generateTitles(selectedAccountId.value, idea.value.trim(), selectedDirection.value.core_viewpoint || selectedDirection.value.title, points)
     const taskId = data.task_id
     if (!taskId) throw new Error('未获取到任务 ID')
     titleTaskId.value = taskId
@@ -360,7 +360,7 @@ async function startGenerate() {
     const topicWithTitle = editedTitle.value
       ? `${editedTitle.value}\n\n${idea.value.trim()}`
       : idea.value.trim()
-    const { data } = await api.triggerGenerateWithOutline(selectedAccountId.value, topicWithTitle, points, wordCount.value || undefined, selectedDirection.value?.title, directionTaskId.value || undefined, outlineTaskId.value || undefined, titleTaskId.value || undefined)
+    const { data } = await api.triggerGenerateWithOutline(selectedAccountId.value, topicWithTitle, points, wordCount.value || undefined, selectedDirection.value?.core_viewpoint || selectedDirection.value?.title, directionTaskId.value || undefined, outlineTaskId.value || undefined, titleTaskId.value || undefined)
     const taskId = data.tasks?.[0]?.task_id
     if (!taskId) throw new Error('未获取到任务 ID')
 
