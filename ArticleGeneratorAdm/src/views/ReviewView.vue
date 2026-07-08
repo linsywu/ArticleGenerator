@@ -64,6 +64,7 @@
         <el-button type="success" @click="approve(currentArticle!)">通过</el-button>
         <el-button type="danger" @click="reject(currentArticle!)">拒绝</el-button>
         <el-button @click="openRefine(currentArticle!)">微调</el-button>
+        <el-button type="warning" :loading="reReviewing" @click="reReview(currentArticle!)">重新评审</el-button>
       </template>
     </ArticleEditorDialog>
 
@@ -115,6 +116,7 @@ const currentArticle = ref<Article | null>(null);
 const refineVisible = ref(false);
 const refineKeywords = ref("");
 const refining = ref(false);
+const reReviewing = ref(false);
 
 const refineSuggestions = computed(() => {
   if (!currentArticle.value?.quality_review_detail) return [];
@@ -183,6 +185,19 @@ function openRefine(row: Article) {
   currentArticle.value = row;
   refineKeywords.value = "";
   refineVisible.value = true;
+}
+
+async function reReview(row: Article) {
+  reReviewing.value = true;
+  try {
+    await api.reReviewArticle(row.id);
+    ElMessage.success("评审任务已提交，请稍后刷新查看结果");
+    setTimeout(() => load(), 3000);
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.detail || "提交失败");
+  } finally {
+    reReviewing.value = false;
+  }
 }
 
 async function doRefine() {

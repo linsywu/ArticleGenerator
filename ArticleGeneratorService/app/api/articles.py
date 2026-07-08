@@ -10,6 +10,7 @@ from ..database import get_db
 from ..models import Article, Hotspot, Account
 from ..schemas import ArticleResponse, ArticleStatusUpdate, ArticleUpdateRequest, ArticleWithRelations, ArticleListResponse
 from ..services import article_service
+from ..tasks import trigger_quality_review
 
 router = APIRouter(prefix="/articles", tags=["文章"])
 
@@ -86,3 +87,15 @@ def update_article(article_id: int, data: ArticleUpdateRequest, db: Session = De
         article.review_notes = data.review_notes
     db.commit()
     return {"message": "更新成功"}
+
+
+@router.post("/{article_id}/re-review")
+def re_review_article(article_id: int, db: Session = Depends(get_db)):
+    """重新触发质量评审"""
+    article = db.query(Article).filter(Article.id == article_id).first()
+    if not article:
+        raise HTTPException(status_code=404, detail="文章不存在")
+    if not article.content:
+        raise HTTPException(status_code=400, detail="文章内容为空")
+    task = trigger_quality_review.delay(article_id, article.content)
+    return {"message": "评审任务已提交", "task_id": task.id}

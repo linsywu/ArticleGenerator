@@ -20,4 +20,6 @@ export default {
     content?: string;
     review_notes?: string;
   }) => put(`/articles/${id}`, data),
+
+  reReviewArticle: (id: number) => post(`/articles/${id}/re-review`),
 };
