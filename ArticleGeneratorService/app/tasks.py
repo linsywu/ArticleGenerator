@@ -240,7 +240,7 @@ def trigger_generate(self, topic: str, account_id: int, hotspot_id: int = None, 
 @celery_app.task(bind=True)
 def trigger_refine(self, article_id: int, keywords: str):
     """
-    异步微调文章：后端切片逐段改写（有弱段时）或回退整篇（无弱段时）
+    异步微调文章：标记包裹弱段 → 一次 LLM 调用 → 正则提取替换
     """
     db = SessionLocal()
     rt = None
@@ -254,60 +254,57 @@ def trigger_refine(self, article_id: int, keywords: str):
         if not article:
             raise ValueError("文章不存在")
 
-        # 解析 weak_paragraphs
+        # 必须有评审
+        if not article.quality_review_detail:
+            raise ValueError("该文章尚未完成质量评审，无法微调")
+
         weak_paragraphs = _parse_weak_paragraphs(article.quality_review_detail)
+        if not weak_paragraphs:
+            # 评审已完成但无弱段——跳过，记录空历史
+            history = _append_refine_history(article, keywords, "paragraph", [])
+            db.commit()
+            if rt:
+                rt.status = "success"
+                db.commit()
+            db.close()
+            return {"article_id": article_id, "message": "评审未发现需修改的段落，跳过微调"}
+
+        # 切分段落（与评审编号规则一致）
+        body_pairs, title = _split_paragraphs(article.content)
+        if not body_pairs:
+            raise ValueError("无法解析文章段落结构")
+
+        # 用标记包裹问题段落
+        marked_content, changes_before = _wrap_paragraphs(title, body_pairs, weak_paragraphs)
+
+        # 一次 LLM 调用
         llm_url = settings.llm_service_url.rstrip("/")
-        history_entry = {"keywords": keywords or "", "mode": "full", "changes": []}
+        with httpx.Client(timeout=120.0) as client:
+            resp = client.post(f"{llm_url}/chat", json={
+                "scenario": "refine",
+                "task_id": self.request.id,
+                "account_id": article.account_id,
+                "variables": {
+                    "article_content": marked_content,
+                    "keywords": keywords or "优化表达",
+                    "review_suggestions": "",
+                },
+            })
+            resp.raise_for_status()
+            data = resp.json()
 
-        if weak_paragraphs:
-            # ── 段落级模式：切片 + 逐段改写 + 拼接 ──
-            body_pairs, title = _split_paragraphs(article.content)
-            if not body_pairs:
-                # 切分失败，回退整篇
-                new_content = _refine_full(llm_url, self.request.id, article, keywords)
-            else:
-                for wp in weak_paragraphs:
-                    idx = wp.get("index", 0)
-                    old_text = _find_paragraph(body_pairs, idx)
-                    if not old_text:
-                        history_entry["changes"].append({
-                            "index": idx, "before": "", "after": "",
-                            "status": "skipped", "reason": "段落未找到"
-                        })
-                        continue
-                    # 单段调用 LLM 改写
-                    new_text = _refine_single_paragraph(
-                        llm_url, self.request.id, article.account_id, wp, keywords, old_text
-                    )
-                    validated = _validate_paragraph(new_text, old_text)
-                    status = "rewritten" if validated != old_text else "skipped"
-                    history_entry["changes"].append({
-                        "index": idx, "before": old_text, "after": validated, "status": status
-                    })
-                    # 替换段落数组
-                    body_pairs = [(pi, validated if pi == idx else pt) for pi, pt in body_pairs]
-
-                new_content = title + "\n\n" + "\n\n".join([p[1] for p in body_pairs])
-                history_entry["mode"] = "paragraph"
-        else:
-            # ── 回退整篇模式 ──
-            new_content = _refine_full(llm_url, self.request.id, article, keywords)
-
-        # 更新文章
-        if not new_content:
+        refined_content = (data.get("content") or "").strip()
+        if not refined_content:
             raise ValueError("LLM 返回内容为空")
+
+        # 从带标记的返回中提取改写后段落，替换回原文
+        new_content, changes = _unwrap_paragraphs(title, body_pairs, refined_content, changes_before)
+
+        # 存库
         if new_content != article.content:
             article.content = new_content
 
-        # 增强历史
-        history = []
-        if article.refine_history:
-            try:
-                history = json.loads(article.refine_history)
-            except Exception:
-                pass
-        history.append(history_entry)
-        article.refine_history = json.dumps(history, ensure_ascii=False)
+        _append_refine_history_dict(article, keywords, "paragraph", changes)
         article.status = "pending_review"
         db.commit()
 
@@ -315,20 +312,15 @@ def trigger_refine(self, article_id: int, keywords: str):
             rt.status = "success"
             db.commit()
 
-        # 微调后重新触发质量评审（更新评分和弱段清单）
-        if new_content:
-            trigger_quality_review.delay(article_id, new_content)
-
-        return {"article_id": article_id}
+        db.close()
+        return {"article_id": article_id, "changes": len(changes)}
     except Exception as e:
-        rt = db.query(RefineTask).filter(RefineTask.task_id == self.request.id).first()
         if rt:
             rt.status = "failed"
             rt.error_message = str(e)
             db.commit()
-        raise
-    finally:
         db.close()
+        raise
 
 
 @celery_app.task(bind=True)
@@ -811,62 +803,76 @@ def _split_paragraphs(content: str):
     return list(enumerate(body, start=1)), title
 
 
-def _find_paragraph(body_pairs: list, index: int) -> str:
-    """从段落对中按编号查找段落文本"""
-    for pi, pt in body_pairs:
-        if pi == index:
-            return pt
-    return ""
+def _wrap_paragraphs(title: str, body_pairs: list, weak_paragraphs: list) -> tuple:
+    """用标记包裹问题段落，返回 (marked_content, [{index, before}])。
+    标记格式：〖¶N〗原文〖/¶N〗"""
+    import re
+    MARK_OPEN = "〖¶{idx}〗"
+    MARK_CLOSE = "〖/¶{idx}〗"
+
+    weak_indices = {wp["index"] for wp in weak_paragraphs}
+    changes_before = []
+    new_body = []
+
+    for idx, text in body_pairs:
+        if idx in weak_indices:
+            changes_before.append({"index": idx, "before": text})
+            new_body.append(f"{MARK_OPEN.format(idx=idx)}\n{text}\n{MARK_CLOSE.format(idx=idx)}")
+        else:
+            new_body.append(text)
+
+    return title + "\n\n" + "\n\n".join(new_body), changes_before
 
 
-def _refine_single_paragraph(llm_url: str, task_id: str, account_id: int,
-                              wp: dict, keywords: str, old_text: str) -> str:
-    """调用 /chat scenario=refine 改写单个段落（article_content=单段原文）"""
-    issue = wp.get("issue", "")
-    suggestion = wp.get("suggestion", "")
-    review_suggestions = f"问题：{issue}\n建议：{suggestion}" if issue or suggestion else ""
-    with httpx.Client(timeout=60.0) as client:
-        resp = client.post(f"{llm_url}/chat", json={
-            "scenario": "refine",
-            "task_id": task_id,
-            "account_id": account_id,
-            "variables": {
-                "article_content": old_text,
-                "review_suggestions": review_suggestions,
-                "keywords": keywords or "优化表达",
-            },
-        })
-        resp.raise_for_status()
-        data = resp.json()
-    return (data.get("content") or "").strip()
+def _unwrap_paragraphs(title: str, body_pairs: list, refined_content: str,
+                        changes_before: list) -> tuple:
+    """从 LLM 返回的带标记文本中提取改写后段落，替换回原文。
+    返回 (new_content, changes: [{index, before, after, status}])"""
+    import re
+    MARK_PATTERN = re.compile(r"〖¶(\d+)〗\s*(.*?)\s*〖/¶\1〗", re.DOTALL)
+
+    # 从 refined_content 提取标记内的内容
+    extracted = {}
+    for m in MARK_PATTERN.finditer(refined_content):
+        idx = int(m.group(1))
+        text = m.group(2).strip()
+        if text:
+            extracted[idx] = text
+
+    changes = []
+    new_body = []
+    for idx, old_text in body_pairs:
+        if idx in extracted:
+            new_text = extracted[idx]
+            if new_text and new_text != old_text:
+                changes.append({"index": idx, "before": old_text, "after": new_text, "status": "rewritten"})
+                new_body.append(new_text)
+            else:
+                changes.append({"index": idx, "before": old_text, "after": old_text, "status": "skipped"})
+                new_body.append(old_text)
+        else:
+            # 检查是否在 changes_before 中（标记过但 LLM 没返回）
+            was_marked = any(cb["index"] == idx for cb in changes_before)
+            if was_marked:
+                changes.append({"index": idx, "before": old_text, "after": old_text, "status": "skipped", "reason": "LLM 未返回改写"})
+            new_body.append(old_text)
+
+    return title + "\n\n" + "\n\n".join(new_body), changes
 
 
-def _refine_full(llm_url: str, task_id: str, article, keywords: str) -> str:
-    """回退整篇改写：调用 /chat scenario=refine"""
-    with httpx.Client(timeout=120.0) as client:
-        resp = client.post(f"{llm_url}/chat", json={
-            "scenario": "refine",
-            "task_id": task_id,
-            "account_id": article.account_id,
-            "variables": {
-                "article_content": article.content,
-                "keywords": keywords or "优化文章质量",
-                "review_suggestions": "",
-            },
-        })
-        resp.raise_for_status()
-        data = resp.json()
-    return (data.get("content") or "").strip()
+def _append_refine_history(article, keywords: str, mode: str, changes: list) -> list:
+    """追加一条微调历史记录"""
+    history = []
+    if article.refine_history:
+        try:
+            history = json.loads(article.refine_history)
+        except Exception:
+            pass
+    history.append({"keywords": keywords or "", "mode": mode, "changes": changes})
+    article.refine_history = json.dumps(history, ensure_ascii=False)
+    return history
 
 
-def _validate_paragraph(new_text: str, old_text: str) -> str:
-    """校验单段改写：非空、不过短（≥30%原文）、不含多段（无空行分隔）。
-    失败返回原文本，通过返回 new_text。"""
-    if not new_text:
-        return old_text
-    if len(new_text) < len(old_text) * 0.3:
-        return old_text
-    if "\n\n" in new_text:
-        # LLM 输出了多段，可能超越了单段范围
-        return old_text
-    return new_text
+def _append_refine_history_dict(article, keywords: str, mode: str, changes: list):
+    """便捷方法：追加历史但总是写入"""
+    return _append_refine_history(article, keywords, mode, changes)

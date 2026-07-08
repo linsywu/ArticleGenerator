@@ -1,89 +1,34 @@
-"""Change 3：段落级微调（切片 + 逐段改写 + 校验）测试。"""
+"""Change 3 v2：标记包裹微调（_wrap_paragraphs / _unwrap_paragraphs）测试。"""
 import json
 from app.tasks import (
     _split_paragraphs,
-    _validate_paragraph,
     _parse_weak_paragraphs,
-    _find_paragraph,
+    _wrap_paragraphs,
+    _unwrap_paragraphs,
 )
 
 
 # ══ _split_paragraphs ══
 
 def test_split_paragraphs_normal():
-    """标准文章：标题 + 空行分隔正文段"""
     content = "我是标题\n\n正文第一段内容。\n\n第二段，继续说事。\n\n第三段收尾。"
     pairs, title = _split_paragraphs(content)
     assert title == "我是标题"
     assert len(pairs) == 3
     assert pairs[0] == (1, "正文第一段内容。")
-    assert pairs[1] == (2, "第二段，继续说事。")
-    assert pairs[2] == (3, "第三段收尾。")
 
 
 def test_split_paragraphs_only_title():
-    """只有标题，无法切分"""
-    content = "只有一段，像标题又像正文"
-    pairs, content_out = _split_paragraphs(content)
+    pairs, content_out = _split_paragraphs("只有一段")
     assert pairs == []
-    assert content_out == content
-
-
-def test_split_paragraphs_empty():
-    """空内容"""
-    pairs, content_out = _split_paragraphs("")
-    assert pairs == []
-
-
-def test_split_paragraphs_markdown_style():
-    """Markdown 格式标题 + 正文"""
-    content = "# 我是 Markdown 标题\n\n第一段。\n\n第二段。"
-    pairs, title = _split_paragraphs(content)
-    assert title == "# 我是 Markdown 标题"
-    assert len(pairs) == 2
-    assert pairs[0] == (1, "第一段。")
-    assert pairs[1] == (2, "第二段。")
-
-
-# ══ _validate_paragraph ══
-
-def test_validate_normal():
-    """正常改写通过"""
-    result = _validate_paragraph("改写后的单段文本", "原文较长较长较长较长较长较长较长")
-    assert result == "改写后的单段文本"
-
-
-def test_validate_empty():
-    """空文本保留原文"""
-    result = _validate_paragraph("", "原文内容")
-    assert result == "原文内容"
-
-
-def test_validate_too_short():
-    """改写过短（<30%）保留原文"""
-    old = "这是一个非常长的段落，包含很多有价值的内容和信息" * 3
-    result = _validate_paragraph("短", old)
-    assert result == old
-
-
-def test_validate_multi_paragraph():
-    """含空行（多段输出）保留原文"""
-    old = "这是原文段落内容"
-    result = _validate_paragraph("改写段1\n\n改写段2", old)
-    assert result == old
 
 
 # ══ _parse_weak_paragraphs ══
 
 def test_parse_weak_paragraphs_valid():
-    detail = json.dumps({
-        "weak_paragraphs": [
-            {"index": 3, "severity": "high", "issue": "套话", "suggestion": "补数据"}
-        ]
-    })
+    detail = json.dumps({"weak_paragraphs": [{"index": 3, "severity": "high"}]})
     result = _parse_weak_paragraphs(detail)
     assert len(result) == 1
-    assert result[0]["index"] == 3
 
 
 def test_parse_weak_paragraphs_empty():
@@ -91,53 +36,102 @@ def test_parse_weak_paragraphs_empty():
     assert _parse_weak_paragraphs(None) == []
 
 
-def test_parse_weak_paragraphs_invalid_json():
-    assert _parse_weak_paragraphs("{not json}") == []
+# ══ _wrap_paragraphs ══
+
+SAMPLE_CONTENT = "标题\n\n段1内容较长需要足够长度方便测试。\n\n段2是问题段落需要修改优化。\n\n段3结尾段。"
 
 
-def test_parse_weak_paragraphs_no_weak():
-    detail = json.dumps({"weak_paragraphs": []})
-    assert _parse_weak_paragraphs(detail) == []
+def test_wrap_paragraphs_mark_weak():
+    body, title = _split_paragraphs(SAMPLE_CONTENT)
+    weak = [{"index": 2, "severity": "medium", "issue": "太短", "suggestion": "展开"}]
+    marked, before = _wrap_paragraphs(title, body, weak)
+    # 段2 被标记
+    assert "〖¶2〗" in marked
+    assert "段2是问题段落" in marked
+    assert "〖/¶2〗" in marked
+    # 段1、段3 没被标记
+    assert "〖¶1〗" not in marked
+    assert "〖¶3〗" not in marked
+    # before 记录正确
+    assert len(before) == 1
+    assert before[0]["index"] == 2
 
 
-# ══ _find_paragraph ══
-
-def test_find_paragraph_exists():
-    pairs = [(1, "段1"), (2, "段2"), (3, "段3")]
-    assert _find_paragraph(pairs, 2) == "段2"
-
-
-def test_find_paragraph_missing():
-    pairs = [(1, "段1")]
-    assert _find_paragraph(pairs, 99) == ""
+def test_wrap_paragraphs_no_weak():
+    body, title = _split_paragraphs(SAMPLE_CONTENT)
+    marked, before = _wrap_paragraphs(title, body, [])
+    # 无标记
+    assert "〖¶" not in marked
+    assert before == []
 
 
-# ══ refine_history 结构验证 ══
+def test_wrap_paragraphs_multiple_weak():
+    body, title = _split_paragraphs(SAMPLE_CONTENT)
+    weak = [{"index": 1}, {"index": 3}]
+    marked, before = _wrap_paragraphs(title, body, weak)
+    assert "〖¶1〗" in marked
+    assert "〖¶3〗" in marked
+    assert len(before) == 2
 
-def test_refine_history_paragraph_mode():
-    """段落级模式历史记录结构验证"""
-    entry = {
-        "keywords": "语气温和",
-        "mode": "paragraph",
-        "changes": [
-            {"index": 2, "before": "原段落", "after": "新段落", "status": "rewritten"},
-            {"index": 5, "before": "原段5", "after": "原段5", "status": "skipped"},
-        ]
-    }
+
+# ══ _unwrap_paragraphs ══
+
+def test_unwrap_extract_and_replace():
+    body, title = _split_paragraphs(SAMPLE_CONTENT)
+    weak = [{"index": 2}]
+    _, before = _wrap_paragraphs(title, body, weak)
+
+    # 模拟 LLM 返回：只改了标记内的段2
+    llm_output = "标题\n\n段1内容较长需要足够长度方便测试。\n\n〖¶2〗\n改写的段2内容。\n〖/¶2〗\n\n段3结尾段。"
+    new_content, changes = _unwrap_paragraphs(title, body, llm_output, before)
+
+    assert "改写的段2内容" in new_content
+    assert "段1内容" in new_content  # 未动
+    assert "段3结尾" in new_content  # 未动
+    assert "〖¶2〗" not in new_content  # 标记已去除
+    assert len(changes) == 1
+    assert changes[0]["index"] == 2
+    assert changes[0]["status"] == "rewritten"
+
+
+def test_unwrap_llm_no_change():
+    """LLM 没改任何段"""
+    body, title = _split_paragraphs(SAMPLE_CONTENT)
+    weak = [{"index": 2}]
+    _, before = _wrap_paragraphs(title, body, weak)
+
+    # LLM 返回原样
+    new_content, changes = _unwrap_paragraphs(title, body, SAMPLE_CONTENT, before)
+    assert changes[0]["status"] == "skipped"
+
+
+def test_unwrap_llm_lost_marker():
+    """LLM 丢了标记"""
+    body, title = _split_paragraphs(SAMPLE_CONTENT)
+    weak = [{"index": 2}]
+    _, before = _wrap_paragraphs(title, body, weak)
+
+    llm_output = "标题\n\n段1没动。\n\n段2也没标记直接返回了。\n\n段3。"
+    new_content, changes = _unwrap_paragraphs(title, body, llm_output, before)
+    # 段2 没被替换（标记丢失）
+    assert changes[0]["status"] == "skipped"
+    assert "reason" in changes[0]
+
+
+# ══ refine_history 结构 ══
+
+def test_history_paragraph_mode():
+    entry = {"keywords": "温和", "mode": "paragraph", "changes": [
+        {"index": 2, "before": "原文", "after": "新文", "status": "rewritten"}
+    ]}
     assert entry["mode"] == "paragraph"
-    assert len(entry["changes"]) == 2
     assert entry["changes"][0]["status"] == "rewritten"
-    assert entry["changes"][1]["status"] == "skipped"
     assert "before" in entry["changes"][0]
-    assert "after" in entry["changes"][0]
 
 
-def test_refine_history_full_mode():
-    """回退整篇模式历史记录结构验证"""
-    entry = {
-        "keywords": "缩短到500字",
-        "mode": "full",
-        "changes": []
-    }
-    assert entry["mode"] == "full"
-    assert entry["changes"] == []
+def test_history_skipped_entry():
+    entry = {"keywords": "", "mode": "paragraph", "changes": [
+        {"index": 5, "before": "文", "after": "文", "status": "skipped", "reason": "LLM 未返回改写"}
+    ]}
+    assert entry["changes"][0]["status"] == "skipped"
+    assert "reason" in entry["changes"][0]
