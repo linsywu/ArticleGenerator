@@ -150,7 +150,7 @@
             <span class="card-number">05</span>
             <h2 class="card-title">选择文章标题</h2>
           </div>
-          <p class="card-desc">方向：{{ selectedDirection?.title }}。从候选标题中选择或编辑。</p>
+          <p class="card-desc">方向：{{ selectedDirection?.core_viewpoint || selectedDirection?.title }}。从候选标题中选择或编辑。</p>
           <div v-if="titles.length" class="titles-grid">
             <div
               v-for="(t, i) in titles"
