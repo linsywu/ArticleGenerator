@@ -92,8 +92,27 @@
           <div v-if="directions.length" class="directions-grid">
             <div v-for="d in directions" :key="d.id" class="direction-card" :class="{ selected: selectedDirection?.id === d.id }" @click="selectedDirection = d">
               <span class="direction-id">{{ d.id }}</span>
-              <span class="direction-title">{{ d.title }}</span>
-              <span v-if="selectedDirection?.id === d.id" class="direction-check">✓</span>
+              <div class="direction-body">
+                <div class="direction-title-row">
+                  <span class="direction-title">{{ d.title }}</span>
+                  <span v-if="selectedDirection?.id === d.id" class="direction-check">✓</span>
+                </div>
+                <p v-if="d.core_viewpoint" class="direction-viewpoint">{{ d.core_viewpoint }}</p>
+                <p v-if="d.reader_gain" class="direction-gain">📌 {{ d.reader_gain }}</p>
+                <div v-if="d.evaluation" class="direction-eval">
+                  <span class="eval-scores">
+                    <span class="eval-score" :style="{ color: scoreColor(d.evaluation.novelty) }">新{{ d.evaluation.novelty }}</span>
+                    <span class="eval-score" :style="{ color: scoreColor(d.evaluation.emotion) }">情{{ d.evaluation.emotion }}</span>
+                    <span class="eval-score" :style="{ color: scoreColor(d.evaluation.discussion) }">议{{ d.evaluation.discussion }}</span>
+                    <span class="eval-score" :style="{ color: scoreColor(d.evaluation.viral) }">传{{ d.evaluation.viral }}</span>
+                  </span>
+                  <span class="eval-reason">{{ d.evaluation.reason }}</span>
+                </div>
+                <div v-if="d.angle || d.article_type" class="direction-meta">
+                  <el-tag v-if="d.angle" size="small" :type="angleTagType(d.angle)">{{ d.angle }}</el-tag>
+                  <el-tag v-if="d.article_type" size="small" type="info">{{ d.article_type }}</el-tag>
+                </div>
+              </div>
             </div>
           </div>
           <div v-else class="loading-state">
@@ -114,7 +133,7 @@
             <span class="card-number">04</span>
             <h2 class="card-title">确认大纲</h2>
           </div>
-          <p class="card-desc">方向：{{ selectedDirection?.title }}。编辑、排序或增删要点。</p>
+          <p class="card-desc">方向：{{ selectedDirection?.core_viewpoint || selectedDirection?.title }}。编辑、排序或增删要点。</p>
           <div v-if="outline.length" class="outline-list">
             <div v-for="(item, i) in outline" :key="i" class="outline-row">
               <span class="outline-order">{{ i + 1 }}</span>
@@ -139,7 +158,7 @@
             <span class="card-number">05</span>
             <h2 class="card-title">选择文章标题</h2>
           </div>
-          <p class="card-desc">方向：{{ selectedDirection?.title }}。从候选标题中选择或编辑。</p>
+          <p class="card-desc">方向：{{ selectedDirection?.core_viewpoint || selectedDirection?.title }}。从候选标题中选择或编辑。</p>
           <div v-if="titles.length" class="titles-grid">
             <div
               v-for="(t, i) in titles"
@@ -287,7 +306,7 @@ async function generateOutline() {
   if (!selectedAccountId.value || !selectedDirection.value) return
   loadingOutline.value = true
   try {
-    const { data } = await api.generateOutline(selectedAccountId.value, idea.value.trim(), selectedDirection.value.title)
+    const { data } = await api.generateOutline(selectedAccountId.value, idea.value.trim(), selectedDirection.value.core_viewpoint || selectedDirection.value.title)
     const taskId = data.task_id
     if (!taskId) throw new Error('未获取到任务 ID')
     outlineTaskId.value = taskId
@@ -318,7 +337,7 @@ async function generateTitles() {
   loadingTitles.value = true
   try {
     const points = outline.value.map(o => o.point)
-    const { data } = await api.generateTitles(selectedAccountId.value, idea.value.trim(), selectedDirection.value.title, points)
+    const { data } = await api.generateTitles(selectedAccountId.value, idea.value.trim(), selectedDirection.value.core_viewpoint || selectedDirection.value.title, points)
     const taskId = data.task_id
     if (!taskId) throw new Error('未获取到任务 ID')
     titleTaskId.value = taskId
@@ -350,6 +369,27 @@ async function generateTitles() {
 function moveOutlineUp(i: number) { if (i > 0) { const t = outline.value[i]; outline.value[i] = outline.value[i-1]; outline.value[i-1] = t } }
 function moveOutlineDown(i: number) { if (i < outline.value.length - 1) { const t = outline.value[i]; outline.value[i] = outline.value[i+1]; outline.value[i+1] = t } }
 
+function angleTagType(angle: string): string {
+  const t: Record<string, string> = {
+    "反常识": "danger",
+    "情感共鸣": "warning",
+    "利益驱动": "success",
+    "实用干货": "",
+    "故事切入": "info",
+    "社会观察": "warning",
+    "心理机制": "info",
+    "人性分析": "",
+  };
+  return t[angle] || "";
+}
+
+function scoreColor(score: number): string {
+  if (score >= 9) return "#e06060";
+  if (score >= 7) return "#d4a843";
+  if (score >= 5) return "#5b8c5a";
+  return "#8b8780";
+}
+
 async function startGenerate() {
   if (!selectedAccountId.value || !idea.value.trim()) return
   generating.value = true
@@ -360,7 +400,7 @@ async function startGenerate() {
     const topicWithTitle = editedTitle.value
       ? `${editedTitle.value}\n\n${idea.value.trim()}`
       : idea.value.trim()
-    const { data } = await api.triggerGenerateWithOutline(selectedAccountId.value, topicWithTitle, points, wordCount.value || undefined, selectedDirection.value?.title, directionTaskId.value || undefined, outlineTaskId.value || undefined, titleTaskId.value || undefined)
+    const { data } = await api.triggerGenerateWithOutline(selectedAccountId.value, topicWithTitle, points, wordCount.value || undefined, selectedDirection.value?.core_viewpoint || selectedDirection.value?.title, directionTaskId.value || undefined, outlineTaskId.value || undefined, titleTaskId.value || undefined)
     const taskId = data.tasks?.[0]?.task_id
     if (!taskId) throw new Error('未获取到任务 ID')
 
@@ -464,12 +504,21 @@ onMounted(async () => {
 
 /* 方向卡片 */
 .directions-grid { display: flex; flex-direction: column; gap: 8px; margin-bottom: var(--space-xl); }
-.direction-card { display: flex; align-items: center; gap: 14px; padding: 14px 18px; background: var(--ink-surface); border: 1px solid var(--ink-border); border-radius: var(--radius-lg); cursor: pointer; transition: all var(--duration-fast) var(--ease-out); }
+.direction-card { display: flex; align-items: flex-start; gap: 14px; padding: 14px 18px; background: var(--ink-surface); border: 1px solid var(--ink-border); border-radius: var(--radius-lg); cursor: pointer; transition: all var(--duration-fast) var(--ease-out); }
 .direction-card:hover { border-color: var(--text-dim); }
 .direction-card.selected { border-color: var(--amber); background: rgba(200,132,60,0.06); }
-.direction-id { font-family: var(--font-serif); font-size: 20px; font-weight: 700; color: var(--amber); width: 32px; flex-shrink: 0; }
-.direction-title { flex: 1; font-size: 15px; color: var(--text-on-dark); }
-.direction-check { color: var(--amber); font-weight: 700; }
+.direction-id { font-family: var(--font-serif); font-size: 20px; font-weight: 700; color: var(--amber); width: 32px; flex-shrink: 0; line-height: 1.4; }
+.direction-body { flex: 1; min-width: 0; }
+.direction-title-row { display: flex; align-items: center; gap: 8px; }
+.direction-title { flex: 1; font-size: 15px; font-weight: 600; color: var(--text-on-dark); }
+.direction-check { color: var(--amber); font-weight: 700; flex-shrink: 0; }
+.direction-viewpoint { font-size: 13px; color: var(--text-muted); line-height: 1.6; margin: 6px 0 0; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.direction-gain { font-size: 12px; color: var(--amber-light); margin: 4px 0 0; line-height: 1.5; }
+.direction-eval { display: flex; flex-direction: column; gap: 4px; margin: 6px 0 0; padding: 6px 8px; background: rgba(255,255,255,0.02); border-radius: 6px; }
+.eval-scores { display: flex; gap: 8px; }
+.eval-score { font-size: 12px; font-weight: 700; font-family: var(--font-serif); }
+.eval-reason { font-size: 11px; color: var(--text-dim); line-height: 1.4; }
+.direction-meta { display: flex; gap: 6px; margin-top: 6px; }
 
 /* 标题卡片 */
 .titles-grid { display: flex; flex-direction: column; gap: 8px; margin-bottom: var(--space-lg); }

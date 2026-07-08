@@ -112,6 +112,19 @@ export interface GenerationLog {
 export interface DirectionItem {
   id: string;
   title: string;
+  angle?: string;
+  core_viewpoint?: string;
+  reader_gain?: string;
+  article_type?: string;
+  evaluation?: DirectionEvaluation;
+}
+
+export interface DirectionEvaluation {
+  novelty: number;
+  emotion: number;
+  discussion: number;
+  viral: number;
+  reason: string;
 }
 
 export interface OutlinePoint {

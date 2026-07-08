@@ -12,9 +12,9 @@
           <el-tag :type="scenarioTag(row.scenario)" size="small">{{ scenarioLabel(row.scenario) }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="description" label="说明" width="180" show-overflow-tooltip />
+      <el-table-column prop="description" label="说明" width="230" />
       <el-table-column label="提示词预览" show-overflow-tooltip>
-        <template #default="{ row }">{{ (row.system_prompt_template || '').slice(0, 80) }}{{ (row.system_prompt_template || '').length > 80 ? '...' : '' }}</template>
+        <template #default="{ row }">{{row.system_prompt_template || ''}}</template>
       </el-table-column>
       <el-table-column prop="model" label="模型" width="140" />
       <el-table-column label="状态" width="70">
@@ -114,6 +114,8 @@ const form = reactive({
 });
 
 const scenarioOptions = [
+  {value:"distill-extract",label:"a 特征清单提取"},
+  {value:"distill-synthesize",label:"b 写作风格生成"},
   { value: "material-summary", label: "⓪ 素材摘要" },
   { value: "distill", label: "① 蒸馏" },
   { value: "direction", label: "② 方向生成" },
