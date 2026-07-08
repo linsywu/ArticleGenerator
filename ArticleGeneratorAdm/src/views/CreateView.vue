@@ -99,7 +99,15 @@
                 </div>
                 <p v-if="d.core_viewpoint" class="direction-viewpoint">{{ d.core_viewpoint }}</p>
                 <p v-if="d.reader_gain" class="direction-gain">📌 {{ d.reader_gain }}</p>
-                <p v-if="d.check" class="direction-check-text">{{ d.check }}</p>
+                <div v-if="d.evaluation" class="direction-eval">
+                  <span class="eval-scores">
+                    <span class="eval-score" :style="{ color: scoreColor(d.evaluation.novelty) }">新{{ d.evaluation.novelty }}</span>
+                    <span class="eval-score" :style="{ color: scoreColor(d.evaluation.emotion) }">情{{ d.evaluation.emotion }}</span>
+                    <span class="eval-score" :style="{ color: scoreColor(d.evaluation.discussion) }">议{{ d.evaluation.discussion }}</span>
+                    <span class="eval-score" :style="{ color: scoreColor(d.evaluation.viral) }">传{{ d.evaluation.viral }}</span>
+                  </span>
+                  <span class="eval-reason">{{ d.evaluation.reason }}</span>
+                </div>
                 <div v-if="d.angle || d.article_type" class="direction-meta">
                   <el-tag v-if="d.angle" size="small" :type="angleTagType(d.angle)">{{ d.angle }}</el-tag>
                   <el-tag v-if="d.article_type" size="small" type="info">{{ d.article_type }}</el-tag>
@@ -370,8 +378,16 @@ function angleTagType(angle: string): string {
     "故事切入": "info",
     "社会观察": "warning",
     "心理机制": "info",
+    "人性分析": "",
   };
   return t[angle] || "";
+}
+
+function scoreColor(score: number): string {
+  if (score >= 9) return "#e06060";
+  if (score >= 7) return "#d4a843";
+  if (score >= 5) return "#5b8c5a";
+  return "#8b8780";
 }
 
 async function startGenerate() {
@@ -498,8 +514,11 @@ onMounted(async () => {
 .direction-check { color: var(--amber); font-weight: 700; flex-shrink: 0; }
 .direction-viewpoint { font-size: 13px; color: var(--text-muted); line-height: 1.6; margin: 6px 0 0; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .direction-gain { font-size: 12px; color: var(--amber-light); margin: 4px 0 0; line-height: 1.5; }
-.direction-check-text { font-size: 11px; color: var(--text-dim); margin: 4px 0 0; line-height: 1.5; }
-.direction-meta { display: flex; gap: 6px; margin-top: 8px; }
+.direction-eval { display: flex; flex-direction: column; gap: 4px; margin: 6px 0 0; padding: 6px 8px; background: rgba(255,255,255,0.02); border-radius: 6px; }
+.eval-scores { display: flex; gap: 8px; }
+.eval-score { font-size: 12px; font-weight: 700; font-family: var(--font-serif); }
+.eval-reason { font-size: 11px; color: var(--text-dim); line-height: 1.4; }
+.direction-meta { display: flex; gap: 6px; margin-top: 6px; }
 
 /* 标题卡片 */
 .titles-grid { display: flex; flex-direction: column; gap: 8px; margin-bottom: var(--space-lg); }

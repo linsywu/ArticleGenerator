@@ -116,7 +116,15 @@ export interface DirectionItem {
   core_viewpoint?: string;
   reader_gain?: string;
   article_type?: string;
-  check?: string;
+  evaluation?: DirectionEvaluation;
+}
+
+export interface DirectionEvaluation {
+  novelty: number;
+  emotion: number;
+  discussion: number;
+  viral: number;
+  reason: string;
 }
 
 export interface OutlinePoint {
